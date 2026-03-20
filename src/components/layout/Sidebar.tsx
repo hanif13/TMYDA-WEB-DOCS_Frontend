@@ -5,18 +5,19 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, FileText, FolderKanban, Settings,
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
-    Bell, BookOpen, Star, BookMarked, CalendarDays, Receipt
+    Bell, Star, BookMarked, CalendarDays, Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useYear } from '@/context/YearContext';
 
 const navGroups = [
     {
         label: 'หลัก',
         items: [
             { name: 'Dashboard', href: '/', icon: LayoutDashboard, permission: 'ACCESS_DASHBOARD' },
-            { name: 'งบประมาณ & รายงาน', href: '/budget', icon: BarChart3, permission: 'ACCESS_BUDGET' },
-            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, permission: 'ACCESS_INCOME_EXPENSE' },
+            { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, permission: 'ACCESS_COMPLETED_PROJECTS' },
+            { name: 'คณะกรรมการ', href: '/committee', icon: Users, permission: 'ACCESS_COMMITTEE' },
         ],
     },
     {
@@ -24,6 +25,7 @@ const navGroups = [
         items: [
             { name: 'เอกสาร', href: '/documents', icon: FileText, permission: 'ACCESS_DOCUMENTS' },
             { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, permission: 'ACCESS_REGISTRY' },
+            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, permission: 'ACCESS_INCOME_EXPENSE' },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, permission: 'ACCESS_ANNUAL_PROJECTS' },
             { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, permission: 'ACCESS_PROJECTS' },
         ],
@@ -32,26 +34,19 @@ const navGroups = [
         label: 'ระบบ',
         items: [
             { name: 'ผู้ใช้งาน', href: '/users', icon: Users, permission: 'ACCESS_USERS' },
-            { name: 'ตั้งค่า', href: '/settings', icon: Settings, permission: 'ACCESS_SETTINGS' },
+            { name: 'จัดการปีการทำงาน', href: '/settings/years', icon: CalendarDays, permission: 'ACCESS_YEARS' },
         ],
     },
 ];
 
-import { DEPARTMENTS } from '@/lib/constants';
-
-const departmentBadges = [
-    { name: 'สำนักกิจการสตรี สมาคมฯ', color: 'bg-pink-400/10 text-pink-400', dot: 'bg-pink-400', subDepts: DEPARTMENTS.find(d => d.name === 'สำนักกิจการสตรี สมาคมฯ')?.subDepts || [] },
-    { name: 'สมาคมพัฒนาเยาวชนมุสลิมไทย', color: 'bg-blue-400/10 text-blue-400', dot: 'bg-blue-400', subDepts: DEPARTMENTS.find(d => d.name === 'สมาคมพัฒนาเยาวชนมุสลิมไทย')?.subDepts || [] },
-    { name: 'สำนักอำนวยการ', color: 'bg-amber-400/10 text-amber-400', dot: 'bg-amber-400', subDepts: DEPARTMENTS.find(d => d.name === 'สำนักอำนวยการ')?.subDepts || [] },
-    { name: 'ครอบครัวฟิตยะตุลฮัก', color: 'bg-emerald-400/10 text-emerald-400', dot: 'bg-emerald-400', subDepts: DEPARTMENTS.find(d => d.name === 'ครอบครัวฟิตยะตุลฮัก')?.subDepts || [] },
-];
 
 import { useSession, signOut } from 'next-auth/react';
 
 export function Sidebar() {
     const pathname = usePathname();
     const { data: session } = useSession();
-    const [deptExpanded, setDeptExpanded] = useState(false);
+    const { selectedYear, setSelectedYear, availableYears } = useYear();
+    const [yearSwitcherOpen, setYearSwitcherOpen] = useState(false);
 
     const user = session?.user as any;
     const role = user?.role || 'USER';
@@ -96,6 +91,47 @@ export function Sidebar() {
                     </div>
                 </div>
             </div>
+            {/* Year Switcher */}
+            <div className="px-3 py-4 border-b border-white/5 bg-white/5 shadow-inner">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 mb-2">ปีการทำงานปัจจุบัน</p>
+                <div className="relative">
+                    <button 
+                        onClick={() => setYearSwitcherOpen(!yearSwitcherOpen)}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-white hover:border-blue-500/50 transition-all duration-300 group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-blue-600/20 flex items-center justify-center">
+                                <CalendarDays className="w-4 h-4 text-blue-400" />
+                            </div>
+                            <span className="text-xl font-black tracking-tight">{selectedYear || '—'}</span>
+                        </div>
+                        <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-300", yearSwitcherOpen && "rotate-180")} />
+                    </button>
+
+                    {yearSwitcherOpen && (
+                        <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                            {availableYears.map(year => (
+                                <button
+                                    key={year}
+                                    onClick={() => {
+                                        setSelectedYear(year);
+                                        setYearSwitcherOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center justify-between px-4 py-3 text-sm font-bold transition-all",
+                                        selectedYear === year 
+                                            ? "bg-blue-600 text-white" 
+                                            : "text-slate-400 hover:bg-white/5 hover:text-white"
+                                    )}
+                                >
+                                    <span>พ.ศ. {year}</span>
+                                    {selectedYear === year && <Star className="w-3 h-3 fill-white" />}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
@@ -120,47 +156,14 @@ export function Sidebar() {
                                         )}
                                     >
                                         <item.icon className={cn("flex-shrink-0 h-4 w-4", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-300")} />
-                                        <span className="truncate">{item.name}</span>
-                                        {item.href === '/documents' && (
-                                            <span className="ml-auto text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-bold">4 ใหม่</span>
-                                        )}
-                                    </Link>
+                                         <span className="truncate">{item.name}</span>
+                                     </Link>
                                 );
                             })}
                         </div>
                     </div>
                 ))}
 
-                {/* Departments quick-access */}
-                <div>
-                    <button
-                        onClick={() => setDeptExpanded(!deptExpanded)}
-                        className="w-full flex items-center gap-2 text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-1.5 hover:text-slate-300 transition-colors"
-                    >
-                        <BookOpen className="w-3 h-3" />
-                        หน่วยงาน / สำนัก
-                        <ChevronDown className={cn("w-3 h-3 ml-auto transition-transform", deptExpanded && "rotate-180")} />
-                    </button>
-                    {deptExpanded && (
-                        <div className="space-y-2 pl-2 mt-2">
-                            {departmentBadges.map(dept => (
-                                <div key={dept.name} className="flex flex-col">
-                                    <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold cursor-default transition-colors", dept.color)}>
-                                        <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", dept.dot)} />
-                                        <span className="truncate">{dept.name}</span>
-                                    </div>
-                                    <div className="pl-6 pt-1 space-y-1 my-1 border-l border-white/10 ml-3">
-                                        {dept.subDepts.map((sub: string) => (
-                                            <div key={sub} className="text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer transition-colors py-0.5 truncate">
-                                                {sub}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
             </nav>
 
             {/* User Profile */}

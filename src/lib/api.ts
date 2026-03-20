@@ -24,11 +24,12 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const url = `${API_BASE}${path}`;
 
     const res = await fetch(url, {
-        headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
         ...options,
+        headers: {
+            ...(options?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+            ...(options?.headers || {})
+        },
     });
 
     if (!res.ok) {
@@ -52,8 +53,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ─── DOCUMENTS ────────────────────────────────────────────
-export async function fetchDocuments() {
-    return apiFetch<any[]>("/documents");
+export async function fetchDocuments(year?: number) {
+    const query = year ? `?year=${year}` : "";
+    return apiFetch<any[]>(`/documents${query}`);
 }
 
 export async function createDocument(formData: FormData) {
@@ -110,8 +112,9 @@ export async function linkDocumentToProject(documentId: string, projectId: strin
 }
 
 // ─── DOCUMENT REQUESTS (Form submissions) ──────────────────
-export async function fetchDocumentRequests() {
-    return apiFetch<any[]>("/document-requests");
+export async function fetchDocumentRequests(year?: number) {
+    const query = year ? `?year=${year}` : "";
+    return apiFetch<any[]>(`/document-requests${query}`);
 }
 
 export async function createDocumentRequest(data: {
@@ -119,6 +122,7 @@ export async function createDocumentRequest(data: {
     department: string;
     requestedBy: string;
     fields: any;
+    thaiYear?: number;
 }) {
     return apiFetch<any>("/document-requests", {
         method: "POST",
@@ -146,8 +150,33 @@ export async function deleteDocumentRequest(id: string) {
 }
 
 // ─── PROJECTS & ANNUAL PLANS ──────────────────────────────
-export async function fetchAnnualPlans() {
-    return apiFetch<any[]>("/projects/plans");
+export async function fetchAnnualPlans(year?: number) {
+    const query = year ? `?year=${year}` : "";
+    return apiFetch<any[]>(`/projects/plans${query}`);
+}
+
+export async function fetchAnnualYears() {
+    return apiFetch<any[]>("/projects/plans/years");
+}
+
+export async function createAnnualPlan(data: { year: number; thaiYear: number; label: string }) {
+    return apiFetch<any>("/projects/plans", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateAnnualPlan(id: string, data: Partial<{ year: number; thaiYear: number; label: string }>) {
+    return apiFetch<any>(`/projects/plans/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteAnnualPlan(id: string) {
+    return apiFetch<any>(`/projects/plans/${id}`, {
+        method: "DELETE",
+    });
 }
 
 export async function createProject(data: {
@@ -162,6 +191,7 @@ export async function createProject(data: {
     months: number[];
     isUnplanned?: boolean;
     status?: string;
+    thaiYear: number;
 }) {
     return apiFetch<any>("/projects", {
         method: "POST",
@@ -169,7 +199,7 @@ export async function createProject(data: {
     });
 }
 
-export async function updateProject(id: string, data: Partial<{
+export async function updateProject(id: string, data: FormData | Partial<{
     name: string;
     departmentId: string;
     subDepartment?: string;
@@ -190,7 +220,7 @@ export async function updateProject(id: string, data: Partial<{
 }>) {
     return apiFetch<any>(`/projects/${id}`, {
         method: "PATCH",
-        body: JSON.stringify(data),
+        body: data instanceof FormData ? data : JSON.stringify(data),
     });
 }
 
@@ -200,29 +230,14 @@ export async function deleteProject(id: string) {
     });
 }
 
-export async function createAnnualPlan(data: {
-    year: number;
-    thaiYear: number;
-    label: string;
-}) {
-    return apiFetch<any>("/projects/plans", {
-        method: "POST",
-        body: JSON.stringify(data),
-    });
-}
-
-export async function deleteAnnualPlan(id: string): Promise<any> {
-    return apiFetch<any>(`/projects/plans/${id}`, {
-        method: "DELETE",
-    });
-}
 
 // ─── FINANCE / TRANSACTIONS ──────────────────────────────
-export async function fetchTransactions() {
-    return apiFetch<any[]>("/finance");
+export async function fetchTransactions(year?: number) {
+    const query = year ? `?year=${year}` : "";
+    return apiFetch<any[]>(`/finance${query}`);
 }
 
-export async function createTransaction(data: {
+export async function createTransaction(data: FormData | {
     date: string;
     title: string;
     type: string;
@@ -236,12 +251,30 @@ export async function createTransaction(data: {
 }) {
     return apiFetch<any>("/finance", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data instanceof FormData ? data : JSON.stringify(data),
     });
 }
 
 export async function deleteTransaction(id: string) {
     return apiFetch<any>(`/finance/${id}`, {
+        method: "DELETE",
+    });
+}
+
+export async function fetchCommitteeMembers(year?: number) {
+    const query = year ? `?year=${year}` : "";
+    return apiFetch<any[]>(`/committee${query}`);
+}
+
+export async function createCommitteeMember(data: FormData | any) {
+    return apiFetch<any>("/committee", {
+        method: "POST",
+        body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+}
+
+export async function deleteCommitteeMember(id: string) {
+    return apiFetch<any>(`/committee/${id}`, {
         method: "DELETE",
     });
 }

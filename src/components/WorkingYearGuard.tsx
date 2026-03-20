@@ -1,0 +1,29 @@
+"use client";
+
+import { useYear } from "@/context/YearContext";
+import { YearSelection } from "@/components/YearSelection";
+import { useSession } from "next-auth/react";
+import { Loader } from "lucide-react";
+
+export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
+    const { selectedYear, isLoading } = useYear();
+    const { data: session, status } = useSession();
+
+    if (status === "loading" || isLoading) {
+        return (
+            <div className="h-screen w-screen flex items-center justify-center bg-white">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader className="w-10 h-10 text-blue-600 animate-spin" />
+                    <p className="text-sm font-bold text-slate-500 animate-pulse">กำลังเตรียมข้อมูล...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Only guard if logged in
+    if (status === "authenticated" && !selectedYear) {
+        return <YearSelection />;
+    }
+
+    return <>{children}</>;
+}

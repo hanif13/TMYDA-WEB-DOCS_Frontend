@@ -11,6 +11,7 @@ import Link from "next/link";
 import { fetchAnnualPlans, fetchTransactions, fetchDocuments, fetchUsers } from "@/lib/api";
 import { DEPARTMENTS } from "@/lib/constants";
 import { Project, StoredDocument, BudgetTransaction } from "@/lib/types";
+import { useYear } from "@/context/YearContext";
 
 const statusConfig: Record<string, { label: string, className: string }> = {
   planning: { label: "Planning", className: "badge-draft" },
@@ -29,6 +30,7 @@ const deptColors: Record<string, string> = {
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const { selectedYear } = useYear();
   const isViewer = (session?.user as any)?.role === "VIEWER";
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -38,13 +40,18 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!selectedYear) return;
+
+    setLoading(true);
     Promise.all([
-      fetchAnnualPlans().catch(() => []),
-      fetchDocuments().catch(() => []),
-      fetchTransactions().catch(() => []),
+      fetchAnnualPlans(selectedYear).catch(() => []),
+      fetchDocuments(selectedYear).catch(() => []),
+      fetchTransactions(selectedYear).catch(() => []),
       fetchUsers().catch(() => [])
     ]).then(([plansData, docsData, txData, usersData]) => {
-      const allProjects: Project[] = plansData.flatMap((p: any) => p.projects || []).map((proj: any) => ({
+      // Filter projects by the selected year's plan
+      const targetPlan = plansData.find((p: any) => p.thaiYear === selectedYear);
+      const allProjects: Project[] = (targetPlan?.projects || []).map((proj: any) => ({
         id: proj.id,
         name: proj.name,
         department: proj.department?.name || "",
@@ -87,7 +94,7 @@ export default function DashboardPage() {
       setTransactions(mappedTx);
       setUsersCount(usersData?.length || 0);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [selectedYear]);
 
   const totalBudget = projects.reduce((acc, p) => acc + p.budget, 0);
   const totalUsed = transactions.filter(t => t.type === "รายจ่าย").reduce((acc, t) => acc + t.amount, 0) -

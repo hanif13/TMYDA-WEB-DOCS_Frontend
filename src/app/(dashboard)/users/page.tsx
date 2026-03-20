@@ -19,14 +19,15 @@ const ROLES = ["SUPER_ADMIN", "ADMIN", "VIEWER"];
 
 const PERMISSIONS = [
     { id: 'ACCESS_DASHBOARD', label: 'หน้าหลัก (Dashboard)' },
-    { id: 'ACCESS_BUDGET', label: 'งบประมาณ & รายงาน' },
-    { id: 'ACCESS_INCOME_EXPENSE', label: 'รายรับ-รายจ่าย' },
+    { id: 'ACCESS_COMPLETED_PROJECTS', label: 'โครงการที่เสร็จสิ้น' },
+    { id: 'ACCESS_COMMITTEE', label: 'คณะกรรมการ' },
     { id: 'ACCESS_DOCUMENTS', label: 'การจัดการเอกสาร' },
     { id: 'ACCESS_REGISTRY', label: 'ทะเบียนเอกสาร' },
+    { id: 'ACCESS_INCOME_EXPENSE', label: 'รายรับ-รายจ่าย' },
     { id: 'ACCESS_ANNUAL_PROJECTS', label: 'โครงการประจำปี' },
-    { id: 'ACCESS_PROJECTS', label: 'การดำเนินโครงการ' },
+    { id: 'ACCESS_PROJECTS', label: 'จัดการโครงการ' },
     { id: 'ACCESS_USERS', label: 'จัดการผู้ใช้งาน' },
-    { id: 'ACCESS_SETTINGS', label: 'ตั้งค่าระบบ' },
+    { id: 'ACCESS_YEARS', label: 'จัดการปีการทำงาน' },
 ];
 
 const roleColors: Record<string, string> = {
@@ -72,6 +73,16 @@ export default function UsersPage() {
     useEffect(() => {
         loadData();
     }, []);
+
+    if (session && !isSuperAdmin) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500 bg-white rounded-[3rem] border border-slate-100 p-10">
+                <ShieldAlert className="w-16 h-16 text-rose-500 mb-4" />
+                <h2 className="text-2xl font-black text-slate-800 mb-2">เข้าถึงไม่ได้</h2>
+                <p className="text-center max-w-md font-medium">คุณไม่ได้รับสิทธิ์ในการเข้าถึงการจัดการผู้ใช้งาน กรุณาติดต่อ Super Admin เพื่อขอสิทธิ์การใช้งาน</p>
+            </div>
+        );
+    }
 
     const handleOpenModal = (user?: any) => {
         if (user) {

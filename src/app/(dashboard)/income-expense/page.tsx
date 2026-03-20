@@ -1,7 +1,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
     TrendingUp, TrendingDown, RefreshCw, Plus, X, ChevronDown, Loader,
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/constants";
 import { BudgetTransaction, TxType, StoredDocument, Project } from "@/lib/types";
 import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, deleteTransaction } from "@/lib/api";
+import { useYear } from "@/context/YearContext";
 
 /* ─── CONSTANTS ─── */
 const deptColors: Record<string, string> = {
@@ -37,6 +39,7 @@ type Tab = "overview" | "transactions" | "disbursement" | "add";
 
 export default function IncomeExpensePage() {
     const { data: session } = useSession();
+    const { selectedYear } = useYear();
     const isViewer = (session?.user as any)?.role === "VIEWER";
 
     const [transactions, setTransactions] = useState<BudgetTransaction[]>([]);
@@ -61,12 +64,23 @@ export default function IncomeExpensePage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDetailTx, setShowDetailTx] = useState<BudgetTransaction | null>(null);
+    const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     useEffect(() => {
+        if (selectedYear) {
+            refreshData();
+        }
+    }, [selectedYear]);
+
+    const refreshData = () => {
+        setLoading(true);
         Promise.all([
-            fetchTransactions().catch(() => []),
+            fetchTransactions(selectedYear || undefined).catch(() => []),
             fetchAnnualPlans().catch(() => []),
-            fetchDocuments().catch(() => []),
+            fetchDocuments(selectedYear || undefined).catch(() => []),
         ]).then(([txData, plansData, docsData]) => {
             const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
                 id: t.id,
@@ -79,10 +93,12 @@ export default function IncomeExpensePage() {
                 amount: t.amount,
                 recordedBy: "ทีมงบประมาณ",
                 docRef: t.docRef || undefined,
+                slipUrl: t.slipUrl || undefined,
             }));
             setTransactions(mappedTx);
 
-            const allProjects = plansData.flatMap((p: any) => p.projects || []).map((proj: any) => ({
+            const filteredPlans = (plansData as any[]).filter(p => !selectedYear || p.thaiYear === selectedYear);
+            const allProjects = filteredPlans.flatMap((p: any) => p.projects || []).map((proj: any) => ({
                 id: proj.id,
                 name: proj.name,
                 department: proj.department?.name || "",
@@ -107,7 +123,7 @@ export default function IncomeExpensePage() {
             }));
             setDocuments(mappedDocs);
         }).finally(() => setLoading(false));
-    }, []);
+    };
 
     // Form state
     const [form, setForm] = useState({
@@ -210,18 +226,20 @@ export default function IncomeExpensePage() {
 
         setIsSubmitting(true);
         try {
-            const res = await createTransaction({
-                date: new Date().toISOString(),
-                title: form.description,
-                type: form.type === "รายรับ" ? "income" : form.type === "รายจ่าย" ? "expense" : "refund",
-                amount: Number(form.amount),
-                category: form.subType,
-                docRef: form.docRef,
-                slipUrl: form.slipUrl,
-                months: form.months,
-                departmentId: form.departmentId,
-                projectId: form.projectId || undefined,
-            });
+            const formData = new FormData();
+            formData.append("date", new Date().toISOString());
+            formData.append("title", form.description);
+            formData.append("type", form.type === "รายรับ" ? "income" : form.type === "รายจ่าย" ? "expense" : "refund");
+            formData.append("amount", form.amount);
+            formData.append("category", form.subType);
+            formData.append("docRef", form.docRef);
+            formData.append("months", JSON.stringify(form.months));
+            formData.append("departmentId", form.departmentId);
+            if (form.projectId) formData.append("projectId", form.projectId);
+            if (selectedYear) formData.append("thaiYear", selectedYear.toString());
+            if (selectedFile) formData.append("file", selectedFile);
+
+            const res = await createTransaction(formData);
 
             const newTx: BudgetTransaction = {
                 id: res.id,
@@ -235,6 +253,7 @@ export default function IncomeExpensePage() {
                 recordedBy: "ทีมงบประมาณ",
                 note: res.note || undefined,
                 docRef: res.docRef || undefined,
+                slipUrl: res.slipUrl || undefined,
             };
 
             setTransactions(prev => [newTx, ...prev]);
@@ -254,6 +273,7 @@ export default function IncomeExpensePage() {
                 note: "",
                 docRef: "",
             });
+            setSelectedFile(null);
             setTab("transactions");
             
             // Re-fetch projects to update budgetUsed
@@ -557,75 +577,143 @@ export default function IncomeExpensePage() {
                     {projectDisbursements.map(p => {
                         const pct = p.budget > 0 ? Math.min(Math.round((p.net / p.budget) * 100), 100) : 0;
                         const dc = deptColors[p.department] ?? "bg-slate-100 text-slate-600";
+                        const isExpanded = expandedProjectId === p.id;
+
                         return (
-                            <div key={p.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                                {/* Project header */}
-                                <div className="px-5 py-4 border-b border-slate-50">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h3 className="text-sm font-bold text-slate-800">{p.name}</h3>
+                            <div key={p.id} className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden transition-all duration-300">
+                                {/* Compact Header shown always */}
+                                <button 
+                                    onClick={() => setExpandedProjectId(isExpanded ? null : p.id)}
+                                    className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-slate-50/50 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110", dc)}>
+                                            <FolderKanban className="w-5 h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-sm font-bold text-slate-800 truncate">{p.name}</h3>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", dc)}>{p.department}</span>
-                                                <span className="text-[11px] text-slate-400 flex items-center gap-1"><Users className="w-3 h-3" />{p.lead}</span>
-                                                <span className="text-[11px] text-slate-400 flex items-center gap-1"><CalendarDays className="w-3 h-3" />{p.startDate} – {p.endDate}</span>
+                                                <span className="text-[11px] text-slate-400 font-medium hidden sm:flex items-center gap-1.5">
+                                                    <Users className="w-3 h-3 text-slate-300" /> {p.lead}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <p className="text-sm font-bold text-slate-800">฿{p.net.toLocaleString()} <span className="text-xs font-normal text-slate-400">/ {p.budget.toLocaleString()}</span></p>
-                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg", pct >= 100 ? "bg-red-100 text-red-600" : pct >= 80 ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700")}>
-                                                {pct}% ใช้ไป
-                                            </span>
-                                        </div>
                                     </div>
-                                    {/* Progress bar */}
-                                    <div className="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
-                                        <div className={cn("h-full rounded-full transition-all duration-700", pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-blue-500")}
-                                            style={{ width: `${pct}%` }} />
-                                    </div>
-                                    {/* Quick stats */}
-                                    <div className="grid grid-cols-3 gap-3 mt-3">
-                                        <div className="bg-slate-50 rounded-lg px-3 py-2 text-center">
-                                            <p className="text-[10px] text-slate-400">งบอนุมัติ</p>
-                                            <p className="text-sm font-bold text-slate-700">฿{p.budget.toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-red-50 rounded-lg px-3 py-2 text-center">
-                                            <p className="text-[10px] text-red-400">เบิกจ่าย</p>
-                                            <p className="text-sm font-bold text-red-600">-฿{p.expense.toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-blue-50 rounded-lg px-3 py-2 text-center">
-                                            <p className="text-[10px] text-blue-400">คืนเงิน</p>
-                                            <p className="text-sm font-bold text-blue-600">
-                                                {p.returned > 0 ? `+฿${p.returned.toLocaleString()}` : "—"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {/* Transactions list */}
-                                {p.transactions.length > 0 ? (
-                                    <div className="divide-y divide-slate-50">
-                                        {p.transactions.map(tx => (
-                                            <TxRow key={tx.id} tx={tx} onClick={() => setShowDetailTx(tx)} compact />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-6 text-xs text-slate-400">ยังไม่มีรายการเบิกจ่าย</div>
-                                )}
+                                    <div className="flex items-center gap-6 flex-shrink-0">
+                                        <div className="text-right hidden sm:block">
+                                            <div className="flex items-baseline justify-end gap-1.5">
+                                                <span className="text-sm font-black text-slate-800">฿{p.net.toLocaleString()}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">/ ฿{p.budget.toLocaleString()}</span>
+                                            </div>
+                                            <div className="w-24 bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                                                <div className={cn("h-full transition-all duration-1000", pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-blue-500")}
+                                                    style={{ width: `${pct}%` }} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className={cn("px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all", 
+                                            pct >= 100 ? "bg-red-50 text-red-600" : pct >= 80 ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-600"
+                                        )}>
+                                            {pct}%
+                                        </div>
 
-                                {/* Related Documents */}
-                                {p.relatedDocs.length > 0 && (
-                                    <div className="px-5 py-3 bg-slate-50/50 border-t border-slate-50">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">เอกสารที่เกี่ยวข้อง</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {p.relatedDocs.map(d => (
-                                                <div key={d.id} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-600">
-                                                    <FileText className="w-3 h-3 text-blue-500" />
-                                                    <span className="font-medium">{d.docNo}</span>
+                                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center bg-slate-50 transition-transform duration-300", isExpanded && "rotate-180 bg-blue-50")}>
+                                            <ChevronDown className={cn("w-4 h-4 text-slate-400", isExpanded && "text-blue-500")} />
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <AnimatePresence>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                                        >
+                                            <div className="px-6 pb-6 pt-2 border-t border-slate-50 space-y-6">
+                                                {/* Stats Grid */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                    {[
+                                                        { label: "งบประมาณที่อนุมัติ", value: p.budget, color: "blue", prefix: "฿" },
+                                                        { label: "เบิกจ่ายจริง (รายจ่าย)", value: p.expense, color: "red", prefix: "-฿" },
+                                                        { label: "ยอดคืนเงินคงเหลือ", value: p.returned, color: p.returned > 0 ? "emerald" : "slate", prefix: p.returned > 0 ? "+฿" : "฿" },
+                                                    ].map((stat, i) => (
+                                                        <div key={i} className={cn("p-4 rounded-2xl border flex flex-col items-center text-center", 
+                                                            stat.color === "blue" ? "bg-blue-50/30 border-blue-100" :
+                                                            stat.color === "red" ? "bg-red-50/30 border-red-100" :
+                                                            stat.color === "emerald" ? "bg-emerald-50/30 border-emerald-100" : "bg-slate-50/30 border-slate-100"
+                                                        )}>
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
+                                                            <p className={cn("text-xl font-black", 
+                                                                stat.color === "blue" ? "text-blue-600" :
+                                                                stat.color === "red" ? "text-red-600" :
+                                                                stat.color === "emerald" ? "text-emerald-700" : "text-slate-500"
+                                                            )}>
+                                                                {stat.value > 0 ? `${stat.prefix}${stat.value.toLocaleString()}` : "—"}
+                                                            </p>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+
+                                                {/* Project Info Bar */}
+                                                <div className="flex flex-wrap items-center gap-6 text-[11px] font-bold text-slate-500 bg-slate-50/50 p-4 rounded-2xl">
+                                                    <div className="flex items-center gap-2">
+                                                        <CalendarDays className="w-4 h-4 text-slate-300" />
+                                                        <span>{p.startDate} — {p.endDate}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Users className="w-4 h-4 text-slate-300" />
+                                                        <span>หัวหน้าโครงการ: {p.lead}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-auto">
+                                                        <span className="text-slate-400">สถานะงบประมาณ:</span>
+                                                        <span className={cn("px-2 py-0.5 rounded-lg", pct >= 100 ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600")}>
+                                                            {pct >= 100 ? "ใช้งบเกินกำหนด" : pct >= 80 ? "ใกล้ครบวงเงิน" : "ปกติ"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Transactions Section */}
+                                                <div>
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                                                        <Receipt className="w-3.5 h-3.5" /> รายการเดินบัญชีโครงการ ({p.transactions.length})
+                                                    </h4>
+                                                    {p.transactions.length > 0 ? (
+                                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                                                            {p.transactions.map(tx => (
+                                                                <TxRow key={tx.id} tx={tx} onClick={() => setShowDetailTx(tx)} compact />
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                                            <p className="text-xs font-bold text-slate-300 italic">ยังไม่มีรายการเบิกจ่าย</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Documents Section */}
+                                                {p.relatedDocs.length > 0 && (
+                                                    <div className="pt-2">
+                                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                                                            <FileText className="w-3.5 h-3.5" /> เอกสารอ้างอิง ({p.relatedDocs.length})
+                                                        </h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {p.relatedDocs.map(d => (
+                                                                <div key={d.id} className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 shadow-sm hover:border-blue-400 transition-colors cursor-pointer group/doc">
+                                                                    <FileText className="w-4 h-4 text-blue-500 group-hover/doc:scale-110 transition-transform" />
+                                                                    <span>{d.docNo}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         );
                     })}
@@ -643,8 +731,8 @@ export default function IncomeExpensePage() {
 
                         <form onSubmit={handleAdd} className="space-y-6">
                             {/* Main Type Selector */}
-                            <div className="grid grid-cols-3 gap-3">
-                                {(["รายรับ", "รายจ่าย", "คืนเงิน"] as TxType[]).map(t => {
+                            <div className="grid grid-cols-2 gap-3">
+                                {(["รายรับ", "รายจ่าย"] as TxType[]).map(t => {
                                     const cfg = txConfig[t];
                                     const Icon = cfg.icon;
                                     const isActive = form.type === t;
@@ -778,6 +866,38 @@ export default function IncomeExpensePage() {
                                     </div>
                                 </div>
 
+                                {/* Slip Attachment */}
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={cn("bg-slate-50 rounded-2xl p-5 border-2 border-dashed transition-all group cursor-pointer",
+                                        selectedFile ? "border-blue-500 bg-blue-50/30" : "border-slate-200 hover:border-blue-400"
+                                    )}
+                                >
+                                    <div className="flex flex-col items-center justify-center py-2">
+                                        <div className={cn("h-12 w-12 rounded-full flex items-center justify-center mb-3 transition-all shadow-sm",
+                                            selectedFile ? "bg-blue-500 scale-110" : "bg-white group-hover:scale-110"
+                                        )}>
+                                            <UploadCloud className={cn("w-6 h-6", selectedFile ? "text-white" : "text-slate-400 group-hover:text-blue-500")} />
+                                        </div>
+                                        <p className={cn("text-sm font-bold transition-all", selectedFile ? "text-blue-700" : "text-slate-500 group-hover:text-blue-600")}>
+                                            {selectedFile ? selectedFile.name : "แนบหลักฐานการโอน (สลิป)"}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            {selectedFile ? "คลิกเพื่อเปลี่ยนไฟล์" : "คลิกเพื่ออัปโหลดไฟล์ หรือวางไฟล์ที่นี่"}
+                                        </p>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            accept="image/*,application/pdf"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) setSelectedFile(file);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
                                 {form.subType === "project" && projects.find(p => p.id === form.projectId)?.months && (
                                     <div className="animate-in fade-in slide-in-from-top-2">
                                         <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3 block text-center">เบิกจ่ายสำหรับเดือน (ถ้าโครงการมีหลายเดือน)</label>
@@ -797,17 +917,6 @@ export default function IncomeExpensePage() {
                                     </div>
                                 )}
 
-                                {/* Slip Attachment */}
-                                <div className="bg-slate-50 rounded-2xl p-5 border-2 border-dashed border-slate-200 hover:border-blue-400 transition-all group">
-                                    <div className="flex flex-col items-center justify-center py-2 cursor-pointer">
-                                        <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center mb-3 group-hover:scale-110 transition-all shadow-sm">
-                                            <UploadCloud className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
-                                        </div>
-                                        <p className="text-sm font-bold text-slate-500 group-hover:text-blue-600">แนบหลักฐานการโอน (สลิป)</p>
-                                        <p className="text-[10px] text-slate-400 mt-1">คลิกเพื่ออัปโหลดไฟล์ หรือวางไฟล์ที่นี่</p>
-                                        <input type="file" className="hidden" />
-                                    </div>
-                                </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -992,6 +1101,30 @@ function DetailModal({ tx, onClose, findDoc, onDelete, isViewer }: { tx: BudgetT
                         ) : (
                             <p className="text-sm text-blue-700">{tx.docRef}</p>
                         )}
+                    </div>
+                )}
+
+                {/* Slip Attachment */}
+                {tx.slipUrl && (
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                        <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <UploadCloud className="w-3 h-3" /> หลักฐานการโอน (สลิป)
+                        </p>
+                        <a 
+                            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${tx.slipUrl}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center gap-3 bg-white border border-amber-200 rounded-lg p-2.5 hover:shadow-sm transition-all group/slip"
+                        >
+                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 group-hover/slip:bg-amber-200 transition-colors">
+                                <FileText className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-amber-900 truncate">ดูหลักฐานการโอน</p>
+                                <p className="text-[10px] text-amber-600 truncate">คลิกเพื่อเปิดไฟล์ในแท็บใหม่</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-amber-400" />
+                        </a>
                     </div>
                 )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import {
@@ -11,7 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { annualPlanStatusLabels, annualPlanStatusStyles, DEPARTMENTS } from "@/lib/constants";
 import { AnnualProject, AnnualPlan, Department } from "@/lib/types";
-import { fetchAnnualPlans, createProject, createAnnualPlan, fetchDepartments, updateProject, deleteProject, deleteAnnualPlan } from "@/lib/api";
+import { fetchAnnualPlans, createProject, fetchDepartments, updateProject, deleteProject } from "@/lib/api";
+import { useYear } from "@/context/YearContext";
 
 const quarterLabels = ["Q1 (ม.ค. – มี.ค.)", "Q2 (เม.ย. – มิ.ย.)", "Q3 (ก.ค. – ก.ย.)", "Q4 (ต.ค. – ธ.ค.)"];
 const quarterColors = [
@@ -57,12 +59,15 @@ type ViewMode = "quarter" | "department" | "list";
 
 export default function AnnualProjectsPage() {
     const { data: session } = useSession();
+    const { selectedYear } = useYear();
     const isViewer = (session?.user as any)?.role === "VIEWER";
     const [plans, setPlans] = useState<AnnualPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>("quarter");
     const [filterDept, setFilterDept] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterMonth, setFilterMonth] = useState<string>("all");
+    const [sortBy, setSortBy] = useState<string>("name");
     const [selectedProject, setSelectedProject] = useState<AnnualProject | null>(null);
     const [expandedQuarters, setExpandedQuarters] = useState<number[]>([1, 2, 3, 4]);
     const [isLoading, setIsLoading] = useState(true);
@@ -101,16 +106,23 @@ export default function AnnualProjectsPage() {
                         participantTarget: proj.targetPax,
                         participantActual: proj.actualPax,
                         months: proj.months || [],
+                        completedMonths: proj.completedMonths || [],
                         isStarted: proj.isStarted || false,
                         isUnplanned: proj.isUnplanned || false,
                     })),
                 }));
                 console.log("[DEBUG] Mapped plans:", mapped);
-                setPlans(mapped);
+                const filtered = mapped.filter(p => !selectedYear || p.thaiYear === selectedYear);
+                setPlans(filtered);
                 setDepartments(deptsArr);
 
-                if (mapped.length > 0) {
-                    setSelectedPlanId(prev => prev || mapped[0].id);
+                if (filtered.length > 0) {
+                    setSelectedPlanId(prev => {
+                        const exists = filtered.some(p => p.id === prev);
+                        return exists ? prev : filtered[0].id;
+                    });
+                } else {
+                    setSelectedPlanId("");
                 }
             })
             .catch((err) => {
@@ -123,8 +135,10 @@ export default function AnnualProjectsPage() {
     };
 
     useEffect(() => {
-        refreshData();
-    }, []);
+        if (selectedYear) {
+            refreshData();
+        }
+    }, [selectedYear]);
 
     const [showAddProject, setShowAddProject] = useState(false);
     const [editingProject, setEditingProject] = useState<AnnualProject | null>(null);
@@ -163,20 +177,26 @@ export default function AnnualProjectsPage() {
                 ? prev.months.filter(x => x !== m)
                 : [...prev.months, m].sort((a, b) => a - b);
 
-            let newQuarter = prev.quarter;
-            if (newMonths.length > 0) {
-                newQuarter = Math.ceil(newMonths[0] / 3);
-            }
-
-            return { ...prev, months: newMonths, quarter: newQuarter };
+            return { ...prev, months: newMonths };
         });
     };
 
-    const [showAddYear, setShowAddYear] = useState(false);
-    const [yearFormData, setYearFormData] = useState({
-        thaiYear: (new Date().getFullYear() + 543) + 1,
-        label: `ปีงบประมาณ ${(new Date().getFullYear() + 543) + 1}`
-    });
+    const handleQuarterChange = (q: number) => {
+        setAddFormData(prev => {
+            // Filter out months that don't belong to the new quarter
+            const startMonth = (q - 1) * 3 + 1;
+            const endMonth = q * 3;
+            const validMonths = prev.months.filter(m => m >= startMonth && m <= endMonth);
+
+            return {
+                ...prev,
+                quarter: q as 1 | 2 | 3 | 4,
+                months: validMonths
+            };
+        });
+    };
+
+    // Removed showAddYear state as it moved to /settings/years
 
     const handleAddProject = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -231,6 +251,7 @@ export default function AnnualProjectsPage() {
                     budget: addFormData.budget,
                     quarter: addFormData.quarter,
                     annualPlanId: selectedPlanId,
+                    thaiYear: selectedYear || 2569,
                     months: addFormData.months
                 });
                 toast.success("บันทึกโครงการสำเร็จ");
@@ -271,26 +292,7 @@ export default function AnnualProjectsPage() {
         }
     };
 
-    const handleDeleteYear = async () => {
-        if (!selectedPlanId) return;
-        const currentPlan = plans.find(p => p.id === selectedPlanId);
-        if (!currentPlan) return;
-
-        if (!confirm(`คุณต้องการลบปีงบประมาณ ${currentPlan.thaiYear} และโครงการทั้งหมดในบัญชีนี้ใช่หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
-
-        setIsSubmitting(true);
-        try {
-            await deleteAnnualPlan(selectedPlanId);
-            toast.success(`ลบปีงบประมาณ ${currentPlan.thaiYear} สำเร็จ`);
-            setSelectedPlanId(""); // Reset to trigger auto-select first available
-            refreshData();
-        } catch (error) {
-            console.error("Delete year error:", error);
-            toast.error("ไม่สามารถลบปีงบประมาณได้");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    // Removed handleDeleteYear logic
 
     const handleEditClick = (p: AnnualProject) => {
         setEditingProject(p);
@@ -307,31 +309,7 @@ export default function AnnualProjectsPage() {
         setShowAddProject(true);
     };
 
-    const handleAddYear = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!yearFormData.label.trim()) {
-            toast.error("กรุณากรอกชื่อแผนงาน");
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            await createAnnualPlan({
-                year: yearFormData.thaiYear - 543,
-                thaiYear: yearFormData.thaiYear,
-                label: yearFormData.label
-            });
-            toast.success("เพิ่มปีงบประมาณสำเร็จ");
-            setShowAddYear(false);
-            refreshData();
-        } catch (error) {
-            console.error("Add year error:", error);
-            toast.error("ไม่สามารถเพิ่มปีงบประมาณได้");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    // Removed handleAddYear logic
 
     const filteredProjects = useMemo(() => {
         let currentPlan = plans.find(p => p.id === selectedPlanId);
@@ -340,12 +318,29 @@ export default function AnnualProjectsPage() {
         }
 
         if (!currentPlan) return [];
-        return currentPlan.projects.filter(p => {
+        let result = currentPlan.projects.filter(p => {
             if (filterDept !== "all" && p.department !== filterDept) return false;
             if (filterStatus !== "all" && p.status !== filterStatus) return false;
+            if (filterMonth !== "all" && !p.months.includes(parseInt(filterMonth))) return false;
             return true;
         });
-    }, [plans, selectedPlanId, filterDept, filterStatus]);
+
+        // Sorting
+        result.sort((a, b) => {
+            if (sortBy === "name") return (a.name || "").localeCompare(b.name || "");
+            if (sortBy === "budget_high") return b.budget - a.budget;
+            if (sortBy === "budget_low") return a.budget - b.budget;
+            if (sortBy === "month") {
+                const minA = a.months.length > 0 ? Math.min(...a.months) : 99;
+                const minB = b.months.length > 0 ? Math.min(...b.months) : 99;
+                return minA - minB;
+            }
+            if (sortBy === "dept") return (a.department || "").localeCompare(b.department || "");
+            return 0;
+        });
+
+        return result;
+    }, [plans, selectedPlanId, filterDept, filterStatus, filterMonth, sortBy]);
 
     const stats = useMemo(() => {
         let currentPlan = plans.find(p => p.id === selectedPlanId);
@@ -447,14 +442,14 @@ export default function AnnualProjectsPage() {
                         ดูเหมือนว่าคุณยังไม่ได้เพิ่มแผนงานประจำปีใดๆ เริ่มต้นจัดระเบียบโครงการโดยการเพิ่มปีงบประมาณแรก
                     </p>
                     {!isViewer && (
-                        <button
-                            onClick={() => setShowAddYear(true)}
+                        <Link
+                            href="/settings/years"
                             className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-8 py-4 rounded-2xl text-sm font-bold transition-all shadow-xl shadow-blue-500/25 active:scale-95 overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
                             <Plus className="w-5 h-5" />
-                            เพิ่มปีงบประมาณแรก
-                        </button>
+                            ไปที่การจัดการปีงบประมาณ
+                        </Link>
                     )}
                 </div>
             ) : (
@@ -487,37 +482,18 @@ export default function AnnualProjectsPage() {
                                                     : "text-slate-400 hover:text-white hover:bg-white/5"
                                             )}
                                         >
-                                    ปี {p.thaiYear}
+                                            ปี {p.thaiYear}
                                         </button>
                                     ))}
                                 </div>
                                 {!isViewer && (
-                                    <>
-                                        <button
-                                            onClick={() => setShowAddYear(true)}
-                                            className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all active:scale-95"
-                                            title="เพิ่มปีงบประมาณใหม่"
-                                        >
-                                            <Plus className="w-5 h-5" />
-                                        </button>
-                                        {plan && (
-                                            <button
-                                                onClick={handleDeleteYear}
-                                                disabled={isSubmitting}
-                                                className="h-10 w-10 flex items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 disabled:opacity-50"
-                                                title="ลบปีงบประมาณนี้"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => openAddProjectModal()}
-                                            className="flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-blue-50 transition-all shadow-xl shadow-white/5 active:scale-95"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                            เพิ่มโครงการ พ.ศ. {plan?.thaiYear}
-                                        </button>
-                                    </>
+                                    <button
+                                        onClick={() => openAddProjectModal()}
+                                        className="flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-blue-50 transition-all shadow-xl shadow-white/5 active:scale-95"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        เพิ่มโครงการ พ.ศ. {plan?.thaiYear}
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -531,7 +507,7 @@ export default function AnnualProjectsPage() {
                                 { label: "โครงการตามแผนงาน", value: stats.plannedProjectsCount, icon: Target, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100/50" },
                                 { label: "โครงการนอกแผนงาน", value: stats.unplannedCount, icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100/50" },
                                 { label: "กำลังดำเนินการ", value: stats.inProgress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100/50" },
-                                { label: "ดำเนินการเสร็จสิ้น", value: stats.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100/50" },
+                                { label: "เสร็จสิ้น", value: stats.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100/50" },
                                 { label: "แผนงานใหม่", value: stats.planned, icon: Circle, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100/50" },
                             ].map((s, idx) => (
                                 <div key={idx} className={cn("bg-white p-5 rounded-[2rem] border shadow-sm transition-all hover:shadow-md hover:-translate-y-1 duration-300", s.border)}>
@@ -674,6 +650,39 @@ export default function AnnualProjectsPage() {
                                     <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
                                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                                 </div>
+
+                                <div className="relative group">
+                                    <select
+                                        value={filterMonth}
+                                        onChange={e => setFilterMonth(e.target.value)}
+                                        className="appearance-none pl-10 pr-10 py-2.5 bg-white border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all hover:border-slate-300"
+                                    >
+                                        <option value="all">ทุกเดือน</option>
+                                        {THAI_MONTHS_SHORT.map((m, i) => (
+                                            <option key={i} value={i + 1}>{m}</option>
+                                        ))}
+                                    </select>
+                                    <CalendarDays className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                                </div>
+
+                                {viewMode === "list" && (
+                                    <div className="relative group">
+                                        <select
+                                            value={sortBy}
+                                            onChange={e => setSortBy(e.target.value)}
+                                            className="appearance-none pl-10 pr-10 py-2.5 bg-[#0f172a] text-white border border-slate-800 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 shadow-xl transition-all"
+                                        >
+                                            <option value="name">เรียงตามชื่อ</option>
+                                            <option value="month">เรียงตามเดือน</option>
+                                            <option value="dept">เรียงตามหน่วยงาน</option>
+                                            <option value="budget_high">งบมากไปน้อย</option>
+                                            <option value="budget_low">งบน้อยไปมาก</option>
+                                        </select>
+                                        <TrendingUp className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-400" />
+                                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -739,15 +748,16 @@ export default function AnnualProjectsPage() {
                                                                 if (q === 3) return m >= 7 && m <= 9;
                                                                 if (q === 4) return m >= 10 && m <= 12;
                                                                 return false;
-                                                            }).length || (p.quarter === q ? 1 : 0);
+                                                            });
                                                             return (
                                                                 <ProjectRow
                                                                     key={p.id}
                                                                     project={p}
                                                                     onClick={() => setSelectedProject(p)}
                                                                     onEdit={handleEditClick}
-                                                                    allocatedBudget={(p.budget / projectTotalMonths) * monthsInThisQuarter}
+                                                                    allocatedBudget={(p.budget / projectTotalMonths) * monthsInThisQuarter.length}
                                                                     isViewer={isViewer}
+                                                                    targetMonths={monthsInThisQuarter}
                                                                 />
                                                             );
                                                         })
@@ -825,8 +835,22 @@ export default function AnnualProjectsPage() {
                                                             <td className="px-6 py-4">
                                                                 <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{p.name}</p>
                                                             </td>
-                                                            <td className="px-4 py-4 text-[11px] font-bold text-slate-500">
-                                                                {formatMonths(p.months)}
+                                                            <td className="px-4 py-4">
+                                                                <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                                                    {p.months.map(m => (
+                                                                        <span 
+                                                                            key={m} 
+                                                                            className={cn(
+                                                                                "text-[9px] font-black px-1.5 py-0.5 rounded-md",
+                                                                                p.completedMonths?.includes(m)
+                                                                                    ? "bg-green-500 text-white shadow-sm"
+                                                                                    : "bg-slate-50 text-slate-400 border border-slate-100"
+                                                                            )}
+                                                                        >
+                                                                            {THAI_MONTHS_SHORT[m - 1]}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 py-4 text-right font-black text-slate-700">
                                                                 ฿{p.budget.toLocaleString()}
@@ -835,12 +859,25 @@ export default function AnnualProjectsPage() {
                                                                 <span className="text-xs font-semibold text-slate-600">{p.lead}</span>
                                                             </td>
                                                             <td className="px-4 py-4">
-                                                                <span className={cn("inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border", annualPlanStatusStyles[p.status])}>
-                                                                    <StatusIcon className="w-3 h-3" />
-                                                                    {annualPlanStatusLabels[p.status]}
+                                                                <span className={cn("inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all", 
+                                                                    p.status === "in_progress" && p.months.length > 0 && p.months.every(m => p.completedMonths?.includes(m))
+                                                                        ? "bg-green-100 text-green-700 border-green-200"
+                                                                        : annualPlanStatusStyles[p.status]
+                                                                )}>
+                                                                    {p.status === "in_progress" && p.months.length > 0 && p.months.every(m => p.completedMonths?.includes(m)) ? (
+                                                                        <>
+                                                                            <CheckCircle2 className="w-3 h-3" />
+                                                                            ดำเนินการเสร็จสิ้น
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <StatusIcon className="w-3 h-3" />
+                                                                            {annualPlanStatusLabels[p.status]}
+                                                                        </>
+                                                                    )}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-4 text-center text-slate-300 group-hover:text-blue-400">
+                                                            <td className="px-4 py-4 w-12 text-center text-slate-300 group-hover:text-blue-400">
                                                                 <Eye className="w-4 h-4 mx-auto" />
                                                             </td>
                                                         </tr>
@@ -883,24 +920,39 @@ export default function AnnualProjectsPage() {
 
                         <div className="flex-1 p-8 space-y-8 overflow-y-auto">
                             <div className="flex items-center justify-between">
-                                <span className={cn("inline-flex items-center gap-2 text-xs font-black px-4 py-2 rounded-2xl border shadow-sm", annualPlanStatusStyles[selectedProject.status])}>
-                                    {(() => { const Icon = statusIcons[selectedProject.status]; return <Icon className="w-4 h-4" />; })()}
-                                    {annualPlanStatusLabels[selectedProject.status]}
+                                <span className={cn("inline-flex items-center gap-2 text-xs font-black px-4 py-2 rounded-2xl border shadow-sm transition-all", 
+                                    selectedProject.status === "in_progress" && selectedProject.months.length > 0 && selectedProject.months.every(m => selectedProject.completedMonths?.includes(m))
+                                        ? "bg-green-100 text-green-700 border-green-200"
+                                        : annualPlanStatusStyles[selectedProject.status]
+                                )}>
+                                    {selectedProject.status === "in_progress" && selectedProject.months.length > 0 && selectedProject.months.every(m => selectedProject.completedMonths?.includes(m)) ? (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            ดำเนินการเสร็จสิ้น
+                                        </>
+                                    ) : (
+                                        <>
+                                            {(() => { const Icon = statusIcons[selectedProject.status]; return <Icon className="w-4 h-4" />; })()}
+                                            {annualPlanStatusLabels[selectedProject.status]}
+                                        </>
+                                    )}
                                 </span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => { handleEditClick(selectedProject); setSelectedProject(null); }}
-                                        className="h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-50 transition-all"
-                                    >
-                                        แก้ไข
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteProject(selectedProject.id, selectedProject.name)}
-                                        className="h-10 px-4 bg-rose-50 border border-rose-100 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all"
-                                    >
-                                        ลบ
-                                    </button>
-                                </div>
+                                {!isViewer && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => { handleEditClick(selectedProject); setSelectedProject(null); }}
+                                            className="h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-50 transition-all"
+                                        >
+                                            แก้ไข
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteProject(selectedProject.id, selectedProject.name)}
+                                            className="h-10 px-4 bg-rose-50 border border-rose-100 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all"
+                                        >
+                                            ลบ
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-4">
@@ -916,8 +968,29 @@ export default function AnnualProjectsPage() {
                                     <p className="text-xl font-black text-slate-900">฿{selectedProject.budget.toLocaleString()}</p>
                                 </div>
                                 <div className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ผู้รับผิดชอบโครงการ</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">รับผิดชอบ</p>
                                     <p className="text-xl font-black text-slate-900 truncate">{selectedProject.lead}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="h-px flex-1 bg-slate-100" /> ช่วงเวลาดำเนินงาน <div className="h-px flex-1 bg-slate-100" />
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {selectedProject.months.map(m => (
+                                        <div 
+                                            key={m} 
+                                            className={cn(
+                                                "px-4 py-2 rounded-2xl text-xs font-black transition-all border-2",
+                                                selectedProject.completedMonths?.includes(m)
+                                                    ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-200 scale-105"
+                                                    : "bg-white border-slate-100 text-slate-400"
+                                            )}
+                                        >
+                                            {THAI_MONTHS_SHORT[m - 1]}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
@@ -992,6 +1065,18 @@ export default function AnnualProjectsPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
+                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ไตรมาส</label>
+                                        <select
+                                            value={addFormData.quarter}
+                                            onChange={e => handleQuarterChange(parseInt(e.target.value))}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none cursor-pointer"
+                                        >
+                                            {[1, 2, 3, 4].map(q => (
+                                                <option key={q} value={q}>ไตรมาส {q}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ประเภทโครงการ</label>
                                         <select
                                             value={addFormData.projectType}
@@ -1002,6 +1087,19 @@ export default function AnnualProjectsPage() {
                                                 <option key={opt} value={opt}>{opt}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">งบประมาณจัดสรร (฿)</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            value={addFormData.budget || ""}
+                                            onChange={e => setAddFormData({ ...addFormData, budget: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none"
+                                            placeholder="ระบุงบประมาณ..."
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ผู้รับผิดชอบ</label>
@@ -1015,32 +1113,23 @@ export default function AnnualProjectsPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">งบประมาณจัดสรร (฿)</label>
-                                    <input
-                                        type="number"
-                                        required
-                                        value={addFormData.budget || ""}
-                                        onChange={e => setAddFormData({ ...addFormData, budget: parseInt(e.target.value) || 0 })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none"
-                                        placeholder="ระบุงบประมาณ..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">ระยะเวลาดำเนินงาน</label>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                            <button
-                                                key={m}
-                                                type="button"
-                                                onClick={() => toggleMonth(m)}
-                                                className={cn(
-                                                    "h-12 rounded-xl text-xs font-black transition-all border-2",
-                                                    addFormData.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-50 text-slate-400 hover:border-slate-200"
-                                                )}
-                                            >
-                                                {THAI_MONTHS_SHORT[m - 1]}
-                                            </button>
-                                        ))}
+                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">ระยะเวลาดำเนินงาน (เฉพาะไตรมาส {addFormData.quarter})</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {Array.from({ length: 12 }, (_, i) => i + 1)
+                                            .filter(m => m >= (addFormData.quarter - 1) * 3 + 1 && m <= addFormData.quarter * 3)
+                                            .map(m => (
+                                                <button
+                                                    key={m}
+                                                    type="button"
+                                                    onClick={() => toggleMonth(m)}
+                                                    className={cn(
+                                                        "h-12 rounded-xl text-xs font-black transition-all border-2",
+                                                        addFormData.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-50 text-slate-400 hover:border-slate-200"
+                                                    )}
+                                                >
+                                                    {THAI_MONTHS_SHORT[m - 1]}
+                                                </button>
+                                            ))}
                                     </div>
                                 </div>
                             </div>
@@ -1057,35 +1146,6 @@ export default function AnnualProjectsPage() {
                 </div>
             )}
 
-            {showAddYear && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[#0f172a]/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-8 text-center border-b border-slate-100 bg-slate-50/10">
-                            <h3 className="text-xl font-black text-slate-900">เพิ่มปีงบประมาณใหม่</h3>
-                            <p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">เริ่มต้นปีงบประมาณใหม่</p>
-                        </div>
-                        <form onSubmit={handleAddYear} className="p-8 space-y-6">
-                            <div>
-                                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Buddhist Calendar (พ.ศ.)</label>
-                                <input
-                                    type="number"
-                                    required
-                                    value={yearFormData.thaiYear}
-                                    onChange={e => {
-                                        const val = parseInt(e.target.value) || 0;
-                                        setYearFormData({ ...yearFormData, thaiYear: val, label: `ปีงบประมาณ ${val}` });
-                                    }}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-center text-2xl font-black text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
-                                />
-                            </div>
-                            <div className="flex gap-3">
-                                <button type="button" onClick={() => setShowAddYear(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all">ยกเลิก</button>
-                                <button type="submit" disabled={isSubmitting} className="flex-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all disabled:opacity-50">สร้างปีงบประมาณ</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
@@ -1097,7 +1157,8 @@ function ProjectRow({
     onEdit,
     showDept = true,
     allocatedBudget,
-    isViewer
+    isViewer,
+    targetMonths
 }: {
     project: AnnualProject;
     onClick: () => void;
@@ -1105,9 +1166,12 @@ function ProjectRow({
     showDept?: boolean;
     allocatedBudget?: number;
     isViewer?: boolean;
+    targetMonths?: number[];
 }) {
+    const checkMonths = targetMonths && targetMonths.length > 0 ? targetMonths : p.months;
+    const isReadyForComplete = p.status === "in_progress" && checkMonths.length > 0 && checkMonths.every(m => p.completedMonths?.includes(m));
     const dc = deptColors[p.department];
-    const StatusIcon = statusIcons[p.status];
+    const StatusIcon = isReadyForComplete ? CheckCircle2 : (statusIcons[p.status] || Circle);
     const displayBudget = allocatedBudget ?? p.budget;
     const pct = p.budget > 0 ? Math.round((p.budgetUsed / p.budget) * 100) : 0;
 
@@ -1134,9 +1198,22 @@ function ProjectRow({
                                 <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">{p.department}</span>
                             </div>
                         )}
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md">
-                            <CalendarDays className="w-3 h-3" /> {formatMonths(p.months)}
-                        </span>
+                        <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md">
+                            <CalendarDays className="w-3 h-3 text-slate-400 mr-1" />
+                            {p.months.map(m => (
+                                <span 
+                                    key={m} 
+                                    className={cn(
+                                        "text-[9px] font-black px-1.5 py-0.5 rounded-md transition-all",
+                                        p.completedMonths?.includes(m)
+                                            ? "bg-green-500 text-white shadow-sm scale-110"
+                                            : "text-slate-400"
+                                    )}
+                                >
+                                    {THAI_MONTHS_SHORT[m - 1]}
+                                </span>
+                            ))}
+                        </div>
                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md">
                             <Users className="w-3 h-3" /> {p.lead}
                         </span>
@@ -1152,9 +1229,22 @@ function ProjectRow({
                             />
                         </div>
                     </div>
-                    <span className={cn("hidden lg:inline-flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-xl border-2 uppercase tracking-widest shadow-sm", annualPlanStatusStyles[p.status])}>
-                        <StatusIcon className="w-3 h-3" />
-                        {annualPlanStatusLabels[p.status]}
+                    <span className={cn("hidden lg:inline-flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-xl border-2 uppercase tracking-widest shadow-sm transition-all", 
+                        isReadyForComplete
+                            ? "bg-green-100 text-green-700 border-green-200" 
+                            : annualPlanStatusStyles[p.status]
+                    )}>
+                        {isReadyForComplete ? (
+                            <>
+                                <CheckCircle2 className="w-3 h-3" />
+                                เสร็จสิ้น
+                            </>
+                        ) : (
+                            <>
+                                <StatusIcon className="w-3 h-3" />
+                                {annualPlanStatusLabels[p.status]}
+                            </>
+                        )}
                     </span>
                     {!isViewer && (
                         <button

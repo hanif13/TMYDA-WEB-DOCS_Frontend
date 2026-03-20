@@ -7,6 +7,8 @@ import { DEPARTMENTS, DOC_TYPES, CURRENT_THAI_YEAR, MASTER_CATEGORIES, CATEGORY_
 import { StoredDocument } from "@/lib/types";
 import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL } from "@/lib/api";
 import { toast } from "react-hot-toast";
+import { useYear } from "@/context/YearContext";
+import { useSession } from "next-auth/react";
 
 const deptConfig: Record<string, { color: string; dot: string; badge: string }> = {
     "สำนักอำนวยการ": { color: "border-amber-300 bg-amber-50", dot: "bg-amber-400", badge: "bg-amber-100 text-amber-800" },
@@ -34,6 +36,11 @@ const categoryIcons: Record<string, string> = {
 type View = "dept" | "type" | "all";
 
 export default function RegistryPage() {
+    const { data: session } = useSession();
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    const canEdit = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+
+    const { selectedYear } = useYear();
     const [docs, setDocs] = useState<StoredDocument[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -43,7 +50,14 @@ export default function RegistryPage() {
 
     // Fetch documents from API
     useEffect(() => {
-        fetchDocuments()
+        if (selectedYear) {
+            refreshData();
+        }
+    }, [selectedYear]);
+
+    const refreshData = () => {
+        setLoading(true);
+        fetchDocuments(selectedYear || undefined)
             .then((data) => {
                 const mapped: StoredDocument[] = data.map((d: any) => ({
                     id: d.id,
@@ -59,7 +73,7 @@ export default function RegistryPage() {
             })
             .catch(() => { /* API fallback */ })
             .finally(() => setLoading(false));
-    }, []);
+    };
 
     // Modal state
     const [showAddModal, setShowAddModal] = useState(false);
@@ -81,7 +95,7 @@ export default function RegistryPage() {
     useEffect(() => {
         if (showAddModal) {
             const deptToUse = isGlobalType ? "ส่วนกลาง" : formData.department;
-            const nextNo = getNextDocNo(docs, deptToUse, formData.type);
+            const nextNo = getNextDocNo(docs, deptToUse, formData.type, selectedYear || undefined);
             setFormData(prev => ({ ...prev, docNo: nextNo }));
         }
     }, [formData.type, formData.department, isGlobalType, showAddModal, docs]);
@@ -143,6 +157,9 @@ export default function RegistryPage() {
             formDataToSubmit.append("departmentId", isGlobalType ? "ส่วนกลาง" : formData.department);
             formDataToSubmit.append("categoryId", formData.type);
             formDataToSubmit.append("uploadedById", "user_id_placeholder");
+            if (selectedYear) {
+                formDataToSubmit.append("thaiYear", selectedYear.toString());
+            }
             if (selectedFile) {
                 formDataToSubmit.append("file", selectedFile);
             }
@@ -230,16 +247,18 @@ export default function RegistryPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">ทะเบียนเอกสาร</h1>
                     <p className="text-sm text-slate-500 mt-0.5">
-                        เอกสารจัดเก็บทั้งหมดในปี พ.ศ. {CURRENT_THAI_YEAR} · {docs.length} รายการ
+                        เอกสารจัดเก็บทั้งหมดในปี พ.ศ. {selectedYear || CURRENT_THAI_YEAR} · {docs.length} รายการ
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm shadow-blue-600/20 whitespace-nowrap"
-                >
-                    <Plus className="w-4 h-4" />
-                    เพิ่มเอกสารใหม่
-                </button>
+                {canEdit && (
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm shadow-blue-600/20 whitespace-nowrap"
+                    >
+                        <Plus className="w-4 h-4" />
+                        เพิ่มเอกสารใหม่
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -310,6 +329,7 @@ export default function RegistryPage() {
                                                         onClick={() => setSelectedDoc(doc)} 
                                                         onEdit={() => handleEdit(doc)}
                                                         onDelete={() => handleDeleteDocument(doc.id)}
+                                                        canEdit={canEdit}
                                                     />
                                                 ))}
                                             </div>
@@ -343,6 +363,7 @@ export default function RegistryPage() {
                                             onClick={() => setSelectedDoc(doc)} 
                                             onEdit={() => handleEdit(doc)}
                                             onDelete={() => handleDeleteDocument(doc.id)}
+                                            canEdit={canEdit}
                                         />
                                     ))}
                                 </div>
@@ -363,6 +384,7 @@ export default function RegistryPage() {
                             onClick={() => setSelectedDoc(doc)} 
                             onEdit={() => handleEdit(doc)}
                             onDelete={() => handleDeleteDocument(doc.id)}
+                            canEdit={canEdit}
                         />
                     ))}
                 </div>
@@ -639,13 +661,14 @@ export default function RegistryPage() {
     );
 }
 
-function DocRow({ doc, seq, showDept = false, onClick, onEdit, onDelete }: { 
+function DocRow({ doc, seq, showDept = false, onClick, onEdit, onDelete, canEdit }: { 
     doc: StoredDocument; 
     seq: number; 
     showDept?: boolean; 
     onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
     onEdit?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     onDelete?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+    canEdit?: boolean;
 }) {
     const cfg = deptConfig[doc.department] || { badge: "bg-slate-100 text-slate-600" };
     return (
@@ -667,20 +690,24 @@ function DocRow({ doc, seq, showDept = false, onClick, onEdit, onDelete }: {
                 </div>
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={(e) => { e.stopPropagation(); onEdit?.(e); }}
-                    className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                    title="แก้ไข"
-                >
-                    <Edit className="w-4 h-4" />
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDelete?.(e); }}
-                    className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                    title="ลบ"
-                >
-                    <Trash2 className="w-4 h-4" />
-                </button>
+                {canEdit && (
+                    <>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit?.(e); }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                            title="แก้ไข"
+                        >
+                            <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete?.(e); }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                            title="ลบ"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </>
+                )}
                 <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-blue-500 transition-colors flex-shrink-0" />
             </div>
         </div>

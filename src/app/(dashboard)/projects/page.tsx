@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { DEPARTMENTS, DOC_TYPES } from "@/lib/constants";
 import { Project, ProjectDocument, AnnualPlan, ProjectStep, Department } from "@/lib/types";
 import { fetchAnnualPlans, updateProject, fetchDocuments, linkDocumentToProject, createProject, fetchDepartments, API_BASE_URL } from "@/lib/api";
+import { useYear } from "@/context/YearContext";
 
 const PROJECT_TYPE_OPTIONS = [
     "ประชุม/สัมมนา",
@@ -40,6 +41,7 @@ const docTypeColors: Record<string, string> = {
 
 export default function ProjectsPage() {
     const { data: session } = useSession();
+    const { selectedYear } = useYear();
     const isViewer = (session?.user as any)?.role === "VIEWER";
     const router = useRouter();
     const [projects, setProjects] = useState<Project[]>([]);
@@ -74,7 +76,7 @@ export default function ProjectsPage() {
             const [data, deptsData, docsData] = await Promise.all([
                 fetchAnnualPlans(),
                 fetchDepartments(),
-                fetchDocuments()
+                fetchDocuments(selectedYear || undefined)
             ]);
             
             setDepartments(deptsData);
@@ -108,9 +110,10 @@ export default function ProjectsPage() {
                     documents: proj.documents || [],
                 })),
             }));
-            setAnnualPlans(mappedPlans);
+            const filteredPlans = mappedPlans.filter(p => !selectedYear || p.thaiYear === selectedYear);
+            setAnnualPlans(filteredPlans);
 
-            const allStarted = mappedPlans.flatMap(plan => 
+            const allStarted = filteredPlans.flatMap(plan => 
                 plan.projects
                     .filter(proj => proj.isStarted) 
                     .map(proj => ({
@@ -150,8 +153,10 @@ export default function ProjectsPage() {
     };
 
     useEffect(() => {
-        refreshData();
-    }, []);
+        if (selectedYear) {
+            refreshData();
+        }
+    }, [selectedYear]);
 
     const toggleUnplannedMonth = (m: number) => {
         setUnplannedForm(prev => {
@@ -180,6 +185,7 @@ export default function ProjectsPage() {
                 budget: Number(unplannedForm.budget) || 0,
                 quarter: 1,
                 annualPlanId: latestPlan.id,
+                thaiYear: selectedYear || 2569,
                 months: unplannedForm.months,
                 isUnplanned: true,
                 status: "in_progress"
@@ -243,6 +249,11 @@ export default function ProjectsPage() {
                                 </span>
                                 {p.isUnplanned && (
                                     <span className="text-[9px] font-black px-1.5 py-0.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-md">Urgent</span>
+                                )}
+                                {p.step === "in_progress" && p.months.length > 0 && p.months.every(m => p.completedMonths?.includes(m)) && (
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-green-50 text-green-600 border border-green-100 rounded-md flex items-center gap-1 animate-pulse">
+                                        <CheckCircle2 className="w-2.5 h-2.5" /> ดำเนินการเสร็จสิ้น
+                                    </span>
                                 )}
                             </div>
                             {p.months.length > 0 && (
@@ -552,6 +563,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
     const [selectedRegistryDocId, setSelectedRegistryDocId] = useState("");
     const [isUpdating, setIsUpdating] = useState(false);
     const [reportText, setReportText] = useState("");
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
     const fetchProject = async () => {
         setIsLoading(true);
@@ -639,7 +651,20 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
     const handleUpdateStatus = async (newStatus: ProjectStep) => {
         setIsUpdating(true);
         try {
-            await updateProject(id, { status: newStatus, description: reportText ? `${project?.description}\n\n[สรุปรายงาน]: ${reportText}` : project?.description });
+            if (newStatus === "completed") {
+                const formData = new FormData();
+                formData.append("status", "completed");
+                if (reportText) formData.append("description", `${project?.description || ""}\n\n[สรุปรายงาน]: ${reportText}`);
+                
+                selectedImages.forEach(img => {
+                    formData.append("images", img);
+                });
+
+                await updateProject(id, formData);
+            } else {
+                await updateProject(id, { status: newStatus });
+            }
+            
             toast.success(newStatus === "completed" ? "ปิดโครงการสำเร็จแล้ว!" : "อัปเดตสถานะสำเร็จ");
             onUpdate();
         } catch (error) {
@@ -693,7 +718,9 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                             project.step === "waiting_summary" ? "bg-amber-100 text-amber-700" :
                             "bg-purple-100 text-purple-700"
                         )}>
-                            {project.step === "in_progress" ? "กำลังดำเนินโครงการ" : project.step === "waiting_summary" ? "รอสรุปผลงาน" : "เสร็จสิ้นสมบูรณ์"}
+                            {project.step === "in_progress" && project.months.length > 0 && project.months.every(m => project.completedMonths?.includes(m))
+                                ? "ดำเนินการเสร็จสิ้น"
+                                : project.step === "in_progress" ? "กำลังดำเนินโครงการ" : project.step === "waiting_summary" ? "รอสรุปผลงาน" : "เสร็จสิ้นสมบูรณ์"}
                         </span>
                     </div>
                 </div>
@@ -776,13 +803,44 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                                 </div>
                                                 <h5 className="text-lg font-bold text-slate-800">รอรายงานผล/ประเมินผล</h5>
                                                 <textarea placeholder="สรุปผลโครงการเบื้องต้น (ถ้ามี)..." className="w-full mt-4 bg-white border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none h-32" value={reportText} onChange={e => setReportText(e.target.value)} />
-                                                <p className="text-[10px] text-slate-400 mt-4 px-6 italic">** กรุณาแนบไฟล์ &apos;รายงานผลโครงการ&apos; ใน Tab เอกสารก่อนปิดโครงการ **</p>
+                                                
+                                                <div className="w-full mt-6">
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">ภาพบรรยากาศโครงการ (อย่างน้อย 6 รูป)</label>
+                                                    <div className="flex flex-wrap gap-2 mb-4">
+                                                        {selectedImages.map((img, idx) => (
+                                                            <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200">
+                                                                <img src={URL.createObjectURL(img)} className="w-full h-full object-cover" />
+                                                                <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
+                                                                    className="absolute top-0 right-0 bg-rose-500 text-white p-0.5 rounded-bl-lg">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        {selectedImages.length < 12 && (
+                                                            <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
+                                                                <Plus className="w-4 h-4 text-slate-400" />
+                                                                <input type="file" multiple accept="image/*" className="hidden" 
+                                                                    onChange={e => {
+                                                                        if (e.target.files) {
+                                                                            setSelectedImages(prev => [...prev, ...Array.from(e.target.files!)]);
+                                                                        }
+                                                                    }} 
+                                                                />
+                                                            </label>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-[10px] text-slate-400 mt-2 px-6 italic">** กรุณาแนบไฟล์ &apos;รายงานผลโครงการ&apos; ใน Tab เอกสารก่อนปิดโครงการ **</p>
                                                 {!isViewer && (
                                                     <>
-                                                        <button onClick={() => handleUpdateStatus("completed")} disabled={isUpdating}
-                                                            className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2">
+                                                        <button 
+                                                            onClick={() => handleUpdateStatus("completed")} 
+                                                            disabled={isUpdating || selectedImages.length < 6}
+                                                            className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                                        >
                                                             {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                                            แนบรายงานและปิดโครงการ
+                                                            {selectedImages.length < 6 ? `แนบรูปให้ครบ 6 รูป (เหลือ ${6 - selectedImages.length})` : "แนบรายงานและปิดโครงการ"}
                                                         </button>
                                                         <button onClick={() => handleUpdateStatus("in_progress")} className="mt-4 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">ย้อนกลับไปสถานะดำเนินการ</button>
                                                     </>
@@ -863,9 +921,11 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
                                             )}
-                                            <button onClick={() => handleUnlinkDoc(doc.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-lg">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {!isViewer && (
+                                                <button onClick={() => handleUnlinkDoc(doc.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-lg">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

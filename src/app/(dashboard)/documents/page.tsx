@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import {
     Clock,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/constants";
 import { DocRequest } from "@/lib/types";
 import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest } from "@/lib/api";
+import { useYear } from "@/context/YearContext";
 
 type FieldDef = { key: string; label: string; type?: string; placeholder: string; isTextarea?: boolean };
 
@@ -181,7 +183,10 @@ const requestStatusConfig: Record<string, { className: string }> = {
 type Tab = "request" | "pending";
 
 export default function DocumentsPage() {
-    const [tab, setTab] = useState<Tab>("request");
+    const { data: session } = useSession();
+    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const { selectedYear } = useYear();
+    const [tab, setTab] = useState<Tab>(isViewer ? "pending" : "request");
     const [requests, setRequests] = useState<DocRequest[]>([]);
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState<DocRequest | null>(null);
@@ -190,7 +195,7 @@ export default function DocumentsPage() {
     const refreshRequests = async () => {
         setIsLoadingRequests(true);
         try {
-            const data = await fetchDocumentRequests();
+            const data = await fetchDocumentRequests(selectedYear || undefined);
             // Map backend data to DocRequest type
             const mapped: DocRequest[] = data.map((r: any) => ({
                 id: r.id,
@@ -270,8 +275,10 @@ export default function DocumentsPage() {
     };
 
     useEffect(() => {
-        refreshRequests();
-    }, []);
+        if (selectedYear) {
+            refreshRequests();
+        }
+    }, [selectedYear]);
 
     // Flow State
     const [step, setStep] = useState<number>(1);
@@ -362,6 +369,7 @@ export default function DocumentsPage() {
                     department: fullDept,
                     requestedBy: requesterName,
                     fields: finalFields,
+                    thaiYear: selectedYear || undefined,
                 });
                 toast.success(`ส่งคำขอ '${rt?.label}' สำเร็จ! เลขาจะดำเนินการให้ต่อไป`, { icon: "✅", duration: 5000 });
             }
@@ -392,7 +400,7 @@ export default function DocumentsPage() {
             {/* Tabs */}
             <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
                 {[
-                    { id: "request", label: "ขอจัดทำเอกสารใหม่", icon: Send },
+                    ...(!isViewer ? [{ id: "request", label: "ขอจัดทำเอกสารใหม่", icon: Send }] : []),
                     { id: "pending", label: `คำขอทั้งหมด${pendingCount > 0 ? ` · ${pendingCount} รอ` : ""}`, icon: Inbox },
                 ].map(t => (
                     <button key={t.id} onClick={() => {
@@ -685,18 +693,22 @@ export default function DocumentsPage() {
                                             className="p-2 bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                                             <Eye className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => handleEditRequest(req)} title="แก้ไข"
-                                            className="p-2 bg-blue-50 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button onClick={() => handleDeleteRequest(req.id, req.requestType)} title="ลบ"
-                                            className="p-2 bg-red-50 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                        <button onClick={() => handleUpdateStatus(req.id, "เสร็จสิ้น")} title="เสร็จสิ้น"
-                                            className="p-2 bg-green-50 text-green-400 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors">
-                                            <CheckCircle2 className="w-4 h-4" />
-                                        </button>
+                                        {!isViewer && (
+                                            <>
+                                                <button onClick={() => handleEditRequest(req)} title="แก้ไข"
+                                                    className="p-2 bg-blue-50 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => handleDeleteRequest(req.id, req.requestType)} title="ลบ"
+                                                    className="p-2 bg-red-50 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => handleUpdateStatus(req.id, "เสร็จสิ้น")} title="เสร็จสิ้น"
+                                                    className="p-2 bg-green-50 text-green-400 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors">
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
@@ -752,22 +764,24 @@ export default function DocumentsPage() {
                             </div>
 
                             {/* Status Section */}
-                            <div className="mb-8">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">สถานะปัจจุบัน</p>
-                                <div className="flex items-center gap-3">
-                                    {["รอดำเนินการ", "กำลังดำเนินการ", "เสร็จสิ้น"].map((s) => (
-                                        <button key={s} onClick={() => handleUpdateStatus(selectedRequest.id, s as any)}
-                                            className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all border",
-                                                selectedRequest.status === s 
-                                                    ? (s === "เสร็จสิ้น" ? "bg-green-600 border-green-600 text-white shadow-md shadow-green-100" : 
-                                                       s === "กำลังดำเนินการ" ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100" :
-                                                       "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-100")
-                                                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300")}>
-                                            {s}
-                                        </button>
-                                    ))}
+                            {!isViewer && (
+                                <div className="mb-8">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">สถานะปัจจุบัน</p>
+                                    <div className="flex items-center gap-3">
+                                        {["รอดำเนินการ", "กำลังดำเนินการ", "เสร็จสิ้น"].map((s) => (
+                                            <button key={s} onClick={() => handleUpdateStatus(selectedRequest.id, s as any)}
+                                                className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all border",
+                                                    selectedRequest.status === s 
+                                                        ? (s === "เสร็จสิ้น" ? "bg-green-600 border-green-600 text-white shadow-md shadow-green-100" : 
+                                                           s === "กำลังดำเนินการ" ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100" :
+                                                           "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-100")
+                                                        : "bg-white border-slate-200 text-slate-500 hover:border-slate-300")}>
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Dynamic Fields Section */}
                             <div>

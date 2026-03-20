@@ -75,6 +75,7 @@ export interface BudgetTransaction {
     claimedBy?: string;
     recordedBy: string;
     docRef?: string;
+    slipUrl?: string;
     note?: string;
 }
 
@@ -100,7 +101,22 @@ export interface AnnualProject {
     completedMonths: number[];
     isStarted: boolean;
     isUnplanned?: boolean;
+    summaryImages?: string[];
     documents: any[];
+}
+
+export interface CommitteeMember {
+    id: string;
+    name: string;
+    position: string;
+    phoneNumber?: string;
+    email?: string;
+    occupation?: string;
+    photoUrl?: string;
+    departmentId: string;
+    department?: Department;
+    order: number;
+    thaiYear: number;
 }
 
 export interface AnnualPlan {
