@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import {
     CalendarDays, Users, Banknote, Target, ChevronRight, ChevronDown,
     CheckCircle2, Clock, Circle, XCircle, Eye, X, TrendingUp,
-    BarChart3, Layers, Filter, Plus, Loader, Edit, Trash2, AlertCircle
+    BarChart3, Layers, Filter, Plus, Loader, Edit, Trash2, AlertCircle, UploadCloud
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { annualPlanStatusLabels, annualPlanStatusStyles, DEPARTMENTS } from "@/lib/constants";
 import { AnnualProject, AnnualPlan, Department } from "@/lib/types";
-import { fetchAnnualPlans, createProject, fetchDepartments, updateProject, deleteProject } from "@/lib/api";
+import { fetchAnnualPlans, createProject, fetchDepartments, updateProject, deleteProject, createProjectBulk } from "@/lib/api";
+import Papa from "papaparse";
 import { useYear } from "@/context/YearContext";
 
 const quarterLabels = ["Q1 (ม.ค. – มี.ค.)", "Q2 (เม.ย. – มิ.ย.)", "Q3 (ก.ค. – ก.ย.)", "Q4 (ต.ค. – ธ.ค.)"];
@@ -73,6 +74,105 @@ export default function AnnualProjectsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const csvInputRef = useRef<HTMLInputElement>(null);
+
+    const parseThaiMonths = (text: string): number[] => {
+        if (!text) return [];
+        if (text.includes("ทุกเดือน")) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        const THAI_MONTHS_MAP: Record<string, number> = {
+            'มกราคม': 1, 'ม.ค': 1,
+            'กุมภาพันธ์': 2, 'ก.พ': 2,
+            'มีนาคม': 3, 'มี.ค': 3,
+            'เมษายน': 4, 'เม.ย': 4,
+            'พฤษภาคม': 5, 'พ.ค': 5,
+            'มิถุนายน': 6, 'มิ.ย': 6,
+            'กรกฎาคม': 7, 'ก.ค': 7,
+            'สิงหาคม': 8, 'ส.ค': 8,
+            'กันยายน': 9, 'ก.ย': 9,
+            'ตุลาคม': 10, 'ต.ค': 10,
+            'พฤศจิกายน': 11, 'พ.ย': 11,
+            'ธันวาคม': 12, 'ธ.ค': 12
+        };
+        const found = new Set<number>();
+        for (const [key, val] of Object.entries(THAI_MONTHS_MAP)) {
+            if (text.includes(key)) found.add(val);
+        }
+        return Array.from(found).sort((a, b) => a - b);
+    };
+
+    const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!selectedPlanId) {
+            toast.error("กรุณาเลือกปีงบประมาณก่อนนำเข้า", { id: "csv-upload" });
+            e.target.value = '';
+            return;
+        }
+
+        toast.loading("กำลังอัปโหลดข้อมูล...", { id: "csv-upload" });
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const data = results.data as any[];
+                if (data.length === 0) {
+                    toast.error("ไม่พบข้อมูลในไฟล์ CSV", { id: "csv-upload" });
+                    return;
+                }
+
+                try {
+                    const mappedData = data.map(row => {
+                        const monthsStr = String(row['เดือน'] || row['ช่วงเดือนที่จัด'] || row.months || "");
+                        let months = parseThaiMonths(monthsStr);
+
+                        if (months.length === 0) {
+                            // Fallback to numeric parsing if no thai strings matched
+                            months = monthsStr.split(',').map(m => Number(m.trim())).filter(m => !isNaN(m) && m >= 1 && m <= 12);
+                        }
+
+                        const budgetStr = String(row['งบประมาณ'] || row.budget || "0").replace(/,/g, '');
+                        let budgetNum = Number(budgetStr);
+                        if (isNaN(budgetNum) || budgetStr.trim() === '-') budgetNum = 0;
+
+                        // Infer quarter from first month
+                        const quarter = months.length > 0 ? Math.ceil(Math.min(...months) / 3) : 1;
+
+                        // Find matching department explicitly or default to admin
+                        const deptStr = String(row['หน่วยงาน'] || row.department || "");
+                        const foundDept = departments.find(d => deptStr.includes(d.name) || d.name.includes(deptStr));
+
+                        return {
+                            name: row['โครงการ'] || row['ชื่อโครงการ'] || row.name,
+                            departmentId: foundDept?.id || departments[0]?.id || "admin",
+                            subDepartment: row['สังกัด'] || row['กลุ่มงาน'] || row.subDepartment || "",
+                            projectType: row['ประเภทโครงการ'] || row.projectType || PROJECT_TYPE_OPTIONS[0],
+                            lead: row['ผู้รับผิดชอบ'] || row.lead || "-",
+                            budget: budgetNum,
+                            quarter: quarter,
+                            months: months,
+                            isUnplanned: (row['นอกแผน'] || row.isUnplanned)?.toString().toLowerCase() === "true" || (row['นอกแผน'] || row.isUnplanned) === "1"
+                        };
+                    }).filter(r => r.name);
+
+                    if (mappedData.length === 0) {
+                        toast.error("รูปแบบข้อมูลในไฟล์ CSV ไม่ถูกต้อง", { id: "csv-upload" });
+                        return;
+                    }
+
+                    await createProjectBulk({ projects: mappedData, annualPlanId: selectedPlanId });
+                    toast.success(`นำเข้าข้อมูลสำเร็จ ${mappedData.length} โครงการ`, { id: "csv-upload" });
+                    refreshData();
+                } catch (err) {
+                    console.error("CSV Upload Error:", err);
+                    toast.error("เกิดข้อผิดพลาดในการนำเข้าโครงการ", { id: "csv-upload" });
+                }
+            },
+            error: () => toast.error("ไม่สามารถอ่านไฟล์ CSV ได้", { id: "csv-upload" })
+        });
+
+        e.target.value = '';
+    };
 
     const refreshData = () => {
         setIsLoading(true);
@@ -99,7 +199,8 @@ export default function AnnualProjectsPage() {
                         budgetUsed: proj.budgetUsed || 0,
                         status: proj.status || "planned",
                         lead: proj.lead || "",
-                        projectType: proj.projectType || "",
+                        projectType: proj.projectType || PROJECT_TYPE_OPTIONS[0],
+                        subDepartment: proj.subDepartment || "",
                         startDate: proj.startDate || "",
                         endDate: proj.endDate || "",
                         description: proj.description || "",
@@ -182,18 +283,10 @@ export default function AnnualProjectsPage() {
     };
 
     const handleQuarterChange = (q: number) => {
-        setAddFormData(prev => {
-            // Filter out months that don't belong to the new quarter
-            const startMonth = (q - 1) * 3 + 1;
-            const endMonth = q * 3;
-            const validMonths = prev.months.filter(m => m >= startMonth && m <= endMonth);
-
-            return {
-                ...prev,
-                quarter: q as 1 | 2 | 3 | 4,
-                months: validMonths
-            };
-        });
+        setAddFormData(prev => ({
+            ...prev,
+            quarter: q as 1 | 2 | 3 | 4
+        }));
     };
 
     // Removed showAddYear state as it moved to /settings/years
@@ -237,7 +330,7 @@ export default function AnnualProjectsPage() {
                     projectType: addFormData.projectType,
                     lead: addFormData.lead,
                     budget: addFormData.budget,
-                    quarter: addFormData.quarter,
+                    quarter: addFormData.months.length > 0 ? Math.ceil(Math.min(...addFormData.months) / 3) : 1,
                     months: addFormData.months
                 });
                 toast.success("อัปเดตโครงการสำเร็จ");
@@ -249,7 +342,7 @@ export default function AnnualProjectsPage() {
                     projectType: addFormData.projectType,
                     lead: addFormData.lead,
                     budget: addFormData.budget,
-                    quarter: addFormData.quarter,
+                    quarter: addFormData.months.length > 0 ? Math.ceil(Math.min(...addFormData.months) / 3) : 1,
                     annualPlanId: selectedPlanId,
                     thaiYear: selectedYear || 2569,
                     months: addFormData.months
@@ -487,13 +580,29 @@ export default function AnnualProjectsPage() {
                                     ))}
                                 </div>
                                 {!isViewer && (
-                                    <button
-                                        onClick={() => openAddProjectModal()}
-                                        className="flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-blue-50 transition-all shadow-xl shadow-white/5 active:scale-95"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        เพิ่มโครงการ พ.ศ. {plan?.thaiYear}
-                                    </button>
+                                    <>
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            className="hidden"
+                                            ref={csvInputRef}
+                                            onChange={handleCsvUpload}
+                                        />
+                                        <button
+                                            onClick={() => csvInputRef.current?.click()}
+                                            className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-5 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-emerald-500/30 hover:text-emerald-300 transition-all shadow-xl active:scale-95"
+                                        >
+                                            <UploadCloud className="w-4 h-4" />
+                                            นำเข้าโครงการ (CSV)
+                                        </button>
+                                        <button
+                                            onClick={() => openAddProjectModal()}
+                                            className="flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-blue-50 transition-all shadow-xl shadow-white/5 active:scale-95"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            เพิ่มโครงการ พ.ศ. {plan?.thaiYear}
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -551,7 +660,7 @@ export default function AnnualProjectsPage() {
                             <div className="mt-6 pt-4 border-t border-slate-50">
                                 <div className="flex items-center gap-2">
                                     <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">งบประมาณที่ใช้ได้</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">งบประมาณที่ต้องการตามแผนงาน</p>
                                 </div>
                                 <p className="text-sm font-extrabold text-slate-700 mt-1">฿{(Number(plan?.totalBudget || 0) - Number(plan?.totalUsed || 0)).toLocaleString()}</p>
                             </div>
@@ -702,7 +811,7 @@ export default function AnnualProjectsPage() {
                                             if (q === 4) return m >= 10 && m <= 12;
                                             return false;
                                         }).length || (p.quarter === q ? 1 : 0);
-                                        return total + (avgMonthlyBudget * monthsInThisQuarter);
+                                        return total + Math.round(avgMonthlyBudget * monthsInThisQuarter);
                                     }, 0);
 
                                     return (
@@ -755,7 +864,7 @@ export default function AnnualProjectsPage() {
                                                                     project={p}
                                                                     onClick={() => setSelectedProject(p)}
                                                                     onEdit={handleEditClick}
-                                                                    allocatedBudget={(p.budget / projectTotalMonths) * monthsInThisQuarter.length}
+                                                                    allocatedBudget={Math.round((p.budget / projectTotalMonths) * monthsInThisQuarter.length)}
                                                                     isViewer={isViewer}
                                                                     targetMonths={monthsInThisQuarter}
                                                                 />
@@ -818,8 +927,12 @@ export default function AnnualProjectsPage() {
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-slate-100 bg-slate-50/50">
-                                                <th className="text-left px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">โครงการ / กิจกรรม</th>
-                                                <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">ช่วงเวลา</th>
+                                                <th className="text-center px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em] w-12">ที่</th>
+                                                <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">โครงการ</th>
+                                                <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">ช่วงเดือนที่จัด</th>
+                                                <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">หน่วยงาน</th>
+                                                <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">สังกัด</th>
+                                                <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">ประเภทโครงการ</th>
                                                 <th className="text-right px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">งบประมาณ</th>
                                                 <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">ผู้รับผิดชอบ</th>
                                                 <th className="text-left px-4 py-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">สถานะ</th>
@@ -828,18 +941,21 @@ export default function AnnualProjectsPage() {
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
                                             {filteredProjects.length > 0 ? (
-                                                filteredProjects.map(p => {
-                                                    const StatusIcon = statusIcons[p.status];
+                                                filteredProjects.map((p, index) => {
+                                                    const StatusIcon = statusIcons[p.status] || Circle;
                                                     return (
                                                         <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedProject(p)}>
-                                                            <td className="px-6 py-4">
-                                                                <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{p.name}</p>
+                                                            <td className="px-4 py-4 text-center font-black text-slate-400 text-xs text-center border-r border-slate-50">
+                                                                {index + 1}
                                                             </td>
                                                             <td className="px-4 py-4">
-                                                                <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                                                <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 text-sm leading-tight" title={p.name}>{p.name}</p>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <div className="flex flex-wrap gap-1 max-w-[120px]">
                                                                     {p.months.map(m => (
-                                                                        <span 
-                                                                            key={m} 
+                                                                        <span
+                                                                            key={m}
                                                                             className={cn(
                                                                                 "text-[9px] font-black px-1.5 py-0.5 rounded-md",
                                                                                 p.completedMonths?.includes(m)
@@ -852,14 +968,23 @@ export default function AnnualProjectsPage() {
                                                                     ))}
                                                                 </div>
                                                             </td>
+                                                            <td className="px-4 py-4">
+                                                                <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md line-clamp-1" title={p.department}>{p.department}</span>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <span className="text-[10px] font-bold text-slate-500 line-clamp-1" title={p.subDepartment}>{p.subDepartment || "-"}</span>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <span className="text-[10px] font-bold text-slate-500 line-clamp-1" title={p.projectType}>{p.projectType || "-"}</span>
+                                                            </td>
                                                             <td className="px-4 py-4 text-right font-black text-slate-700">
                                                                 ฿{p.budget.toLocaleString()}
                                                             </td>
                                                             <td className="px-4 py-4">
-                                                                <span className="text-xs font-semibold text-slate-600">{p.lead}</span>
+                                                                <span className="text-[11px] font-black text-slate-600 line-clamp-1 text-left" title={p.lead}>{p.lead}</span>
                                                             </td>
                                                             <td className="px-4 py-4">
-                                                                <span className={cn("inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all", 
+                                                                <span className={cn("inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all",
                                                                     p.status === "in_progress" && p.months.length > 0 && p.months.every(m => p.completedMonths?.includes(m))
                                                                         ? "bg-green-100 text-green-700 border-green-200"
                                                                         : annualPlanStatusStyles[p.status]
@@ -867,7 +992,7 @@ export default function AnnualProjectsPage() {
                                                                     {p.status === "in_progress" && p.months.length > 0 && p.months.every(m => p.completedMonths?.includes(m)) ? (
                                                                         <>
                                                                             <CheckCircle2 className="w-3 h-3" />
-                                                                            ดำเนินการเสร็จสิ้น
+                                                                            เสร็จสิ้น
                                                                         </>
                                                                     ) : (
                                                                         <>
@@ -901,7 +1026,7 @@ export default function AnnualProjectsPage() {
             {selectedProject && (
                 <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setSelectedProject(null)}>
                     <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                        <div className={cn("p-8 relative text-white", quarterColors[selectedProject.quarter - 1])}>
+                        <div className={cn("p-6 relative text-white", quarterColors[selectedProject.quarter - 1])}>
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
                             <div className="relative z-10 flex items-start justify-between">
                                 <div className="flex-1">
@@ -918,9 +1043,9 @@ export default function AnnualProjectsPage() {
                             </div>
                         </div>
 
-                        <div className="flex-1 p-8 space-y-8 overflow-y-auto">
+                        <div className="flex-1 px-8 pt-6 pb-8 space-y-6 overflow-y-auto">
                             <div className="flex items-center justify-between">
-                                <span className={cn("inline-flex items-center gap-2 text-xs font-black px-4 py-2 rounded-2xl border shadow-sm transition-all", 
+                                <span className={cn("inline-flex items-center gap-2 text-xs font-black px-4 py-2 rounded-2xl border shadow-sm transition-all",
                                     selectedProject.status === "in_progress" && selectedProject.months.length > 0 && selectedProject.months.every(m => selectedProject.completedMonths?.includes(m))
                                         ? "bg-green-100 text-green-700 border-green-200"
                                         : annualPlanStatusStyles[selectedProject.status]
@@ -964,7 +1089,7 @@ export default function AnnualProjectsPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">เป้าหมายงบประมาณ</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">งบประมาณที่ต้องการใช้(วงเงิน)</p>
                                     <p className="text-xl font-black text-slate-900">฿{selectedProject.budget.toLocaleString()}</p>
                                 </div>
                                 <div className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100">
@@ -979,8 +1104,8 @@ export default function AnnualProjectsPage() {
                                 </div>
                                 <div className="flex flex-wrap justify-center gap-2">
                                     {selectedProject.months.map(m => (
-                                        <div 
-                                            key={m} 
+                                        <div
+                                            key={m}
                                             className={cn(
                                                 "px-4 py-2 rounded-2xl text-xs font-black transition-all border-2",
                                                 selectedProject.completedMonths?.includes(m)
@@ -996,7 +1121,7 @@ export default function AnnualProjectsPage() {
 
                             <div>
                                 <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                                    <span>สถานะการคลัง</span>
+                                    <span>งบประมาณที่ใช้จริง</span>
                                     <span>ใช้ไป {Math.round((selectedProject.budgetUsed / (selectedProject.budget || 1)) * 100)}%</span>
                                 </div>
                                 <div className="relative h-4 w-full bg-slate-100 rounded-full overflow-hidden border border-white">
@@ -1063,31 +1188,17 @@ export default function AnnualProjectsPage() {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ไตรมาส</label>
-                                        <select
-                                            value={addFormData.quarter}
-                                            onChange={e => handleQuarterChange(parseInt(e.target.value))}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none cursor-pointer"
-                                        >
-                                            {[1, 2, 3, 4].map(q => (
-                                                <option key={q} value={q}>ไตรมาส {q}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ประเภทโครงการ</label>
-                                        <select
-                                            value={addFormData.projectType}
-                                            onChange={e => setAddFormData({ ...addFormData, projectType: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none cursor-pointer"
-                                        >
-                                            {PROJECT_TYPE_OPTIONS.map(opt => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div>
+                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ประเภทโครงการ</label>
+                                    <select
+                                        value={addFormData.projectType}
+                                        onChange={e => setAddFormData({ ...addFormData, projectType: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none cursor-pointer"
+                                    >
+                                        {PROJECT_TYPE_OPTIONS.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -1113,23 +1224,21 @@ export default function AnnualProjectsPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">ระยะเวลาดำเนินงาน (เฉพาะไตรมาส {addFormData.quarter})</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {Array.from({ length: 12 }, (_, i) => i + 1)
-                                            .filter(m => m >= (addFormData.quarter - 1) * 3 + 1 && m <= addFormData.quarter * 3)
-                                            .map(m => (
-                                                <button
-                                                    key={m}
-                                                    type="button"
-                                                    onClick={() => toggleMonth(m)}
-                                                    className={cn(
-                                                        "h-12 rounded-xl text-xs font-black transition-all border-2",
-                                                        addFormData.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-50 text-slate-400 hover:border-slate-200"
-                                                    )}
-                                                >
-                                                    {THAI_MONTHS_SHORT[m - 1]}
-                                                </button>
-                                            ))}
+                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">ระยะเวลาดำเนินงาน (เลือกได้หลายเดือน)</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                            <button
+                                                key={m}
+                                                type="button"
+                                                onClick={() => toggleMonth(m)}
+                                                className={cn(
+                                                    "h-10 rounded-xl text-[10px] font-black transition-all border-2",
+                                                    addFormData.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-50 text-slate-400 hover:border-slate-200"
+                                                )}
+                                            >
+                                                {THAI_MONTHS_SHORT[m - 1]}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
@@ -1200,9 +1309,9 @@ function ProjectRow({
                         )}
                         <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md">
                             <CalendarDays className="w-3 h-3 text-slate-400 mr-1" />
-                            {p.months.map(m => (
-                                <span 
-                                    key={m} 
+                            {checkMonths.map(m => (
+                                <span
+                                    key={m}
                                     className={cn(
                                         "text-[9px] font-black px-1.5 py-0.5 rounded-md transition-all",
                                         p.completedMonths?.includes(m)
@@ -1217,6 +1326,11 @@ function ProjectRow({
                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md">
                             <Users className="w-3 h-3" /> {p.lead}
                         </span>
+                        {p.subDepartment && (
+                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md">
+                                <Layers className="w-3 h-3" /> {p.subDepartment}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-6 flex-shrink-0">
@@ -1229,9 +1343,9 @@ function ProjectRow({
                             />
                         </div>
                     </div>
-                    <span className={cn("hidden lg:inline-flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-xl border-2 uppercase tracking-widest shadow-sm transition-all", 
+                    <span className={cn("hidden lg:inline-flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-xl border-2 uppercase tracking-widest shadow-sm transition-all",
                         isReadyForComplete
-                            ? "bg-green-100 text-green-700 border-green-200" 
+                            ? "bg-green-100 text-green-700 border-green-200"
                             : annualPlanStatusStyles[p.status]
                     )}>
                         {isReadyForComplete ? (

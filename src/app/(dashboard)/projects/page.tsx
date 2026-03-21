@@ -8,7 +8,7 @@ import {
     CheckCircle2, Clock, UploadCloud, Archive, FileEdit, ChevronRight,
     CalendarDays, Users, Banknote, AlertCircle, Loader, Plus, FileText,
     Download, Eye, X, ChevronDown, Trash2, CalendarHeart, ClipboardList,
-    ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw
+    ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw, Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS, DOC_TYPES } from "@/lib/constants";
@@ -563,6 +563,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
     const [selectedRegistryDocId, setSelectedRegistryDocId] = useState("");
     const [isUpdating, setIsUpdating] = useState(false);
     const [reportText, setReportText] = useState("");
+    const [actualDateText, setActualDateText] = useState("");
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
     const fetchProject = async () => {
@@ -594,8 +595,12 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                         uploadedBy: d.uploadedBy?.name || "ผู้ใช้งาน",
                         uploadedAt: new Date(d.createdAt).toLocaleDateString("th-TH"),
                         fileUrl: d.filePath || undefined
-                    }))
+                    })),
+                    actualDate: found.actualDate,
+                    actualBudget: found.actualBudget,
+                    budgetUsed: found.budgetUsed || 0
                 });
+                setActualDateText(found.actualDate || "");
             }
         } catch (error) {
             toast.error("ไม่สามารถโหลดข้อมูลโครงการได้");
@@ -654,6 +659,8 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
             if (newStatus === "completed") {
                 const formData = new FormData();
                 formData.append("status", "completed");
+                if (actualDateText) formData.append("actualDate", actualDateText);
+                // budgetUsed is already calculated from transactions, no need to manually send actualBudget unless they specifically want a manual override, but user said "ไม่ต้องให้มีการกรอก"
                 if (reportText) formData.append("description", `${project?.description || ""}\n\n[สรุปรายงาน]: ${reportText}`);
                 
                 selectedImages.forEach(img => {
@@ -746,8 +753,24 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                         <div className="flex items-start gap-3">
                                             <CalendarDays className="w-4 h-4 text-slate-400 mt-0.5" />
                                             <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">ระยะเวลา</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">ระยะเวลา (ตามแผน)</p>
                                                 <p className="text-sm font-bold text-slate-700">{project.startDate || "ยังไม่ระบุ"} - {project.endDate || "ยังไม่ระบุ"}</p>
+                                            </div>
+                                        </div>
+                                        {project.actualDate && (
+                                            <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
+                                                <Calendar className="w-4 h-4 text-purple-400 mt-0.5" />
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-purple-400 uppercase">เวลาที่จัดจริง</p>
+                                                    <p className="text-sm font-bold text-slate-700">{project.actualDate}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
+                                            <Banknote className="w-4 h-4 text-blue-400 mt-0.5" />
+                                            <div>
+                                                <p className="text-[10px] font-bold text-blue-400 uppercase">งบประมาณที่ใช้ (รายรับ-รายจ่าย)</p>
+                                                <p className="text-sm font-bold text-slate-700">฿{project.budgetUsed?.toLocaleString() || "0"}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -802,6 +825,12 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                                     <Clock className="w-10 h-10 text-amber-600" />
                                                 </div>
                                                 <h5 className="text-lg font-bold text-slate-800">รอรายงานผล/ประเมินผล</h5>
+                                                
+                                                <div className="w-full mt-4 text-left">
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">วันที่จัดกิจกรรมจริง</label>
+                                                    <input type="text" placeholder="เช่น 15 มีนาคม 2567" className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none focus:border-blue-400" value={actualDateText} onChange={e => setActualDateText(e.target.value)} />
+                                                </div>
+
                                                 <textarea placeholder="สรุปผลโครงการเบื้องต้น (ถ้ามี)..." className="w-full mt-4 bg-white border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none h-32" value={reportText} onChange={e => setReportText(e.target.value)} />
                                                 
                                                 <div className="w-full mt-6">
@@ -853,8 +882,19 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                                 </div>
                                                 <h5 className="text-lg font-bold text-slate-800">ดำเนินการเสร็จสิ้น</h5>
                                                 <p className="text-xs text-slate-400 mt-2 px-6">โครงการนี้ถูกปิดและจัดเก็บเรียบร้อยแล้ว ท่านสามารถดูประวัติเอกสารได้ตลอดเวลา</p>
-                                                <div className="w-full mt-8 p-4 bg-purple-50 border border-purple-100 rounded-2xl text-purple-700 text-[10px] font-black uppercase tracking-widest">
-                                                    Closed Activity
+                                                <div className="w-full mt-8 p-4 bg-purple-50 border border-purple-100 rounded-2xl space-y-3">
+                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-700">
+                                                        <span>วันที่จัดกิจกรรมจริง</span>
+                                                        <span className="text-slate-900">{project.actualDate || "-"}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-700 border-t border-purple-100 pt-3">
+                                                        <span>งบประมาณที่ใช้จริง</span>
+                                                        <span className="text-slate-900 text-xs font-black">฿{project.budgetUsed?.toLocaleString() || "0"}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-400 border-t border-purple-100 pt-3 italic">
+                                                        <span>สถานะ</span>
+                                                        <span>Closed Activity</span>
+                                                    </div>
                                                 </div>
                                             </>
                                         )}

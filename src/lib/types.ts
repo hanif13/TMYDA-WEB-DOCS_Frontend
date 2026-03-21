@@ -59,6 +59,9 @@ export interface Project {
     completedMonths: number[];
     documents: ProjectDocument[];
     isUnplanned?: boolean;
+    actualDate?: string;
+    actualBudget?: number;
+    budgetUsed?: number;
 }
 
 // ─── BUDGET TRANSACTIONS ──────────────────────────────────
@@ -103,6 +106,9 @@ export interface AnnualProject {
     isUnplanned?: boolean;
     summaryImages?: string[];
     documents: any[];
+    actualDate?: string;
+    actualBudget?: number;
+    thaiYear?: number;
 }
 
 export interface CommitteeMember {

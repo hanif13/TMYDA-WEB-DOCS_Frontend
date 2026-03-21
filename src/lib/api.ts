@@ -199,6 +199,13 @@ export async function createProject(data: {
     });
 }
 
+export async function createProjectBulk(data: { projects: any[]; annualPlanId: string; }) {
+    return apiFetch<any>("/projects/bulk", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
 export async function updateProject(id: string, data: FormData | Partial<{
     name: string;
     departmentId: string;
@@ -269,6 +276,20 @@ export async function fetchCommitteeMembers(year?: number) {
 export async function createCommitteeMember(data: FormData | any) {
     return apiFetch<any>("/committee", {
         method: "POST",
+        body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+}
+
+export async function createCommitteeBulk(data: any[]) {
+    return apiFetch<any>("/committee/bulk", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateCommitteeMember(id: string, data: FormData | any) {
+    return apiFetch<any>(`/committee/${id}`, {
+        method: "PATCH",
         body: data instanceof FormData ? data : JSON.stringify(data),
     });
 }

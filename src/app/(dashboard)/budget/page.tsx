@@ -50,7 +50,9 @@ export default function BudgetPage() {
             }));
             setTransactions(mappedTx);
 
-            const allProjects = plansData.flatMap((p: any) => p.projects || []).map((proj: any) => ({
+            const allProjects = plansData.flatMap((p: any) => p.projects || [])
+                .filter((proj: any) => proj.isStarted)
+                .map((proj: any) => ({
                 id: proj.id,
                 name: proj.name,
                 department: proj.department?.name || "",

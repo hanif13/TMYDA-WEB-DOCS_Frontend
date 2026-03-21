@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import {
   FileText, FolderKanban, TrendingDown, Users, ArrowUpRight,
   ArrowDownRight, CheckCircle2, Clock, AlertCircle, Plus,
-  MoreHorizontal, CalendarDays, ChevronRight, CircleDot, Loader
+  MoreHorizontal, CalendarDays, ChevronRight, CircleDot, Loader, Wallet
 } from "lucide-react";
 import Link from "next/link";
 import { fetchAnnualPlans, fetchTransactions, fetchDocuments, fetchUsers } from "@/lib/api";
@@ -96,9 +96,13 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false));
   }, [selectedYear]);
 
-  const totalBudget = projects.reduce((acc, p) => acc + p.budget, 0);
-  const totalUsed = transactions.filter(t => t.type === "รายจ่าย").reduce((acc, t) => acc + t.amount, 0) -
-                    transactions.filter(t => t.type === "คืนเงิน").reduce((acc, t) => acc + t.amount, 0);
+  const totalIncome = transactions.filter(t => t.type === "รายรับ").reduce((acc, t) => acc + t.amount, 0);
+  const totalExpense = transactions.filter(t => t.type === "รายจ่าย").reduce((acc, t) => acc + t.amount, 0);
+  const totalReturn = transactions.filter(t => t.type === "คืนเงิน").reduce((acc, t) => acc + t.amount, 0);
+  
+  const totalBudget = totalIncome;
+  const totalUsed = totalExpense - totalReturn;
+  const remainingBudget = totalIncome - totalUsed;
   const budgetUsedPct = totalBudget > 0 ? Math.round((totalUsed / totalBudget) * 100) : 0;
 
   const stats = [
@@ -121,6 +125,11 @@ export default function DashboardPage() {
       name: "งบใช้ไปแล้ว (บาท)", value: totalUsed.toLocaleString(), icon: TrendingDown,
       change: `${budgetUsedPct}%`, changeType: "warn", detail: "ของงบทั้งหมด",
       color: "from-rose-500 to-red-500", bg: "bg-rose-50", text: "text-rose-600"
+    },
+    {
+      name: "งบประมาณคงเหลือ", value: remainingBudget.toLocaleString(), icon: Wallet,
+      change: `${100 - budgetUsedPct}%`, changeType: "up", detail: "ของงบทั้งหมด",
+      color: "from-emerald-500 to-green-500", bg: "bg-emerald-50", text: "text-emerald-600"
     },
   ];
 
@@ -153,7 +162,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {stats.map((stat, i) => (
           <div
             key={stat.name}
@@ -187,7 +196,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-800">การใช้งบประมาณรวม</h3>
-            <p className="text-xs text-slate-400">งบรวม ฿{totalBudget.toLocaleString()} · ใช้ไปแล้ว ฿{totalUsed.toLocaleString()}</p>
+            <p className="text-xs text-slate-400">งบรวม ฿{totalBudget.toLocaleString()} · ใช้ไปแล้ว ฿{totalUsed.toLocaleString()} · <span className="text-emerald-600 font-medium">คงเหลือ ฿{remainingBudget.toLocaleString()}</span></p>
           </div>
           <Link href="/budget" className="text-xs text-blue-600 font-medium flex items-center gap-1 hover:text-blue-700">
             รายละเอียด <ChevronRight className="w-3 h-3" />

@@ -98,7 +98,9 @@ export default function IncomeExpensePage() {
             setTransactions(mappedTx);
 
             const filteredPlans = (plansData as any[]).filter(p => !selectedYear || p.thaiYear === selectedYear);
-            const allProjects = filteredPlans.flatMap((p: any) => p.projects || []).map((proj: any) => ({
+            const allProjects = filteredPlans.flatMap((p: any) => p.projects || [])
+                .filter((proj: any) => proj.isStarted)
+                .map((proj: any) => ({
                 id: proj.id,
                 name: proj.name,
                 department: proj.department?.name || "",
@@ -197,7 +199,9 @@ export default function IncomeExpensePage() {
             
             // Refresh projects to update budget
             fetchAnnualPlans().then(plansData => {
-                 const allProjects = plansData.flatMap((p: any) => p.projects || []).map((proj: any) => ({
+                 const allProjects = plansData.flatMap((p: any) => p.projects || [])
+                    .filter((proj: any) => proj.isStarted)
+                    .map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
                     department: proj.department?.name || "",
@@ -315,7 +319,8 @@ export default function IncomeExpensePage() {
     );
 
     return (
-        <div className="space-y-5 animate-fade-in-up">
+        <>
+            <div className="space-y-5 animate-fade-in-up">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
@@ -949,24 +954,24 @@ export default function IncomeExpensePage() {
                                 <button type="submit" disabled={isSubmitting}
                                     className="flex-[2] py-4 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
                                     {isSubmitting ? <Loader className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-                                    {isSubmitting ? "กำลังบันทึก..." : "บันทึกรายการรายรับ-รายจ่าย"}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-
-            {/* ─── TRANSACTION DETAIL MODAL ─── */}
-            {showDetailTx && (
-                <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4" onClick={() => setShowDetailTx(null)}>
-                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <DetailModal tx={showDetailTx} onClose={() => setShowDetailTx(null)} findDoc={findDoc} onDelete={() => handleDelete(showDetailTx.id)} isViewer={isViewer} />
-                    </div>
-                </div>
-            )}
         </div>
-    );
+
+        {/* ─── TRANSACTION DETAIL MODAL ─── */}
+        {showDetailTx && (
+            <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowDetailTx(null)}>
+                <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                    <DetailModal tx={showDetailTx} onClose={() => setShowDetailTx(null)} findDoc={findDoc} onDelete={() => handleDelete(showDetailTx.id)} isViewer={isViewer} />
+                </div>
+            </div>
+        )}
+    </>
+);
 }
 
 /* ─── Transaction Row Component ─── */

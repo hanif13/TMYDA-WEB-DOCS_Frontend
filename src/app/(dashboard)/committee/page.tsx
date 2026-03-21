@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { Users, Mail, Phone, Briefcase, Plus, Trash2, X, Upload, Camera } from 'lucide-react';
-import { fetchCommitteeMembers, createCommitteeMember, deleteCommitteeMember } from '@/lib/api';
+import { Users, Mail, Phone, Briefcase, Plus, Trash2, X, Upload, Camera, Pencil, UploadCloud } from 'lucide-react';
+import { fetchCommitteeMembers, createCommitteeMember, updateCommitteeMember, deleteCommitteeMember, createCommitteeBulk } from '@/lib/api';
+import Papa from 'papaparse';
 import { CommitteeMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
@@ -20,6 +21,7 @@ export default function CommitteePage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     
     const [formData, setFormData] = useState({
         name: '',
@@ -33,6 +35,7 @@ export default function CommitteePage() {
     const [photo, setPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const csvInputRef = useRef<HTMLInputElement>(null);
 
     const departments = [
         { id: 'admin', name: 'สำนักอำนวยการ', color: 'bg-blue-600', text: 'text-blue-600' },
@@ -57,6 +60,87 @@ export default function CommitteePage() {
         loadMembers();
     }, [selectedYear]);
 
+    const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        toast.loading("กำลังอัปโหลดข้อมูล...", { id: "csv-upload" });
+        Papa.parse(file, {
+            header: false,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const rows = results.data as string[][];
+                if (rows.length === 0) {
+                    toast.error("ไม่พบข้อมูลในไฟล์ CSV", { id: "csv-upload" });
+                    return;
+                }
+                
+                try {
+                    // Find header row gracefully
+                    let headerIndex = rows.findIndex(row => row.some(cell => typeof cell === 'string' && cell.includes('ชื่อ')));
+                    if (headerIndex === -1) headerIndex = 0;
+                    
+                    const headers = rows[headerIndex].map(h => h.trim().toLowerCase());
+                    const dataRows = rows.slice(headerIndex + 1);
+
+                    // Try to infer department from row 0 if header isn't row 0 (e.g. the merged title cell)
+                    let inferredDept = "";
+                    if (headerIndex > 0) {
+                        inferredDept = String(rows[0].find(c => c && c.trim()) || "").trim();
+                    }
+
+                    // Flexible Column Matching
+                    const getCol = (aliases: string[]) => headers.findIndex(h => aliases.some(a => h.includes(a)));
+                    const nIdx = getCol(['ชื่อ', 'name']);
+                    const pIdx = getCol(['ตำแหน่ง', 'position']);
+                    const phIdx = getCol(['เบอร์', 'phone']);
+                    const eIdx = getCol(['อีเมล', 'email']);
+                    const oIdx = getCol(['อาชีพ', 'occupation']);
+                    const dIdx = getCol(['หน่วยงาน', 'department']);
+                    const ordIdx = getCol(['ลำดับ', 'order']);
+
+                    const mappedData = dataRows.map((row, idx) => {
+                        const name = nIdx >= 0 ? row[nIdx] : '';
+                        if (!name || !name.trim()) return null;
+
+                        const deptName = (dIdx >= 0 && row[dIdx] ? row[dIdx] : inferredDept).trim();
+                        let foundDeptId = "admin";
+                        if (deptName) {
+                            const match = departments.find(d => deptName.includes(d.name) || d.name.includes(deptName) || d.id === deptName);
+                            if (match) foundDeptId = match.id;
+                        }
+
+                        return {
+                            name: name.trim(),
+                            position: pIdx >= 0 && row[pIdx] ? row[pIdx].trim() : 'กรรมการ',
+                            phoneNumber: phIdx >= 0 && row[phIdx] ? row[phIdx].trim() : "",
+                            email: eIdx >= 0 && row[eIdx] ? row[eIdx].trim() : "",
+                            occupation: oIdx >= 0 && row[oIdx] ? row[oIdx].trim() : "",
+                            departmentId: foundDeptId,
+                            order: ordIdx >= 0 && !isNaN(Number(row[ordIdx])) ? Number(row[ordIdx]) : idx,
+                            thaiYear: selectedYear || 2567
+                        };
+                    }).filter(Boolean);
+
+                    if (mappedData.length === 0) {
+                        toast.error("รูปแบบข้อมูลในไฟล์ CSV ไม่ถูกต้อง", { id: "csv-upload" });
+                        return;
+                    }
+
+                    await createCommitteeBulk(mappedData);
+                    toast.success(`นำเข้าข้อมูลสำเร็จ ${mappedData.length} รายการ`, { id: "csv-upload" });
+                    loadMembers();
+                } catch (err) {
+                    console.error("CSV Upload Error:", err);
+                    toast.error("เกิดข้อผิดพลาดในการประมวลผลข้อมูล", { id: "csv-upload" });
+                }
+            },
+            error: () => toast.error("ไม่สามารถอ่านไฟล์ CSV ได้", { id: "csv-upload" })
+        });
+        
+        e.target.value = '';
+    };
+
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -67,6 +151,21 @@ export default function CommitteePage() {
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleEdit = (member: CommitteeMember) => {
+        setEditingId(member.id);
+        setFormData({
+            name: member.name || '',
+            position: member.position || '',
+            phoneNumber: member.phoneNumber || '',
+            email: member.email || '',
+            occupation: member.occupation || '',
+            departmentId: member.departmentId || 'admin',
+            order: (member.order || 0).toString()
+        });
+        setPhotoPreview(member.photoUrl ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${member.photoUrl}` : null);
+        setIsModalOpen(true);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -85,9 +184,15 @@ export default function CommitteePage() {
                 data.append('thaiYear', selectedYear.toString());
             }
 
-            await createCommitteeMember(data);
-            toast.success("เพิ่มรายชื่อสำเร็จ");
+            if (editingId) {
+                await updateCommitteeMember(editingId, data);
+                toast.success("แก้ไขรายชื่อสำเร็จ");
+            } else {
+                await createCommitteeMember(data);
+                toast.success("เพิ่มรายชื่อสำเร็จ");
+            }
             setIsModalOpen(false);
+            setEditingId(null);
             setFormData({
                 name: '',
                 position: '',
@@ -139,13 +244,37 @@ export default function CommitteePage() {
                 </div>
 
                 {canEdit && (
-                    <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
-                    >
-                        <Plus className="w-5 h-5" />
-                        เพิ่มรายชื่อ
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <input 
+                            type="file" 
+                            accept=".csv" 
+                            className="hidden" 
+                            ref={csvInputRef} 
+                            onChange={handleCsvUpload} 
+                        />
+                        <button 
+                            onClick={() => csvInputRef.current?.click()}
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-200"
+                        >
+                            <UploadCloud className="w-5 h-5" />
+                            นำเข้า CSV
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setEditingId(null);
+                                setFormData({
+                                    name: '', position: '', phoneNumber: '', email: '', occupation: '', departmentId: 'admin', order: '0'
+                                });
+                                setPhoto(null);
+                                setPhotoPreview(null);
+                                setIsModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
+                        >
+                            <Plus className="w-5 h-5" />
+                            เพิ่มรายชื่อ
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -166,12 +295,20 @@ export default function CommitteePage() {
                                 {deptMembers.map((member) => (
                                     <div key={member.id} className="group bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-100 transition-all duration-200 relative">
                                         {canEdit && (
-                                            <button 
-                                                onClick={() => handleDelete(member.id, member.name)}
-                                                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                <button 
+                                                    onClick={() => handleEdit(member)}
+                                                    className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(member.id, member.name)}
+                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         )}
                                         
                                         <div className="flex gap-4">
@@ -244,7 +381,7 @@ export default function CommitteePage() {
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
                     <div className="relative bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-slate-900">เพิ่มรายชื่อคณะกรรมการ</h2>
+                            <h2 className="text-xl font-bold text-slate-900">{editingId ? 'แก้ไขรายชื่อคณะกรรมการ' : 'เพิ่มรายชื่อคณะกรรมการ'}</h2>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
                                 <X className="w-5 h-5 text-slate-400" />
                             </button>
