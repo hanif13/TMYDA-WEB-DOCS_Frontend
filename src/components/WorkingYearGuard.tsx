@@ -3,11 +3,14 @@
 import { useYear } from "@/context/YearContext";
 import { YearSelection } from "@/components/YearSelection";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Loader } from "lucide-react";
 
 export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
     const { selectedYear, isLoading } = useYear();
     const { data: session, status } = useSession();
+
+    const pathname = usePathname();
 
     if (status === "loading" || isLoading) {
         return (
@@ -20,7 +23,12 @@ export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // Only guard if logged in
+    // Always allow access to settings/years so users can add a new year if none exist
+    if (pathname === '/settings/years') {
+        return <>{children}</>;
+    }
+
+    // Only guard if logged in and no year selected
     if (status === "authenticated" && !selectedYear) {
         return <YearSelection />;
     }

@@ -1,7 +1,8 @@
 "use client";
 
-import { CalendarDays, ChevronRight, LogOut } from "lucide-react";
+import { CalendarDays, ChevronRight, LogOut, Plus } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useYear } from "@/context/YearContext";
@@ -78,6 +79,35 @@ export function YearSelection() {
                             </motion.div>
                         );
                     })}
+
+                    {/* Add New Year Button */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1 * (availableYears.length + 3) }}
+                    >
+                        <Link
+                            href="/settings/years"
+                            className={cn(
+                                "group relative flex items-center justify-center bg-transparent border-2 border-dashed border-slate-200 p-8 rounded-[2.5rem] transition-all duration-500 overflow-hidden text-center h-full min-h-[16rem]",
+                                "hover:border-blue-400 hover:bg-white hover:shadow-2xl hover:shadow-blue-100 hover:-translate-y-2 cursor-pointer"
+                            )}
+                        >
+                            <div className="relative z-10 flex flex-col items-center gap-3">
+                                <div className="w-16 h-16 rounded-full bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors duration-500 mb-2">
+                                    <Plus className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-500 group-hover:text-blue-600 transition-colors">
+                                    เพิ่มปีการทำงาน
+                                </h3>
+                                {availableYears.length === 0 && (
+                                    <p className="text-xs text-slate-400 px-4 group-hover:text-blue-400/80 transition-colors">
+                                        คุณต้องสร้างปีการทำงานก่อนเริ่มใช้งานระบบ
+                                    </p>
+                                )}
+                            </div>
+                        </Link>
+                    </motion.div>
                 </div>
 
                 <motion.div 

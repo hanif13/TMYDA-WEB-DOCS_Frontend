@@ -6,8 +6,10 @@ import { FolderCheck, Calendar, Users, Banknote, ExternalLink, Image as ImageIco
 import { fetchAnnualPlans, API_BASE_URL } from '@/lib/api';
 import { AnnualProject } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useYear } from '@/context/YearContext';
 
 export default function CompletedProjectsPage() {
+    const { selectedYear } = useYear();
     const [projects, setProjects] = useState<AnnualProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -31,7 +33,7 @@ export default function CompletedProjectsPage() {
                         description: p.description || "",
                         summaryImages: p.summaryImages || [],
                         thaiYear: plans.find((pl: any) => pl.id === p.annualPlanId)?.thaiYear
-                    }));
+                    } as unknown as AnnualProject));
                 setProjects(completed);
             } catch (error) {
                 console.error("Error loading completed projects:", error);
@@ -42,10 +44,12 @@ export default function CompletedProjectsPage() {
         loadProjects();
     }, []);
 
-    const filteredProjects = projects.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.department.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredProjects = projects.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.department.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesYear = selectedYear ? (p as any).thaiYear === selectedYear : true;
+        return matchesSearch && matchesYear;
+    });
 
     if (loading) {
         return (
