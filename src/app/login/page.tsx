@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Lock, User, Loader, ShieldCheck, ArrowRight } from "lucide-react";
+import { Lock, User, Loader, ShieldCheck, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,26 +88,31 @@ export default function LoginPage() {
                   <Lock className="h-4 w-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all text-sm"
+                  className="block w-full pl-10 pr-11 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all text-sm"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-blue-400 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center">
-                <input
-                  id="remember"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500/50"
-                />
-                <label htmlFor="remember" className="ml-2 block text-xs text-slate-400">จดจำฉันไว้</label>
-              </div>
-              <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">ลืมรหัสผ่าน?</button>
+            <div className="flex items-center py-2">
+              <input
+                id="remember"
+                type="checkbox"
+                className="h-4 w-4 rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500/50"
+              />
+              <label htmlFor="remember" className="ml-2 block text-xs text-slate-400">จดจำฉันไว้</label>
             </div>
 
             <button
