@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
@@ -257,17 +257,33 @@ export default function ProjectsPage() {
                                 )}
                             </div>
                             {p.months.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-1">
-                                    {p.months.map(m => (
-                                        <div key={m} className={cn(
-                                            "text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors",
-                                            p.completedMonths?.includes(m) 
-                                                ? "bg-green-500 border-green-500 text-white" 
-                                                : "bg-slate-50 border-slate-100 text-slate-400"
-                                        )}>
-                                            {THAI_MONTHS_SHORT[m-1]}
-                                        </div>
-                                    ))}
+                                <div className="mt-3 flex items-center gap-1.5 bg-blue-50/50 px-2.5 py-1 rounded-xl border border-blue-100/20 shadow-sm transition-all group-hover:bg-blue-50/80">
+                                    <CalendarDays className="w-3 h-3 text-blue-400/70" />
+                                    <div className="flex items-center gap-0.5 min-w-[60px]">
+                                        {p.months.length === 12 ? (
+                                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">ตลอดทั้งปี (12 เดือน)</span>
+                                        ) : p.months.length > 4 ? (
+                                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
+                                                {THAI_MONTHS_SHORT[p.months[0]-1]} - {THAI_MONTHS_SHORT[p.months[p.months.length-1]-1]} ({p.months.length} เดือน)
+                                            </span>
+                                        ) : (
+                                            p.months.map((m, idx) => (
+                                                <React.Fragment key={m}>
+                                                    <span
+                                                        className={cn(
+                                                            "text-[9px] font-black px-1.5 py-0.5 rounded-md transition-all",
+                                                            p.completedMonths?.includes(m)
+                                                                ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50"
+                                                                : "text-slate-500 bg-slate-100/50"
+                                                        )}
+                                                    >
+                                                        {THAI_MONTHS_SHORT[m - 1]}
+                                                    </span>
+                                                    {idx < p.months.length - 1 && <span className="text-[8px] text-slate-200 mx-0.5">•</span>}
+                                                </React.Fragment>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -562,6 +578,8 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
     const [showLinkDoc, setShowLinkDoc] = useState(false);
     const [selectedRegistryDocId, setSelectedRegistryDocId] = useState("");
     const [isUpdating, setIsUpdating] = useState(false);
+    const [linkFilterDept, setLinkFilterDept] = useState("");
+    const [linkFilterCategory, setLinkFilterCategory] = useState("");
     const [reportText, setReportText] = useState("");
     const [actualDateText, setActualDateText] = useState("");
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -784,9 +802,9 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                         <div className="grid grid-cols-3 gap-3">
                                             {project.months.map(m => (
                                                 <button key={m} onClick={() => !isViewer && project.step === "in_progress" && handleToggleMonth(m)}
-                                                    className={cn("p-4 rounded-2xl border-2 transition-all text-left group relative overflow-hidden",
-                                                        project.completedMonths.includes(m) ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200",
-                                                        isViewer && "cursor-default"
+                                                    className={cn("p-4 rounded-[1.5rem] border-2 transition-all text-left group relative overflow-hidden",
+                                                        project.completedMonths.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200",
+                                                        isViewer && "cursor-default text-opacity-50"
                                                     )}>
                                                     <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m-1]}</p>
                                                     <p className="text-sm font-bold">{project.completedMonths.includes(m) ? "เสร็จแล้ว" : "รอดำเนินงาน"}</p>
@@ -920,7 +938,31 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                 <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 animate-in fade-in duration-300">
                                     <div className="flex items-center justify-between mb-4">
                                         <p className="text-xs font-bold text-slate-600 tracking-tight">เลือกเอกสารที่ต้องการเชื่อมโยง</p>
-                                        <button onClick={() => setShowLinkDoc(false)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 tracking-widest uppercase">ยกเลิก</button>
+                                        <button onClick={() => { setShowLinkDoc(false); setLinkFilterDept(""); setLinkFilterCategory(""); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 tracking-widest uppercase">ยกเลิก</button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                        <div>
+                                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">หน่วยงาน</label>
+                                            <select
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all"
+                                                value={linkFilterDept}
+                                                onChange={e => { setLinkFilterDept(e.target.value); setSelectedRegistryDocId(""); }}
+                                            >
+                                                <option value="">ทุกหน่วยงาน</option>
+                                                {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">ประเภทเอกสาร</label>
+                                            <select
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all"
+                                                value={linkFilterCategory}
+                                                onChange={e => { setLinkFilterCategory(e.target.value); setSelectedRegistryDocId(""); }}
+                                            >
+                                                <option value="">ทุกประเภท</option>
+                                                {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="flex gap-3">
                                         <select 
@@ -929,9 +971,14 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                             onChange={e => setSelectedRegistryDocId(e.target.value)}
                                         >
                                             <option value="">เลือกเอกสาร...</option>
-                                            {allDocs.filter(d => !d.projectId).map(d => (
-                                                <option key={d.id} value={d.id}>[{d.docNo}] {d.name}</option>
-                                            ))}
+                                            {allDocs
+                                                .filter(d => !d.projectId)
+                                                .filter(d => !linkFilterDept || d.department?.name === linkFilterDept)
+                                                .filter(d => !linkFilterCategory || d.category?.name === linkFilterCategory)
+                                                .map(d => (
+                                                    <option key={d.id} value={d.id}>[{d.docNo}] {d.name}</option>
+                                                ))
+                                            }
                                         </select>
                                         <button onClick={handleLinkDoc} disabled={!selectedRegistryDocId || isUpdating}
                                             className="bg-blue-600 text-white px-6 rounded-2xl text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50">

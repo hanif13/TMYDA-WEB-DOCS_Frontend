@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
@@ -1107,9 +1107,9 @@ export default function AnnualProjectsPage() {
                                         <div
                                             key={m}
                                             className={cn(
-                                                "px-4 py-2 rounded-2xl text-xs font-black transition-all border-2",
+                                                "px-4 py-2 rounded-[1.25rem] text-xs font-black transition-all border-2",
                                                 selectedProject.completedMonths?.includes(m)
-                                                    ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-200 scale-105"
+                                                    ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20 scale-105"
                                                     : "bg-white border-slate-100 text-slate-400"
                                             )}
                                         >
@@ -1307,21 +1307,33 @@ function ProjectRow({
                                 <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">{p.department}</span>
                             </div>
                         )}
-                        <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md">
-                            <CalendarDays className="w-3 h-3 text-slate-400 mr-1" />
-                            {checkMonths.map(m => (
-                                <span
-                                    key={m}
-                                    className={cn(
-                                        "text-[9px] font-black px-1.5 py-0.5 rounded-md transition-all",
-                                        p.completedMonths?.includes(m)
-                                            ? "bg-green-500 text-white shadow-sm scale-110"
-                                            : "text-slate-400"
-                                    )}
-                                >
-                                    {THAI_MONTHS_SHORT[m - 1]}
-                                </span>
-                            ))}
+                        <div className="flex items-center gap-1.5 bg-blue-50/50 px-2.5 py-1 rounded-[10px] border border-blue-100/30 shadow-sm transition-all group-hover:bg-blue-50/80">
+                            <CalendarDays className="w-3 h-3 text-blue-400/70" />
+                            <div className="flex items-center gap-0.5 min-w-[60px]">
+                                {checkMonths.length === 12 ? (
+                                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">ตลอดทั้งปี (12 เดือน)</span>
+                                ) : checkMonths.length > 4 ? (
+                                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
+                                        {THAI_MONTHS_SHORT[checkMonths[0]-1]} - {THAI_MONTHS_SHORT[checkMonths[checkMonths.length-1]-1]} ({checkMonths.length} เดือน)
+                                    </span>
+                                ) : (
+                                    checkMonths.map((m, idx) => (
+                                        <React.Fragment key={m}>
+                                            <span
+                                                className={cn(
+                                                    "text-[9px] font-black px-1.5 py-0.5 rounded-md transition-all",
+                                                    p.completedMonths?.includes(m)
+                                                        ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50"
+                                                        : "text-slate-500 bg-slate-100/50"
+                                                )}
+                                            >
+                                                {THAI_MONTHS_SHORT[m - 1]}
+                                            </span>
+                                            {idx < checkMonths.length - 1 && <span className="text-[8px] text-slate-300 mx-0.5">•</span>}
+                                        </React.Fragment>
+                                    ))
+                                )}
+                            </div>
                         </div>
                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md">
                             <Users className="w-3 h-3" /> {p.lead}
