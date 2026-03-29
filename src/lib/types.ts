@@ -27,6 +27,7 @@ export interface DocRequest {
     requestedAt: string;
     status: "รอดำเนินการ" | "กำลังดำเนินการ" | "เสร็จสิ้น";
     fields: Record<string, string>;
+    pdfPath?: string;
     note?: string;
 }
 

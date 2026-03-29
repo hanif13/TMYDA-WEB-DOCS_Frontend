@@ -7,7 +7,7 @@ import {
     Clock,
     ChevronDown, Loader,
     Send, Inbox, Plus, Trash2, ArrowLeft, ArrowRight,
-    Eye, X, CheckCircle2, Edit, Copy, Check
+    Eye, X, CheckCircle2, Edit, Copy, Check, FileDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/constants";
@@ -205,6 +205,7 @@ export default function DocumentsPage() {
                 requestedAt: new Date(r.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
                 status: r.status as any,
                 fields: r.fields as Record<string, string>,
+                pdfPath: r.pdfPath,
             }));
             setRequests(mapped);
         } catch (error) {
