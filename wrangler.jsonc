@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fityatulhak-portal",
+  "compatibility_date": "2025-09-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  // Runtime environment variables for the Worker
+  "vars": {
+    "NEXTAUTH_URL": "https://fityatulhak-portal.hanif19001.workers.dev",
+    "NEXTAUTH_SECRET": "7244923c-345c-41ae-b7cc-40e27a2f0487-fityatulhak-secret-key",
+    "AUTH_SECRET": "7244923c-345c-41ae-b7cc-40e27a2f0487-fityatulhak-secret-key",
+    "AUTH_TRUST_HOST": "true",
+    "NEXT_PUBLIC_API_URL": "https://fityatulhak-backend.onrender.com",
+    "SUPABASE_URL": "https://jtptqoefpddcqhiskrov.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_TN5pK0K6tCVlzPPrseg-sA_2xJMkWhu"
+  }
+}
