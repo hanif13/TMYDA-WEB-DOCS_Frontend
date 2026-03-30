@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const handler = NextAuth({
+const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -13,7 +13,10 @@ const handler = NextAuth({
         if (!credentials?.username || !credentials?.password) return null;
 
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/auth/login`, {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+          console.log("Authorize attempt with API URL:", apiUrl);
+
+          const res = await fetch(`${apiUrl}/api/auth/login`, {
             method: "POST",
             body: JSON.stringify({
               username: credentials.username,
@@ -38,25 +41,28 @@ const handler = NextAuth({
       },
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET,
+  // Try multiple sources for the secret
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   debug: true,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.user = user;
-        token.accessToken = (user as any).accessToken;
+        token.accessToken = user.accessToken;
       }
       return token;
     },
-    async session({ session, token }) {
-      session.user = token.user as any;
-      (session as any).accessToken = token.accessToken;
+    async session({ session, token }: any) {
+      session.user = token.user;
+      session.accessToken = token.accessToken;
       return session;
     },
   },
   pages: {
     signIn: "/login",
   },
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
