@@ -13,7 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DOC_TYPES } from "@/lib/constants";
 import { Project, ProjectDocument, AnnualPlan, ProjectStep, Department } from "@/lib/types";
-import { fetchAnnualPlans, updateProject, fetchDocuments, linkDocumentToProject, createProject, fetchDepartments, API_BASE_URL } from "@/lib/api";
+import { fetchAnnualPlans, updateProject, fetchDocuments, linkDocumentToProject, createProject, fetchDepartments, API_BASE_URL, getMediaUrl } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
 
 const PROJECT_TYPE_OPTIONS = [
@@ -1018,7 +1018,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             {doc.fileUrl && (
-                                                <a href={`${API_BASE_URL}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg">
+                                                <a href={getMediaUrl(doc.fileUrl)} target="_blank" rel="noreferrer" className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg">
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
                                             )}

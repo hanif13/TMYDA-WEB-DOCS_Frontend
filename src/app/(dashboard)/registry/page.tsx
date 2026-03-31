@@ -5,7 +5,7 @@ import { Search, Filter, FileText, ChevronRight, Hash, Plus, X, Loader, Edit3, U
 import { cn } from "@/lib/utils";
 import { DOC_TYPES, CURRENT_THAI_YEAR, MASTER_CATEGORIES, CATEGORY_MAP, getNextDocNo } from "@/lib/constants";
 import { StoredDocument } from "@/lib/types";
-import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL, fetchDepartments, fetchCategories } from "@/lib/api";
+import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL, fetchDepartments, fetchCategories, getMediaUrl } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useYear } from "@/context/YearContext";
 import { useSession } from "next-auth/react";
@@ -648,7 +648,7 @@ export default function RegistryPage() {
                                     onClick={() => {
                                         if (selectedDoc.fileUrl) {
                                             const link = document.createElement('a');
-                                            link.href = `${API_BASE_URL}${selectedDoc.fileUrl}`;
+                                            link.href = getMediaUrl(selectedDoc.fileUrl);
                                             link.download = `${selectedDoc.docNo}_${selectedDoc.name}.pdf`;
                                             document.body.appendChild(link);
                                             link.click();
@@ -668,7 +668,7 @@ export default function RegistryPage() {
                         <div className="flex-1 bg-slate-900/5 overflow-hidden relative">
                             {selectedDoc.fileUrl ? (
                                 <iframe 
-                                    src={`${API_BASE_URL}${selectedDoc.fileUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
+                                    src={`${getMediaUrl(selectedDoc.fileUrl)}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
                                     className="w-full h-full border-none"
                                     title={selectedDoc.name}
                                 />

@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { FolderCheck, Calendar, Users, Banknote, ExternalLink, Image as ImageIcon, Search, X, ChevronRight, Hash, Target, ClipboardCheck } from 'lucide-react';
-import { fetchAnnualPlans, API_BASE_URL, fetchDepartments } from '@/lib/api';
+import { fetchAnnualPlans, API_BASE_URL, fetchDepartments, getMediaUrl } from '@/lib/api';
 import { AnnualProject, ProjectDocument } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -281,7 +281,7 @@ export default function CompletedProjectsPage() {
                                 {selectedProject.summaryImages && selectedProject.summaryImages.length > 0 ? (
                                     <div className="grid grid-cols-3 gap-4 pb-20">
                                         {selectedProject.summaryImages.map((img, idx) => {
-                                            const imageUrl = img.startsWith('http') ? img : `${API_BASE_URL}${img}`;
+                                            const imageUrl = getMediaUrl(img);
                                             return (
                                                 <div 
                                                     key={idx} 

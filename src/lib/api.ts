@@ -17,6 +17,12 @@ const getAPIBase = () => {
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const API_BASE = `${API_BASE_URL}/api`;
 
+export const getMediaUrl = (path: string | undefined): string => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${API_BASE_URL}${path}`;
+};
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const session = await getSession();
     const token = (session as any)?.accessToken;

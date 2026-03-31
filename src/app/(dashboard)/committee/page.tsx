@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Users, Mail, Phone, Briefcase, Plus, Trash2, X, Upload, Camera, Pencil, UploadCloud } from 'lucide-react';
-import { fetchCommitteeMembers, createCommitteeMember, updateCommitteeMember, deleteCommitteeMember, createCommitteeBulk, fetchDepartments } from '@/lib/api';
+import { fetchCommitteeMembers, createCommitteeMember, updateCommitteeMember, deleteCommitteeMember, createCommitteeBulk, fetchDepartments, getMediaUrl } from '@/lib/api';
 import Papa from 'papaparse';
 import { CommitteeMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -183,7 +183,7 @@ export default function CommitteePage() {
             departmentId: member.departmentId || 'admin',
             order: (member.order || 0).toString()
         });
-        setPhotoPreview(member.photoUrl ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${member.photoUrl}` : null);
+        setPhotoPreview(member.photoUrl ? getMediaUrl(member.photoUrl) : null);
         setIsModalOpen(true);
     };
 
@@ -335,7 +335,7 @@ export default function CommitteePage() {
                                             <div className="h-24 w-24 rounded-2xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-100">
                                                 {member.photoUrl ? (
                                                     <img 
-                                                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${member.photoUrl}`} 
+                                                        src={getMediaUrl(member.photoUrl)} 
                                                         alt={member.name} 
                                                         className="w-full h-full object-cover" 
                                                     />

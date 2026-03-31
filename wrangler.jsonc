@@ -17,7 +17,7 @@
     "NEXTAUTH_SECRET": "7244923c-345c-41ae-b7cc-40e27a2f0487-fityatulhak-secret-key",
     "AUTH_SECRET": "7244923c-345c-41ae-b7cc-40e27a2f0487-fityatulhak-secret-key",
     "AUTH_TRUST_HOST": "true",
-    "NEXT_PUBLIC_API_URL": "https://fityatulhak-backend.onrender.com",
+    "NEXT_PUBLIC_API_URL": "https://fityatulhak-backend.hanif19001.workers.dev",
     "SUPABASE_URL": "https://jtptqoefpddcqhiskrov.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_TN5pK0K6tCVlzPPrseg-sA_2xJMkWhu"
   }

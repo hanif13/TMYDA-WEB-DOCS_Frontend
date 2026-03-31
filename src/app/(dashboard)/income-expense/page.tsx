@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BudgetTransaction, TxType, StoredDocument, Project } from "@/lib/types";
-import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, deleteTransaction, fetchDepartments } from "@/lib/api";
+import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, deleteTransaction, fetchDepartments, getMediaUrl } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
 import { getDeptStyle } from "@/lib/dept-styles";
 
@@ -1113,7 +1113,7 @@ function DetailModal({ tx, onClose, findDoc, onDelete, isViewer }: { tx: BudgetT
                             <UploadCloud className="w-3 h-3" /> หลักฐานการโอน (สลิป)
                         </p>
                         <a 
-                            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${tx.slipUrl}`} 
+                            href={getMediaUrl(tx.slipUrl)} 
                             target="_blank" 
                             rel="noopener noreferrer" 
                             className="flex items-center gap-3 bg-white border border-amber-200 rounded-lg p-2.5 hover:shadow-sm transition-all group/slip"
