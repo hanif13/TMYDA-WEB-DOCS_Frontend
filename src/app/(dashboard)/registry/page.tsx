@@ -3,9 +3,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, FileText, ChevronRight, Hash, Plus, X, Loader, Edit3, UploadCloud, FileCheck, ChevronDown, Trash2, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS, DOC_TYPES, CURRENT_THAI_YEAR, MASTER_CATEGORIES, CATEGORY_MAP, getNextDocNo } from "@/lib/constants";
+import { DOC_TYPES, CURRENT_THAI_YEAR, MASTER_CATEGORIES, CATEGORY_MAP, getNextDocNo } from "@/lib/constants";
 import { StoredDocument } from "@/lib/types";
-import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL } from "@/lib/api";
+import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL, fetchDepartments, fetchCategories } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useYear } from "@/context/YearContext";
 import { useSession } from "next-auth/react";
@@ -47,13 +47,36 @@ export default function RegistryPage() {
     const [filterType, setFilterType] = useState("all");
     const [filterDept, setFilterDept] = useState("all");
     const [view, setView] = useState<View>("dept");
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
+    const [dbCategories, setDbCategories] = useState<any[]>([]);
 
-    // Fetch documents from API
+    // Fetch documents and metadata from API
     useEffect(() => {
         if (selectedYear) {
             refreshData();
+            loadMetadata();
         }
     }, [selectedYear]);
+
+    const loadMetadata = async () => {
+        try {
+            const [depts, cats] = await Promise.all([
+                fetchDepartments(),
+                fetchCategories()
+            ]);
+            setDbDepartments(depts);
+            setDbCategories(cats);
+
+            // Set default selections if not already set
+            setFormData(prev => ({
+                ...prev,
+                type: prev.type || (cats.length > 0 ? cats[0].id : ""),
+                department: prev.department || (depts.length > 0 ? depts[0].id : "")
+            }));
+        } catch (error) {
+            console.error("Error loading metadata:", error);
+        }
+    };
 
     const refreshData = () => {
         setLoading(true);
@@ -79,8 +102,8 @@ export default function RegistryPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [formData, setFormData] = useState({
         docNo: "",
-        type: DOC_TYPES[0],
-        department: DEPARTMENTS[0].name,
+        type: "", // Will be set to category UUID
+        department: "", // Will be set to department UUID
         name: "",
         uploadedBy: "ผู้ดูแลระบบ"
     });
@@ -93,12 +116,17 @@ export default function RegistryPage() {
 
     // Auto-generate Document Number
     useEffect(() => {
-        if (showAddModal) {
-            const deptToUse = isGlobalType ? "ส่วนกลาง" : formData.department;
-            const nextNo = getNextDocNo(docs, deptToUse, formData.type, selectedYear || undefined);
+        if (showAddModal && dbDepartments.length > 0 && dbCategories.length > 0) {
+            const currentDept = dbDepartments.find(d => d.id === formData.department);
+            const currentCat = dbCategories.find(c => c.id === formData.type);
+            
+            const deptNameForSearch = isGlobalType ? "ส่วนกลาง" : (currentDept?.name || "");
+            const catNameForSearch = currentCat?.name || "";
+            
+            const nextNo = getNextDocNo(docs, deptNameForSearch, catNameForSearch, selectedYear || undefined);
             setFormData(prev => ({ ...prev, docNo: nextNo }));
         }
-    }, [formData.type, formData.department, isGlobalType, showAddModal, docs]);
+    }, [showAddModal, formData.type, formData.department, docs, selectedYear, isGlobalType, dbDepartments, dbCategories]);
 
     const filtered = useMemo(() => {
         return docs.filter(d => {
@@ -112,7 +140,7 @@ export default function RegistryPage() {
     // Grouping logic
     const byDept = useMemo(() => {
         const map = new Map<string, Map<string, StoredDocument[]>>();
-        DEPARTMENTS.forEach(d => map.set(d.name, new Map()));
+        dbDepartments.forEach(d => map.set(d.name, new Map()));
         filtered.forEach(doc => {
             if (!map.has(doc.department)) map.set(doc.department, new Map());
             const deptMap = map.get(doc.department)!;
@@ -156,7 +184,7 @@ export default function RegistryPage() {
             formDataToSubmit.append("name", formData.name);
             formDataToSubmit.append("departmentId", isGlobalType ? "ส่วนกลาง" : formData.department);
             formDataToSubmit.append("categoryId", formData.type);
-            formDataToSubmit.append("uploadedById", "user_id_placeholder");
+            formDataToSubmit.append("uploadedById", (session?.user as any)?.userId || "user_id_placeholder");
             if (selectedYear) {
                 formDataToSubmit.append("thaiYear", selectedYear.toString());
             }
@@ -211,7 +239,7 @@ export default function RegistryPage() {
         setFormData({
             docNo: doc.docNo,
             type: doc.type,
-            department: doc.department === "ส่วนกลาง" ? DEPARTMENTS[0].name : doc.department,
+            department: doc.department === "ส่วนกลาง" ? (dbDepartments.length > 0 ? dbDepartments[0].name : "ส่วนกลาง") : doc.department,
             name: doc.name,
             uploadedBy: doc.uploadedBy
         });
@@ -262,7 +290,7 @@ export default function RegistryPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {DEPARTMENTS.map(dept => {
+                {dbDepartments.map(dept => {
                     const count = docs.filter(d => d.department === dept.name).length;
                     const cfg = deptConfig[dept.name] || { color: "bg-slate-50", dot: "bg-slate-300", badge: "bg-slate-100" };
                     return (
@@ -299,7 +327,7 @@ export default function RegistryPage() {
 
             {view === "dept" && (
                 <div className="space-y-6">
-                    {DEPARTMENTS.map(dept => {
+                    {dbDepartments.map(dept => {
                         const typeMap = byDept.get(dept.name);
                         const total = totalByDept(dept.name);
                         if (total === 0) return null;
@@ -311,14 +339,14 @@ export default function RegistryPage() {
                                     <h2 className="text-sm font-bold text-slate-800 flex-1">{dept.name}</h2>
                                     <span className={cn("text-xs font-bold px-2.5 py-1 rounded-full", cfg.badge)}>{total} รายการ</span>
                                 </div>
-                                {DOC_TYPES.map(cat => {
-                                    const catDocs = typeMap?.get(cat);
+                                {dbCategories.map(cat => {
+                                    const catDocs = typeMap?.get(cat.name);
                                     if (!catDocs || catDocs.length === 0) return null;
                                     return (
-                                        <div key={cat}>
+                                        <div key={cat.id}>
                                             <div className="flex items-center gap-2 px-5 py-2 bg-slate-50/70 border-b border-slate-50">
-                                                <span className="text-sm">{typeIcons[cat] ?? "📄"}</span>
-                                                <span className="text-xs font-semibold text-slate-500">{cat}</span>
+                                                <span className="text-sm">{typeIcons[cat.name] ?? "📄"}</span>
+                                                <span className="text-xs font-semibold text-slate-500">{cat.name}</span>
                                             </div>
                                             <div className="divide-y divide-slate-50">
                                                 {catDocs.map((doc, idx) => (
@@ -344,14 +372,14 @@ export default function RegistryPage() {
 
             {view === "type" && (
                 <div className="space-y-4">
-                    {DOC_TYPES.map(cat => {
-                        const catDocs = byCategory.get(cat);
+                    {dbCategories.map(cat => {
+                        const catDocs = byCategory.get(cat.name);
                         if (!catDocs || catDocs.length === 0) return null;
                         return (
-                            <div key={cat} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                            <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                                 <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
-                                    <span className="text-lg">{typeIcons[cat] ?? "📄"}</span>
-                                    <h2 className="text-sm font-bold text-slate-800 flex-1">{cat}</h2>
+                                    <span className="text-lg">{typeIcons[cat.name] ?? "📄"}</span>
+                                    <h2 className="text-sm font-bold text-slate-800 flex-1">{cat.name}</h2>
                                 </div>
                                 <div className="divide-y divide-slate-50">
                                     {catDocs.map((doc, idx) => (
@@ -486,8 +514,8 @@ export default function RegistryPage() {
                                                         onChange={e => setFormData({ ...formData, type: e.target.value })}
                                                         className="w-full text-[13px] font-bold border-2 border-slate-100 rounded-[1.25rem] px-4 py-3 outline-none focus:border-blue-500/50 bg-white appearance-none cursor-pointer transition-all shadow-sm"
                                                     >
-                                                        {DOC_TYPES.map(cat => (
-                                                            <option key={cat} value={cat}>{cat}</option>
+                                                        {dbCategories.map(cat => (
+                                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
                                                         ))}
                                                     </select>
                                                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -511,8 +539,8 @@ export default function RegistryPage() {
                                                         {isGlobalType ? (
                                                             <option value="">(ส่วนกลาง)</option>
                                                         ) : (
-                                                            DEPARTMENTS.map(d => (
-                                                                <option key={d.name} value={d.name}>{d.name}</option>
+                                                            dbDepartments.map(d => (
+                                                                <option key={d.id} value={d.id}>{d.name}</option>
                                                             ))
                                                         )}
                                                     </select>

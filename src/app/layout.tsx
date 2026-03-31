@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fityatulhak Portal",
-  description: "Web Portal สำหรับบริหารจัดการเอกสารและโครงการ",
+  title: "Fityatulhaq",
+  description: "Web สำหรับบริหารจัดการเอกสารและโครงการ",
 };
 
 export default function RootLayout({

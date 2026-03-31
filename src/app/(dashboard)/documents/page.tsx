@@ -10,9 +10,8 @@ import {
     Eye, X, CheckCircle2, Edit, Copy, Check, FileDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS } from "@/lib/constants";
 import { DocRequest } from "@/lib/types";
-import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest } from "@/lib/api";
+import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest, fetchDepartments } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
 
 type FieldDef = { key: string; label: string; type?: string; placeholder: string; isTextarea?: boolean };
@@ -191,6 +190,7 @@ export default function DocumentsPage() {
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState<DocRequest | null>(null);
     const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
 
     const refreshRequests = async () => {
         setIsLoadingRequests(true);
@@ -215,6 +215,10 @@ export default function DocumentsPage() {
             setIsLoadingRequests(false);
         }
     };
+
+    useEffect(() => {
+        fetchDepartments().then(setDbDepartments).catch(() => []);
+    }, []);
 
     const handleUpdateStatus = async (id: string, status: "รอดำเนินการ" | "กำลังดำเนินการ" | "เสร็จสิ้น") => {
         try {
@@ -248,7 +252,7 @@ export default function DocumentsPage() {
         setEditingRequestId(req.id);
         
         // Parse department
-        const orgMatch = DEPARTMENTS.find(d => req.department.startsWith(d.name));
+        const orgMatch = dbDepartments.find(d => req.department.startsWith(d.name));
         if (orgMatch) {
             setRequesterOrg(orgMatch.name);
             const sub = req.department.replace(orgMatch.name, "").replace(/^\s*\(|\)\s*$/g, "").trim();
@@ -298,7 +302,7 @@ export default function DocumentsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Sub-departments derived from selected Org
-    const selectedOrgDef = DEPARTMENTS.find(d => d.name === requesterOrg);
+    const selectedOrgDef = dbDepartments.find(d => d.name === requesterOrg);
     const subDeptsOptions = selectedOrgDef?.subDepts || [];
 
     function setField(key: string, val: string) {
@@ -449,7 +453,7 @@ export default function DocumentsPage() {
                                         <select value={requesterOrg} onChange={e => { setRequesterOrg(e.target.value); setRequesterSubDept(""); }}
                                             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-slate-50 outline-none appearance-none focus:border-blue-400 focus:bg-white transition-colors">
                                             <option value="" disabled>เลือกหน่วยงาน...</option>
-                                            {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                            {dbDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                     </div>
@@ -461,7 +465,7 @@ export default function DocumentsPage() {
                                         <select value={requesterSubDept} onChange={e => setRequesterSubDept(e.target.value)} disabled={!requesterOrg}
                                             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-slate-50 outline-none appearance-none focus:border-blue-400 focus:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                             <option value="" disabled>เลือกฝ่ายที่เป็นสังกัด...</option>
-                                            {subDeptsOptions.map((sd, i) => <option key={i} value={sd}>{sd}</option>)}
+                                            {subDeptsOptions.map((sd: string, i: number) => <option key={i} value={sd}>{sd}</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                     </div>

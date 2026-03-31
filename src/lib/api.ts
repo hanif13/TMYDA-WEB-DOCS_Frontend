@@ -305,6 +305,10 @@ export async function fetchDepartments() {
     return apiFetch<any[]>("/departments");
 }
 
+export async function fetchCategories() {
+    return apiFetch<any[]>("/documents/categories");
+}
+
 // ─── USERS ────────────────────────────────────────────────
 export async function fetchUsers() {
     return apiFetch<any[]>("/users");

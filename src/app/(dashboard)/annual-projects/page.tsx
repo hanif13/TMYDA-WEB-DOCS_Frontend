@@ -10,11 +10,12 @@ import {
     BarChart3, Layers, Filter, Plus, Loader, Edit, Trash2, AlertCircle, UploadCloud
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { annualPlanStatusLabels, annualPlanStatusStyles, DEPARTMENTS } from "@/lib/constants";
+import { annualPlanStatusLabels, annualPlanStatusStyles } from "@/lib/constants";
 import { AnnualProject, AnnualPlan, Department } from "@/lib/types";
 import { fetchAnnualPlans, createProject, fetchDepartments, updateProject, deleteProject, createProjectBulk } from "@/lib/api";
 import Papa from "papaparse";
 import { useYear } from "@/context/YearContext";
+import { getDeptStyle } from "@/lib/dept-styles";
 
 const quarterLabels = ["Q1 (ม.ค. – มี.ค.)", "Q2 (เม.ย. – มิ.ย.)", "Q3 (ก.ค. – ก.ย.)", "Q4 (ต.ค. – ธ.ค.)"];
 const quarterColors = [
@@ -47,13 +48,6 @@ const PROJECT_TYPE_OPTIONS = [
 const formatMonths = (months: number[]) => {
     if (!months || months.length === 0) return "-";
     return months.sort((a, b) => a - b).map(m => THAI_MONTHS_SHORT[m - 1]).join(", ");
-};
-
-const deptColors: Record<string, { bg: string; text: string; dot: string }> = {
-    "สำนักอำนวยการ": { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-400" },
-    "สมาคมพัฒนาเยาวชนมุสลิมไทย": { bg: "bg-blue-100", text: "text-blue-800", dot: "bg-blue-400" },
-    "สำนักกิจการสตรี สมาคมฯ": { bg: "bg-pink-100", text: "text-pink-800", dot: "bg-pink-400" },
-    "ครอบครัวฟิตยะตุลฮัก": { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-400" },
 };
 
 type ViewMode = "quarter" | "department" | "list";
@@ -138,13 +132,13 @@ export default function AnnualProjectsPage() {
                         // Infer quarter from first month
                         const quarter = months.length > 0 ? Math.ceil(Math.min(...months) / 3) : 1;
 
-                        // Find matching department explicitly or default to admin
+                        // Find matching department explicitly
                         const deptStr = String(row['หน่วยงาน'] || row.department || "");
                         const foundDept = departments.find(d => deptStr.includes(d.name) || d.name.includes(deptStr));
 
                         return {
                             name: row['โครงการ'] || row['ชื่อโครงการ'] || row.name,
-                            departmentId: foundDept?.id || departments[0]?.id || "admin",
+                            departmentId: foundDept?.id || (departments.length > 0 ? departments[0].id : ""),
                             subDepartment: row['สังกัด'] || row['กลุ่มงาน'] || row.subDepartment || "",
                             projectType: row['ประเภทโครงการ'] || row.projectType || PROJECT_TYPE_OPTIONS[0],
                             lead: row['ผู้รับผิดชอบ'] || row.lead || "-",
@@ -245,8 +239,9 @@ export default function AnnualProjectsPage() {
     const [editingProject, setEditingProject] = useState<AnnualProject | null>(null);
     const [addFormData, setAddFormData] = useState({
         name: "",
-        department: DEPARTMENTS[0].name,
-        subDepartment: DEPARTMENTS[0].subDepts[0] || "",
+        department: "", // Will be set to department NAME for UI logic
+        departmentId: "", // Will be set to UUID
+        subDepartment: "",
         projectType: PROJECT_TYPE_OPTIONS[0],
         lead: "",
         budget: 0,
@@ -260,8 +255,9 @@ export default function AnnualProjectsPage() {
         } else {
             setAddFormData({
                 name: "",
-                department: DEPARTMENTS[0].name,
-                subDepartment: DEPARTMENTS[0].subDepts[0] || "",
+                department: departments.length > 0 ? departments[0].name : "",
+                departmentId: departments.length > 0 ? departments[0].id : "",
+                subDepartment: (departments.length > 0 && departments[0].subDepts.length > 0) ? departments[0].subDepts[0] : "",
                 projectType: PROJECT_TYPE_OPTIONS[0],
                 lead: "",
                 budget: 0,
@@ -271,6 +267,18 @@ export default function AnnualProjectsPage() {
         }
         setShowAddProject(true);
     };
+
+    // Initialize form with first department when loaded
+    useEffect(() => {
+        if (departments.length > 0 && !addFormData.departmentId && !editingProject) {
+            setAddFormData(prev => ({
+                ...prev,
+                department: departments[0].name,
+                departmentId: departments[0].id,
+                subDepartment: departments[0].subDepts[0] || ""
+            }));
+        }
+    }, [departments, editingProject]);
 
     const toggleMonth = (m: number) => {
         setAddFormData(prev => {
@@ -354,8 +362,9 @@ export default function AnnualProjectsPage() {
             setEditingProject(null);
             setAddFormData({
                 name: "",
-                department: DEPARTMENTS[0].name,
-                subDepartment: DEPARTMENTS[0].subDepts[0] || "",
+                department: departments.length > 0 ? departments[0].name : "",
+                departmentId: departments.length > 0 ? departments[0].id : "",
+                subDepartment: (departments.length > 0 && departments[0].subDepts.length > 0) ? departments[0].subDepts[0] : "",
                 projectType: PROJECT_TYPE_OPTIONS[0],
                 lead: "",
                 budget: 0,
@@ -388,10 +397,12 @@ export default function AnnualProjectsPage() {
     // Removed handleDeleteYear logic
 
     const handleEditClick = (p: AnnualProject) => {
+        const deptObj = departments.find(d => d.name === p.department);
         setEditingProject(p);
         setAddFormData({
             name: p.name,
             department: p.department,
+            departmentId: deptObj?.id || "",
             subDepartment: p.subDepartment || "",
             projectType: p.projectType,
             lead: p.lead,
@@ -454,7 +465,7 @@ export default function AnnualProjectsPage() {
 
     const deptStats = useMemo(() => {
         const result: Record<string, { count: number, budget: number, used: number }> = {};
-        DEPARTMENTS.forEach(d => {
+        departments.forEach(d => {
             result[d.name] = { count: 0, budget: 0, used: 0 };
         });
 
@@ -494,7 +505,7 @@ export default function AnnualProjectsPage() {
 
     const byDept = useMemo(() => {
         const groups: Record<string, AnnualProject[]> = {};
-        DEPARTMENTS.forEach(d => { groups[d.name] = []; });
+        departments.forEach(d => { groups[d.name] = []; });
         filteredProjects.forEach(p => {
             if (!groups[p.department]) groups[p.department] = [];
             groups[p.department].push(p);
@@ -680,15 +691,16 @@ export default function AnnualProjectsPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {DEPARTMENTS.map(dept => {
+                            {departments.map(dept => {
                                 const dStat = deptStats[dept.name] || { count: 0, budget: 0, used: 0 };
                                 const percent = dStat.budget > 0 ? Math.round((dStat.used / dStat.budget) * 100) : 0;
+                                const cfg = getDeptStyle(dept.name);
 
                                 return (
                                     <div key={dept.id} className="relative group">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase", dept.color)}>
-                                                {dept.id}
+                                            <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase", cfg.bg, cfg.text)}>
+                                                {dept.id.slice(0, 4).toUpperCase()}
                                             </span>
                                             <span className="text-xs font-bold text-slate-400">{dStat.count} โครงการ</span>
                                         </div>
@@ -700,7 +712,7 @@ export default function AnnualProjectsPage() {
                                                 <span className="text-slate-700">฿{dStat.budget.toLocaleString()}</span>
                                             </div>
                                             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                <div className={cn("h-full rounded-full transition-all duration-500", dept.dot)} style={{ width: `${percent}%` }} />
+                                                <div className={cn("h-full rounded-full transition-all duration-500", cfg.dot)} style={{ width: `${percent}%` }} />
                                             </div>
                                         </div>
                                     </div>
@@ -740,7 +752,7 @@ export default function AnnualProjectsPage() {
                                         className="appearance-none pl-10 pr-10 py-2.5 bg-white border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all hover:border-slate-300"
                                     >
                                         <option value="all">ทุกหน่วยงาน</option>
-                                        {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                        {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                     <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
                                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -883,15 +895,15 @@ export default function AnnualProjectsPage() {
 
                         {viewMode === "department" && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {DEPARTMENTS.map(dept => {
+                                {departments.map(dept => {
                                     const projects = byDept[dept.name] || [];
-                                    const dc = deptColors[dept.name];
+                                    const dc = getDeptStyle(dept.name);
                                     const deptBudget = projects.reduce((s, p) => s + p.budget, 0);
                                     return (
                                         <div key={dept.id} className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
                                             <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={cn("h-3 w-3 rounded-full shadow-sm", dc?.dot)} />
+                                                    <div className={cn("h-3 w-3 rounded-full shadow-sm", dc.dot)} />
                                                     <div>
                                                         <p className="text-sm font-black text-slate-900">{dept.name}</p>
                                                         <p className="text-[11px] font-bold text-slate-400 mt-0.5">{projects.length} โครงการ · ฿{deptBudget.toLocaleString()}</p>
@@ -899,7 +911,7 @@ export default function AnnualProjectsPage() {
                                                 </div>
                                                 {!isViewer && (
                                                     <button
-                                                        onClick={() => openAddProjectModal({ department: dept.name })}
+                                                        onClick={() => openAddProjectModal({ department: dept.name, departmentId: dept.id })}
                                                         className="h-8 w-8 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
                                                     >
                                                         <Plus className="w-4 h-4" />
@@ -1160,19 +1172,20 @@ export default function AnnualProjectsPage() {
                                     <div>
                                         <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">หน่วยงาน</label>
                                         <select
-                                            value={addFormData.department}
+                                            value={addFormData.departmentId}
                                             onChange={e => {
-                                                const deptName = e.target.value;
-                                                const deptObj = DEPARTMENTS.find(d => d.name === deptName);
+                                                const dId = e.target.value;
+                                                const dObj = departments.find(d => d.id === dId);
                                                 setAddFormData({
                                                     ...addFormData,
-                                                    department: deptName,
-                                                    subDepartment: deptObj?.subDepts[0] || ""
+                                                    departmentId: dId,
+                                                    department: dObj?.name || "",
+                                                    subDepartment: dObj?.subDepts[0] || ""
                                                 });
                                             }}
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none cursor-pointer"
                                         >
-                                            {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1182,7 +1195,7 @@ export default function AnnualProjectsPage() {
                                             onChange={e => setAddFormData({ ...addFormData, subDepartment: e.target.value })}
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none cursor-pointer"
                                         >
-                                            {DEPARTMENTS.find(d => d.name === addFormData.department)?.subDepts.map(sd => (
+                                            {departments.find(d => d.id === addFormData.departmentId)?.subDepts.map(sd => (
                                                 <option key={sd} value={sd}>{sd}</option>
                                             ))}
                                         </select>
@@ -1279,7 +1292,7 @@ function ProjectRow({
 }) {
     const checkMonths = targetMonths && targetMonths.length > 0 ? targetMonths : p.months;
     const isReadyForComplete = p.status === "in_progress" && checkMonths.length > 0 && checkMonths.every(m => p.completedMonths?.includes(m));
-    const dc = deptColors[p.department];
+    const dc = getDeptStyle(p.department);
     const StatusIcon = isReadyForComplete ? CheckCircle2 : (statusIcons[p.status] || Circle);
     const displayBudget = allocatedBudget ?? p.budget;
     const pct = p.budget > 0 ? Math.round((p.budgetUsed / p.budget) * 100) : 0;

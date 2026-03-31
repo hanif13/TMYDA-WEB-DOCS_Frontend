@@ -11,18 +11,10 @@ import {
     Receipt, BookOpen, ClipboardList, UploadCloud, Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS } from "@/lib/constants";
 import { BudgetTransaction, TxType, StoredDocument, Project } from "@/lib/types";
-import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, deleteTransaction } from "@/lib/api";
+import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, deleteTransaction, fetchDepartments } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
-
-/* ─── CONSTANTS ─── */
-const deptColors: Record<string, string> = {
-    "สำนักอำนวยการ": "bg-amber-100 text-amber-800",
-    "สมาคมพัฒนาเยาวชนมุสลิมไทย": "bg-blue-100 text-blue-800",
-    "สำนักกิจการสตรี สมาคมฯ": "bg-pink-100 text-pink-800",
-    "ครอบครัวฟิตยะตุลฮัก": "bg-emerald-100 text-emerald-800",
-};
+import { getDeptStyle } from "@/lib/dept-styles";
 
 const txConfig: Record<TxType, { color: string; lightBg: string; icon: React.ElementType; sign: string; label: string }> = {
     "รายรับ": { color: "text-green-600", lightBg: "bg-green-50", icon: TrendingUp, sign: "+", label: "รายรับ" },
@@ -58,6 +50,7 @@ export default function IncomeExpensePage() {
     const [documents, setDocuments] = useState<StoredDocument[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<Tab>("overview");
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
     const [filterDept, setFilterDept] = useState("all");
     const [filterType, setFilterType] = useState("all");
     const [filterProject, setFilterProject] = useState("all");
@@ -81,7 +74,8 @@ export default function IncomeExpensePage() {
             fetchTransactions(selectedYear || undefined).catch(() => []),
             fetchAnnualPlans().catch(() => []),
             fetchDocuments(selectedYear || undefined).catch(() => []),
-        ]).then(([txData, plansData, docsData]) => {
+            fetchDepartments().catch(() => []),
+        ]).then(([txData, plansData, docsData, deptsData]) => {
             const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
                 id: t.id,
                 date: new Date(t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
@@ -124,6 +118,7 @@ export default function IncomeExpensePage() {
                 uploadedAt: new Date(d.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
             }));
             setDocuments(mappedDocs);
+            setDbDepartments(deptsData || []);
         }).finally(() => setLoading(false));
     };
 
@@ -180,13 +175,13 @@ export default function IncomeExpensePage() {
 
     // Dept breakdown
     const deptBreakdown = useMemo(() => {
-        return DEPARTMENTS.map(d => {
+        return dbDepartments.map(d => {
             const inc = transactions.filter(t => t.department === d.name && t.type === "รายรับ").reduce((s, t) => s + t.amount, 0);
             const exp = transactions.filter(t => t.department === d.name && t.type === "รายจ่าย").reduce((s, t) => s + t.amount, 0);
             const ret = transactions.filter(t => t.department === d.name && t.type === "คืนเงิน").reduce((s, t) => s + t.amount, 0);
             return { ...d, income: inc, expense: exp, returned: ret, net: exp - ret };
         });
-    }, [transactions]);
+    }, [transactions, dbDepartments]);
 
     /* ─── HANDLERS ─── */
     const handleDelete = async (id: string) => {
@@ -398,11 +393,12 @@ export default function IncomeExpensePage() {
                         <h3 className="text-sm font-bold text-slate-800 mb-4">สรุปแยกตามหน่วยงาน</h3>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             {deptBreakdown.map(d => {
-                                const pct = d.income > 0 ? Math.round((d.net / d.income) * 100) : (d.expense > 0 ? 100 : 0);
+                                const deptCfg = dbDepartments.find(db => db.id === d.id);
+                                const dotColor = deptCfg?.color ? (deptCfg.color.startsWith('bg-') ? deptCfg.color : `bg-${deptCfg.color}-500`) : "bg-slate-400";
                                 return (
                                     <div key={d.id} className="bg-slate-50 rounded-xl p-4 space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <span className={cn("w-2.5 h-2.5 rounded-full", d.dot)} />
+                                            <span className={cn("w-2.5 h-2.5 rounded-full", dotColor)} />
                                             <span className="text-xs font-semibold text-slate-700">{d.name}</span>
                                         </div>
                                         <div className="space-y-1">
@@ -485,7 +481,7 @@ export default function IncomeExpensePage() {
                                 <select value={filterDept} onChange={e => setFilterDept(e.target.value)}
                                     className="text-sm border border-slate-200 rounded-xl px-3 py-2 pr-8 outline-none bg-white text-slate-600 appearance-none">
                                     <option value="all">ทุกหน่วยงาน</option>
-                                    {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                    {dbDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                 </select>
                                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
@@ -538,7 +534,7 @@ export default function IncomeExpensePage() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3.5">
-                                                <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", deptColors[tx.department])}>{tx.department}</span>
+                                                <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", getDeptStyle(tx.department).bg, getDeptStyle(tx.department).text)}>{tx.department}</span>
                                                 {tx.projectName && (
                                                     <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
                                                         <FolderKanban className="w-3 h-3" /> {tx.projectName}
@@ -581,7 +577,8 @@ export default function IncomeExpensePage() {
                 <div className="space-y-4">
                     {projectDisbursements.map(p => {
                         const pct = p.budget > 0 ? Math.min(Math.round((p.net / p.budget) * 100), 100) : 0;
-                        const dc = deptColors[p.department] ?? "bg-slate-100 text-slate-600";
+                        const deptStyle = getDeptStyle(p.department);
+                        const dc = `${deptStyle.bg} ${deptStyle.text}`;
                         const isExpanded = expandedProjectId === p.id;
 
                         return (
@@ -598,7 +595,7 @@ export default function IncomeExpensePage() {
                                         <div className="min-w-0">
                                             <h3 className="text-sm font-bold text-slate-800 truncate">{p.name}</h3>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", dc)}>{p.department}</span>
+                                                <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", getDeptStyle(p.department).bg, getDeptStyle(p.department).text)}>{p.department}</span>
                                                 <span className="text-[11px] text-slate-400 font-medium hidden sm:flex items-center gap-1.5">
                                                     <Users className="w-3 h-3 text-slate-300" /> {p.lead}
                                                 </span>
@@ -812,7 +809,7 @@ export default function IncomeExpensePage() {
                                         <select required value={form.departmentId} onChange={e => setForm(p => ({ ...p, departmentId: e.target.value }))}
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                             <option value="" disabled>เลือกหน่วยงาน...</option>
-                                            {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                            {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                     </div>
@@ -989,7 +986,7 @@ function TxRow({ tx, onClick, compact }: { tx: BudgetTransaction; onClick: () =>
                     {!compact && tx.projectName && (
                         <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{tx.projectName}</span>
                     )}
-                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", deptColors[tx.department])}>{tx.department}</span>
+                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", getDeptStyle(tx.department).bg, getDeptStyle(tx.department).text)}>{tx.department}</span>
                     {tx.claimedBy && <span className="text-[11px] text-slate-400">เบิกโดย: {tx.claimedBy}</span>}
                     {tx.docRef && (
                         <span className="text-[10px] text-blue-500 flex items-center gap-0.5"><FileText className="w-3 h-3" />{tx.docRef}</span>

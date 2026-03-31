@@ -11,7 +11,7 @@ import {
     ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw, Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS, DOC_TYPES } from "@/lib/constants";
+import { DOC_TYPES } from "@/lib/constants";
 import { Project, ProjectDocument, AnnualPlan, ProjectStep, Department } from "@/lib/types";
 import { fetchAnnualPlans, updateProject, fetchDocuments, linkDocumentToProject, createProject, fetchDepartments, API_BASE_URL } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
@@ -61,14 +61,25 @@ export default function ProjectsPage() {
 
     const [unplannedForm, setUnplannedForm] = useState({ 
         name: "", 
-        department: DEPARTMENTS[0].name, 
-        subDepartment: DEPARTMENTS[0].subDepts[0] || "",
+        department: "", 
+        subDepartment: "",
         projectType: PROJECT_TYPE_OPTIONS[0],
         budget: "", 
         lead: "", 
         reason: "",
         months: [] as number[]
     });
+
+    // Initialize unplanned form when departments are loaded
+    useEffect(() => {
+        if (departments.length > 0 && !unplannedForm.department) {
+            setUnplannedForm(prev => ({
+                ...prev,
+                department: departments[0].name,
+                subDepartment: departments[0].subDepts[0] || ""
+            }));
+        }
+    }, [departments]);
 
     const refreshData = async () => {
         setIsLoading(true);
@@ -193,7 +204,9 @@ export default function ProjectsPage() {
             toast.success("สร้างโครงการนอกแผนงานสำเร็จ!", { icon: "🚀" });
             setShowUnplannedForm(false);
             setUnplannedForm({ 
-                name: "", department: DEPARTMENTS[0].name, subDepartment: DEPARTMENTS[0].subDepts[0] || "",
+                name: "", 
+                department: departments.length > 0 ? departments[0].name : "", 
+                subDepartment: (departments.length > 0 && departments[0].subDepts.length > 0) ? departments[0].subDepts[0] : "",
                 projectType: PROJECT_TYPE_OPTIONS[0], budget: "", lead: "", reason: "", months: []
             });
             refreshData();
@@ -318,7 +331,7 @@ export default function ProjectsPage() {
                             className="w-full appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all pr-10 cursor-pointer text-slate-700 shadow-sm hover:shadow-md hover:border-blue-200"
                         >
                             <option value="">ทุกหน่วยงาน</option>
-                            {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                            {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                         </select>
                         <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-blue-500 transition-colors" />
                     </div>
@@ -362,6 +375,7 @@ export default function ProjectsPage() {
                 onClose={() => setSelectedId("")} 
                 onUpdate={() => { setSelectedId(""); refreshData(); }}
                 allDocs={allRegistryDocs}
+                departments={departments}
             />}
 
             {/* Selection Modal: Planned vs Unplanned */}
@@ -537,7 +551,7 @@ export default function ProjectsPage() {
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">หน่วยงาน</label>
                                 <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={filterDept} onChange={e => { setFilterDept(e.target.value); setSelectedAnnualPlanId(""); }}>
                                     <option value="">ทั้งหมด</option>
-                                    {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                    {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -569,7 +583,7 @@ export default function ProjectsPage() {
     );
 }
 
-function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, onClose: () => void, onUpdate: () => void, allDocs: any[] }) {
+function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { id: string, onClose: () => void, onUpdate: () => void, allDocs: any[], departments: Department[] }) {
     const { data: session } = useSession();
     const isViewer = (session?.user as any)?.role === "VIEWER";
     const [project, setProject] = useState<Project | null>(null);
@@ -949,7 +963,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs }: { id: string, on
                                                 onChange={e => { setLinkFilterDept(e.target.value); setSelectedRegistryDocId(""); }}
                                             >
                                                 <option value="">ทุกหน่วยงาน</option>
-                                                {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                                {departments.map((d: Department) => <option key={d.id} value={d.name}>{d.name}</option>)}
                                             </select>
                                         </div>
                                         <div>

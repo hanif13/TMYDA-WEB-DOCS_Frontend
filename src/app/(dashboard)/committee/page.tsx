@@ -3,11 +3,26 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Users, Mail, Phone, Briefcase, Plus, Trash2, X, Upload, Camera, Pencil, UploadCloud } from 'lucide-react';
-import { fetchCommitteeMembers, createCommitteeMember, updateCommitteeMember, deleteCommitteeMember, createCommitteeBulk } from '@/lib/api';
+import { fetchCommitteeMembers, createCommitteeMember, updateCommitteeMember, deleteCommitteeMember, createCommitteeBulk, fetchDepartments } from '@/lib/api';
 import Papa from 'papaparse';
 import { CommitteeMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
+
+const DEPT_STYLES: Record<string, { color: string, text: string }> = {
+    'admin': { color: 'bg-blue-600', text: 'text-blue-600' },
+    'family': { color: 'bg-emerald-600', text: 'text-emerald-600' },
+    'tmyda': { color: 'bg-indigo-600', text: 'text-indigo-600' },
+    'women': { color: 'bg-pink-600', text: 'text-pink-600' },
+};
+
+const getDeptStyles = (name: string) => {
+    if (name.includes('สำนักอำนวยการ')) return DEPT_STYLES.admin;
+    if (name.includes('ครอบครัวฟิตยะตุลฮัก')) return DEPT_STYLES.family;
+    if (name.includes('สมาคมพัฒนาเยาวชนมุสลิมไทย')) return DEPT_STYLES.tmyda;
+    if (name.includes('สำนักกิจการสตรี')) return DEPT_STYLES.women;
+    return DEPT_STYLES.admin; // Fallback
+};
 import { useSession } from 'next-auth/react';
 import { useYear } from '@/context/YearContext';
 
@@ -37,20 +52,24 @@ export default function CommitteePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const csvInputRef = useRef<HTMLInputElement>(null);
 
-    const departments = [
-        { id: 'admin', name: 'สำนักอำนวยการ', color: 'bg-blue-600', text: 'text-blue-600' },
-        { id: 'family', name: 'ครอบครัวฟิตยะตุลฮัก', color: 'bg-emerald-600', text: 'text-emerald-600' },
-        { id: 'tmyda', name: 'สมาคมพัฒนาเยาวชนมุสลิมไทย', color: 'bg-indigo-600', text: 'text-indigo-600' },
-        { id: 'women', name: 'สำนักกิจการสตรี สมาคมฯ', color: 'bg-pink-600', text: 'text-pink-600' },
-    ];
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
 
     const loadMembers = async () => {
         try {
             setLoading(true);
-            const data = await fetchCommitteeMembers(selectedYear || undefined);
-            setMembers(data);
+            const [membersData, deptsData] = await Promise.all([
+                fetchCommitteeMembers(selectedYear || undefined),
+                fetchDepartments()
+            ]);
+            setMembers(membersData);
+            setDbDepartments(deptsData);
+            
+            // Set default departmentId if not set
+            if (!formData.departmentId && deptsData.length > 0) {
+                setFormData(prev => ({ ...prev, departmentId: deptsData[0].id }));
+            }
         } catch (error) {
-            console.error("Error loading committee members:", error);
+            console.error("Error loading committee data:", error);
         } finally {
             setLoading(false);
         }
@@ -104,9 +123,9 @@ export default function CommitteePage() {
                         if (!name || !name.trim()) return null;
 
                         const deptName = (dIdx >= 0 && row[dIdx] ? row[dIdx] : inferredDept).trim();
-                        let foundDeptId = "admin";
-                        if (deptName) {
-                            const match = departments.find(d => deptName.includes(d.name) || d.name.includes(deptName) || d.id === deptName);
+                        let foundDeptId = dbDepartments.length > 0 ? dbDepartments[0].id : "";
+                        if (deptName && dbDepartments.length > 0) {
+                            const match = dbDepartments.find((d: any) => deptName.includes(d.name) || d.name.includes(deptName) || d.id === deptName);
                             if (match) foundDeptId = match.id;
                         }
 
@@ -278,15 +297,16 @@ export default function CommitteePage() {
                 )}
             </div>
 
-            {departments.map((dept) => {
+            {dbDepartments.map((dept: any) => {
                 const deptMembers = members.filter(m => m.departmentId === dept.id);
+                const styles = getDeptStyles(dept.name);
                 // Only hide if empty AND NOT admin (admin should see all to add)
                 if (deptMembers.length === 0 && !canEdit) return null;
 
                 return (
                     <div key={dept.id} className="space-y-6">
                         <div className="flex items-center gap-4">
-                            <div className={cn("h-8 w-1 rounded-full", dept.color)} />
+                            <div className={cn("h-8 w-1 rounded-full", styles.color)} />
                             <h2 className="text-xl font-bold text-slate-800">{dept.name}</h2>
                         </div>
 
@@ -476,7 +496,7 @@ export default function CommitteePage() {
                                         value={formData.departmentId}
                                         onChange={e => setFormData({ ...formData, departmentId: e.target.value })}
                                     >
-                                        {departments.map(d => (
+                                        {dbDepartments.map((d: any) => (
                                             <option key={d.id} value={d.id}>{d.name}</option>
                                         ))}
                                     </select>

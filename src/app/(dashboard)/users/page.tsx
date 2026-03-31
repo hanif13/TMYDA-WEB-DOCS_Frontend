@@ -13,7 +13,6 @@ import {
     fetchUsers, createUser, updateUser, deleteUser,
     fetchDepartments 
 } from "@/lib/api";
-import { DEPARTMENTS } from "@/lib/constants";
 
 const ROLES = ["SUPER_ADMIN", "ADMIN", "VIEWER"];
 
@@ -47,6 +46,7 @@ export default function UsersPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [deptFilter, setDeptFilter] = useState("all");
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -61,8 +61,12 @@ export default function UsersPage() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const data = await fetchUsers();
-            setUsers(data);
+            const [usersData, deptsData] = await Promise.all([
+                fetchUsers(),
+                fetchDepartments()
+            ]);
+            setUsers(usersData);
+            setDbDepartments(deptsData);
         } catch (error) {
             toast.error("ไม่สามารถโหลดข้อมูลผู้ใช้ได้");
         } finally {
@@ -102,7 +106,7 @@ export default function UsersPage() {
                 password: "",
                 name: "",
                 role: "VIEWER",
-                departmentId: DEPARTMENTS[0].id,
+                departmentId: dbDepartments.length > 0 ? dbDepartments[0].id : "",
                 permissions: ["ACCESS_DASHBOARD"]
             });
         }
@@ -214,7 +218,7 @@ export default function UsersPage() {
                                 onChange={e => setDeptFilter(e.target.value)}
                             >
                                 <option value="all">ทุกหน่วยงาน</option>
-                                {DEPARTMENTS.map(d => (
+                                {dbDepartments.map((d: any) => (
                                     <option key={d.id} value={d.id}>{d.name}</option>
                                 ))}
                             </select>
@@ -359,7 +363,7 @@ export default function UsersPage() {
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">หน่วยงาน *</label>
                                 <select required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.departmentId} onChange={e => setFormData({ ...formData, departmentId: e.target.value })}>
                                     <option value="">เลือกหน่วยงาน...</option>
-                                    {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    {dbDepartments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                                 </select>
                             </div>
 

@@ -7,16 +7,10 @@ import {
     FileText, BarChart3, Wallet, AlertTriangle, CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS } from "@/lib/constants";
+import { useYear } from "@/context/YearContext";
 import { BudgetTransaction, TxType, Project } from "@/lib/types";
-import { fetchTransactions, fetchAnnualPlans } from "@/lib/api";
-
-const deptColors: Record<string, string> = {
-    "สำนักอำนวยการ": "bg-amber-100 text-amber-800",
-    "สมาคมพัฒนาเยาวชนมุสลิมไทย": "bg-blue-100 text-blue-800",
-    "สำนักกิจการสตรี สมาคมฯ": "bg-pink-100 text-pink-800",
-    "ครอบครัวฟิตยะตุลฮัก": "bg-emerald-100 text-emerald-800",
-};
+import { fetchTransactions, fetchAnnualPlans, fetchDepartments } from "@/lib/api";
+import { getDeptStyle } from "@/lib/dept-styles";
 
 const txConfig: Record<TxType, { color: string; bg: string; icon: React.ElementType; sign: string }> = {
     "รายรับ": { color: "text-green-600", bg: "bg-green-500", icon: TrendingUp, sign: "+" },
@@ -30,12 +24,14 @@ export default function BudgetPage() {
     const [transactions, setTransactions] = useState<BudgetTransaction[]>([]);
     const [projects, setProjects] = useState<{id: string; name: string; department: string; budget: number}[]>([]);
     const [loading, setLoading] = useState(true);
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
 
     useEffect(() => {
         Promise.all([
             fetchTransactions().catch(() => []),
             fetchAnnualPlans().catch(() => []),
-        ]).then(([txData, plansData]) => {
+            fetchDepartments().catch(() => []),
+        ]).then(([txData, plansData, deptsData]) => {
             const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
                 id: t.id,
                 date: new Date(t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
@@ -49,6 +45,7 @@ export default function BudgetPage() {
                 docRef: t.docRef || undefined,
             }));
             setTransactions(mappedTx);
+            setDbDepartments(deptsData || []);
 
             const allProjects = plansData.flatMap((p: any) => p.projects || [])
                 .filter((proj: any) => proj.isStarted)
@@ -93,11 +90,11 @@ export default function BudgetPage() {
     }).filter(p => p.expense > 0);
 
     // Per-dept breakdown
-    const deptSummary = DEPARTMENTS.map(d => {
+    const deptSummary = dbDepartments.map(d => {
         const dExp = transactions.filter(t => t.department === d.name && t.type === "รายจ่าย").reduce((s, t) => s + t.amount, 0);
         const dRet = transactions.filter(t => t.department === d.name && t.type === "คืนเงิน").reduce((s, t) => s + t.amount, 0);
         return { ...d, expense: dExp, returned: dRet, net: dExp - dRet };
-    }).filter(d => d.expense > 0);
+    }).filter(p => p.expense > 0);
 
     const filteredTx = transactions.filter(t => {
         const matchDept = filterDept === "all" || t.department === filterDept;
@@ -197,7 +194,8 @@ export default function BudgetPage() {
                         <div className="divide-y divide-slate-50">
                             {projectSummary.map(p => {
                                 const pct = Math.min(Math.round((p.net / p.budget) * 100), 100);
-                                const dc = deptColors[p.department] ?? "bg-slate-100 text-slate-600";
+                                const deptStyle = getDeptStyle(p.department);
+                                const dc = `${deptStyle.bg} ${deptStyle.text}`;
                                 return (
                                     <div key={p.id} className="py-4 first:pt-0 last:pb-0">
                                         <div className="flex items-center justify-between mb-2">
@@ -263,7 +261,7 @@ export default function BudgetPage() {
                             <select value={filterDept} onChange={e => setFilterDept(e.target.value)}
                                 className="text-sm border border-slate-200 rounded-xl px-3 py-2 pr-8 outline-none bg-white text-slate-600 appearance-none">
                                 <option value="all">ทุกหน่วยงาน</option>
-                                {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                {dbDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                             </select>
                             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
@@ -293,7 +291,7 @@ export default function BudgetPage() {
                                             {tx.projectName && (
                                                 <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{tx.projectName}</span>
                                             )}
-                                            <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", deptColors[tx.department])}>
+                                            <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", getDeptStyle(tx.department).bg, getDeptStyle(tx.department).text)}>
                                                 {tx.department}
                                             </span>
                                             {tx.claimedBy && <span className="text-[11px] text-slate-400">เบิกโดย: {tx.claimedBy}</span>}
@@ -355,7 +353,7 @@ export default function BudgetPage() {
                                         <select required value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
                                             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none appearance-none focus:border-blue-400">
                                             <option value="" disabled>เลือก...</option>
-                                            {DEPARTMENTS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                            {dbDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                                     </div>

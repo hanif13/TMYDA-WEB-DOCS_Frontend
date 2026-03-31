@@ -3,11 +3,10 @@
 
 import { useEffect, useState } from 'react';
 import { FolderCheck, Calendar, Users, Banknote, ExternalLink, Image as ImageIcon, Search, X, ChevronRight, Hash, Target, ClipboardCheck } from 'lucide-react';
-import { fetchAnnualPlans, API_BASE_URL } from '@/lib/api';
+import { fetchAnnualPlans, API_BASE_URL, fetchDepartments } from '@/lib/api';
 import { AnnualProject, ProjectDocument } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
-import { DEPARTMENTS } from '@/lib/constants';
 
 export default function CompletedProjectsPage() {
     const { selectedYear } = useYear();
@@ -17,12 +16,17 @@ export default function CompletedProjectsPage() {
     const [selectedDept, setSelectedDept] = useState("");
     const [selectedSubDept, setSelectedSubDept] = useState("");
     const [selectedProject, setSelectedProject] = useState<AnnualProject | null>(null);
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
     const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
 
     useEffect(() => {
         const loadProjects = async () => {
             try {
-                const plans = await fetchAnnualPlans();
+                const [plans, depts] = await Promise.all([
+                    fetchAnnualPlans(),
+                    fetchDepartments()
+                ]);
+                setDbDepartments(depts || []);
                 const allProjects = plans.flatMap((p: any) => p.projects || []);
                 const completed = allProjects
                     .filter((p: any) => p.status === 'completed')
@@ -62,7 +66,7 @@ export default function CompletedProjectsPage() {
     });
 
     const subDepartments = selectedDept 
-        ? DEPARTMENTS.find(d => d.name === selectedDept)?.subDepts || []
+        ? dbDepartments.find(d => d.name === selectedDept)?.subDepts || []
         : [];
 
     if (loading) {
@@ -113,7 +117,7 @@ export default function CompletedProjectsPage() {
                             }}
                         >
                             <option value="">ทุกหน่วยงาน</option>
-                            {DEPARTMENTS.map(d => (
+                            {dbDepartments.map((d: any) => (
                                 <option key={d.id} value={d.name}>{d.name}</option>
                             ))}
                         </select>
@@ -129,7 +133,7 @@ export default function CompletedProjectsPage() {
                             disabled={!selectedDept}
                         >
                             <option value="">ทุกส่วนงาน/สังกัด</option>
-                            {subDepartments.map(s => (
+                            {subDepartments.map((s: string) => (
                                 <option key={s} value={s}>{s}</option>
                             ))}
                         </select>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
-import { Save, Building2, Users, FileText, ShieldCheck, Bell, Database } from "lucide-react";
-
-import { DEPARTMENTS } from "@/lib/constants";
+import { Save, Building2, Users, FileText, ShieldCheck, Bell, Database, Loader } from "lucide-react";
+import { fetchDepartments } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
     const { data: session } = useSession();
@@ -23,6 +23,15 @@ export default function SettingsPage() {
     const [notifyNewRequest, setNotifyNewRequest] = useState(true);
     const [notifyBudget, setNotifyBudget] = useState(true);
     const [notifyProject, setNotifyProject] = useState(false);
+    const [dbDepartments, setDbDepartments] = useState<any[]>([]);
+    const [loadingDepts, setLoadingDepts] = useState(true);
+
+    useEffect(() => {
+        fetchDepartments()
+            .then(setDbDepartments)
+            .catch(() => [])
+            .finally(() => setLoadingDepts(false));
+    }, []);
 
     const handleSave = () => {
         toast.success("บันทึกการตั้งค่าสำเร็จ!", { icon: "⚙️" });
@@ -112,23 +121,35 @@ export default function SettingsPage() {
                     <Users className="w-4 h-4 text-emerald-500" /> โครงสร้างองค์กร (หน่วยงานและสำนัก/หน่วยงาน)
                 </h2>
                 <div className="space-y-4">
-                    {DEPARTMENTS.map(dept => (
-                        <div key={dept.id} className="border border-slate-100 rounded-xl overflow-hidden">
-                            <div className={`px-4 py-3 font-semibold text-sm ${dept.color.replace('text-', '').replace('800', '').replace('bg-', 'bg-').replace('100', '50')} border-b border-slate-100 flex items-center gap-2`}>
-                                <span className={`w-2 h-2 rounded-full ${dept.dot}`} />
-                                <span className={`text-${dept.color.split('text-')[1]}`}>{dept.name}</span>
-                            </div>
-                            <div className="p-4 bg-white">
-                                <div className="flex flex-wrap gap-2">
-                                    {dept.subDepts?.map(sub => (
-                                        <span key={sub} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[11px] rounded-lg font-medium">
-                                            {sub}
-                                        </span>
-                                    ))}
+                    {loadingDepts ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader className="w-8 h-8 animate-spin text-blue-500" />
+                        </div>
+                    ) : dbDepartments.length > 0 ? (
+                        dbDepartments.map(dept => (
+                            <div key={dept.id} className="border border-slate-100 rounded-xl overflow-hidden">
+                                <div className={cn(
+                                    "px-4 py-3 font-semibold text-sm border-b border-slate-100 flex items-center gap-2",
+                                    dept.color ? (dept.color.startsWith('bg-') ? dept.color : `bg-${dept.color}-50`) : "bg-slate-50",
+                                    dept.color ? (dept.color.startsWith('text-') ? dept.color : `text-${dept.color}-600`) : "text-slate-600"
+                                )}>
+                                    <span className={cn("w-2 h-2 rounded-full", dept.color ? (dept.color.startsWith('bg-') ? dept.color : `bg-${dept.color}-500`) : "bg-slate-400")} />
+                                    <span>{dept.name}</span>
+                                </div>
+                                <div className="p-4 bg-white">
+                                    <div className="flex flex-wrap gap-2">
+                                        {dept.subDepts?.map((sub: string) => (
+                                            <span key={sub} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[11px] rounded-lg font-medium">
+                                                {sub}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    ) : (
+                        <p className="text-center py-8 text-slate-400 text-sm">ไม่พบข้อมูลหน่วยงาน</p>
+                    )}
                 </div>
             </div>
 

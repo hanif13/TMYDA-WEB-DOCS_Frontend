@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { fetchAnnualPlans, fetchTransactions, fetchDocuments, fetchUsers } from "@/lib/api";
-import { DEPARTMENTS } from "@/lib/constants";
 import { Project, StoredDocument, BudgetTransaction } from "@/lib/types";
 import { useYear } from "@/context/YearContext";
+import { getDeptStyle } from "@/lib/dept-styles";
 
 const statusConfig: Record<string, { label: string, className: string }> = {
   planning: { label: "Planning", className: "badge-draft" },
@@ -19,13 +19,6 @@ const statusConfig: Record<string, { label: string, className: string }> = {
   execution: { label: "ดำเนินการ", className: "badge-approved" },
   evaluation: { label: "ประเมินผล", className: "badge-done" },
   done: { label: "เสร็จสิ้น", className: "bg-slate-100 text-slate-500" },
-};
-
-const deptColors: Record<string, string> = {
-  "สำนักอำนวยการ": "bg-amber-100 text-amber-800",
-  "สมาคมพัฒนาเยาวชนมุสลิมไทย": "bg-blue-100 text-blue-800",
-  "สำนักกิจการสตรี สมาคมฯ": "bg-pink-100 text-pink-800",
-  "ครอบครัวฟิตยะตุลฮัก": "bg-emerald-100 text-emerald-800",
 };
 
 export default function DashboardPage() {
@@ -231,7 +224,8 @@ export default function DashboardPage() {
               <li className="px-5 py-8 text-center text-sm text-slate-500">ยังไม่มีโครงการ</li>
             ) : recentProjects.map((project) => {
               const status = statusConfig[project.step] || statusConfig.planning;
-              const deptColor = deptColors[project.department] ?? 'bg-gray-100 text-gray-600';
+              const deptStyle = getDeptStyle(project.department);
+              const deptColor = `${deptStyle.bg} ${deptStyle.text}`;
               return (
                 <li key={project.id} className="px-5 py-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer">
                   <div className="flex items-center justify-between gap-3">
