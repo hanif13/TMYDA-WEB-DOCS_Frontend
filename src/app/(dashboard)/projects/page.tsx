@@ -138,7 +138,7 @@ export default function ProjectsPage() {
                         step: proj.status as ProjectStep,
                         budget: proj.budget,
                         budgetUsed: proj.budgetUsed,
-                        externalBudget: proj.externalBudget,
+                        externalBudget: proj.actualBudgetExternal || 0,
                         lead: proj.lead,
                         startDate: proj.startDate,
                         endDate: proj.endDate,
@@ -648,7 +648,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                     actualDate: found.actualDate,
                     actualBudget: found.actualBudget,
                     budgetUsed: found.budgetUsed || 0,
-                    externalBudget: found.actualBudgetExternal || 0
+                    actualBudgetExternal: found.actualBudgetExternal || 0
                 });
                 setActualDateText(found.actualDate || "");
                 // Populate edit form
@@ -945,7 +945,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                         onChange={e => setEditForm({...editForm, externalBudget: e.target.value})}
                                                     />
                                                 ) : (
-                                                    <p className="text-sm font-bold text-slate-700">฿{(project.externalBudget || 0).toLocaleString()}</p>
+                                                    <p className="text-sm font-bold text-slate-700">฿{(project.actualBudgetExternal || 0).toLocaleString()}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -1094,12 +1094,12 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-700 border-t border-purple-100 pt-3">
                                                         <span>งบประมาณที่ใช้รวมจริง</span>
                                                         <span className="text-slate-900 text-xs font-black">
-                                                            ฿{( (project.budgetUsed || 0) + (isEditing ? Number(editForm.externalBudget || 0) : (project.externalBudget || 0)) ).toLocaleString()}
+                                                            ฿{( (project.budgetUsed || 0) + (isEditing ? Number(editForm.externalBudget || 0) : (project.actualBudgetExternal || 0)) ).toLocaleString()}
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest text-slate-400 px-1">
                                                         <span>(ในระบบ ฿{(project.budgetUsed || 0).toLocaleString()})</span>
-                                                        <span>(เงินบริจาค ฿{(isEditing ? Number(editForm.externalBudget || 0) : (project.externalBudget || 0)).toLocaleString()})</span>
+                                                        <span>(เงินบริจาค ฿{(isEditing ? Number(editForm.externalBudget || 0) : (project.actualBudgetExternal || 0)).toLocaleString()})</span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-400 border-t border-purple-100 pt-3 italic">
                                                         <span>สถานะ</span>
