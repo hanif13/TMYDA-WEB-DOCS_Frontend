@@ -6,7 +6,7 @@ import {
   FileText, TrendingDown, Users, ArrowUpRight,
   CheckCircle2, Plus, CalendarDays, ChevronRight, 
   Loader, Wallet, Target, Zap, BarChart3, 
-  LayoutDashboard, CircleDot, ArrowRight, Banknote
+  LayoutDashboard, CircleDot, ArrowRight, Banknote, FolderKanban
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -289,7 +289,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {committeeByDept.map((dept) => (
-                <div key={dept.id} className={cn("p-6 rounded-[2rem] border text-center space-y-2 group transition-all duration-300", dept.style.bg.replace('bg-', 'bg-opacity-10 bg-'), dept.style.border || "border-slate-100")}>
+                <div key={dept.id} className={cn("p-6 rounded-[2rem] border text-center space-y-2 group transition-all duration-300", dept.style.bg.replace('bg-', 'bg-opacity-10 bg-'), "border-slate-100")}>
                   <p className={cn("text-3xl font-black leading-none", dept.style.text)}>{dept.count}</p>
                   <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 line-clamp-1">{dept.name}</p>
                   <div className="w-8 h-1 mx-auto bg-current opacity-20 rounded-full group-hover:w-12 transition-all duration-300" />
