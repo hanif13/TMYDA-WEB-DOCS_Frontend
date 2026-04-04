@@ -34,7 +34,7 @@ export default function BudgetPage() {
         ]).then(([txData, plansData, deptsData]) => {
             const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
                 id: t.id,
-                date: new Date(t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
+                date: new Date(t.date || t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
                 type: t.type === "income" ? "รายรับ" : t.type === "expense" ? "รายจ่าย" : "คืนเงิน",
                 description: t.title,
                 department: t.department?.name || "",
@@ -43,6 +43,8 @@ export default function BudgetPage() {
                 amount: t.amount,
                 recordedBy: "ทีมงบประมาณ",
                 docRef: t.docRef || undefined,
+                originalDate: t.date || t.createdAt,
+                subType: t.category || "general",
             }));
             setTransactions(mappedTx);
             setDbDepartments(deptsData || []);
@@ -121,6 +123,8 @@ export default function BudgetPage() {
             recordedBy: "ทีมงบประมาณ",
             note: form.note || undefined,
             docRef: form.docRef || undefined,
+            originalDate: new Date().toISOString(),
+            subType: form.type === "คืนเงิน" ? "refund" : "general",
         };
         setTransactions(prev => [newTx, ...prev]);
         toast.success(`บันทึก${form.type} ฿${Number(form.amount).toLocaleString()} สำเร็จ!`, { icon: "✅" });
