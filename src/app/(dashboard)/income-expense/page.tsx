@@ -118,6 +118,7 @@ export default function IncomeExpensePage() {
                 department: d.department?.name || "",
                 uploadedBy: d.uploadedBy?.name || "",
                 uploadedAt: new Date(d.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
+                projectId: d.projectId || undefined,
             }));
             setDocuments(mappedDocs);
             setDbDepartments(deptsData || []);
@@ -935,7 +936,12 @@ export default function IncomeExpensePage() {
                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                                 <option value="">ไม่มีเอกสารอ้างอิง</option>
                                                 {documents
-                                                    .filter(d => d.type === "ประเภทเอกสารภายใน")
+                                                    .filter(d => {
+                                                        if (form.projectId) {
+                                                            return d.projectId === form.projectId;
+                                                        }
+                                                        return d.type === "ประเภทเอกสารภายใน";
+                                                    })
                                                     .map(d => (
                                                         <option key={d.id} value={d.id}>{d.docNo} — {d.name}</option>
                                                     ))
