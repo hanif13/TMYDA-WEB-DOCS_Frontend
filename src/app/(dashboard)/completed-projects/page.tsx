@@ -2,9 +2,9 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { FolderCheck, Calendar, Users, Banknote, ExternalLink, Image as ImageIcon, Search, X, ChevronRight, Hash, Target, ClipboardCheck } from 'lucide-react';
-import { fetchAnnualPlans, API_BASE_URL, fetchDepartments, getMediaUrl } from '@/lib/api';
-import { AnnualProject, ProjectDocument } from '@/lib/types';
+import { FolderCheck, Calendar, Users, Banknote, Image as ImageIcon, Search, X, ChevronRight, Target, ClipboardCheck } from 'lucide-react';
+import { fetchAnnualPlans, fetchDepartments, getMediaUrl } from '@/lib/api';
+import { AnnualProject } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
 
@@ -61,7 +61,6 @@ function CompletedProjectsContent() {
         loadProjects();
     }, []);
 
-    // Handle auto-selection of project from URL
     useEffect(() => {
         if (!loading && projects.length > 0) {
             const projectId = searchParams.get('id');
@@ -74,7 +73,6 @@ function CompletedProjectsContent() {
         }
     }, [loading, projects, searchParams]);
 
-    // Body Scroll Lock
     useEffect(() => {
         if (selectedProject) {
             document.body.style.overflow = 'hidden';
@@ -109,6 +107,7 @@ function CompletedProjectsContent() {
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-8">
+            {/* Header section... */}
             <div className="flex flex-col gap-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -123,7 +122,6 @@ function CompletedProjectsContent() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
-                    {/* Search */}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input 
@@ -135,7 +133,6 @@ function CompletedProjectsContent() {
                         />
                     </div>
 
-                    {/* Department Filter */}
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
                         <Users className="w-4 h-4 text-slate-400" />
                         <select 
@@ -153,7 +150,6 @@ function CompletedProjectsContent() {
                         </select>
                     </div>
 
-                    {/* Sub-department Filter */}
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
                         <Target className="w-4 h-4 text-slate-400" />
                         <select 
@@ -169,13 +165,13 @@ function CompletedProjectsContent() {
                         </select>
                     </div>
 
-                    {/* Results Count */}
                     <div className="flex items-center justify-end px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         พบ {filteredProjects.length} รายการ
                     </div>
                 </div>
             </div>
 
+            {/* Grid... */}
             {filteredProjects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
                     <ImageIcon className="w-12 h-12 text-slate-300 mb-4" />
@@ -190,7 +186,6 @@ function CompletedProjectsContent() {
                             className="group bg-white rounded-3xl border border-slate-100 p-5 hover:shadow-xl hover:shadow-purple-500/5 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden"
                         >
                             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150" />
-                            
                             <div className="relative">
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-[10px] font-black uppercase rounded-lg tracking-wider">
@@ -241,156 +236,119 @@ function CompletedProjectsContent() {
                 </div>
             )}
 
-            {/* Image Gallery Modal */}
+            {/* Modal */}
             {selectedProject && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
                     <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setSelectedProject(null)} />
-                    
-                    <div className="relative w-full max-w-5xl bg-white rounded-none sm:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
-                        <button 
-                            onClick={() => setSelectedProject(null)}
-                            className="absolute top-6 right-6 z-10 p-2 bg-white/80 hover:bg-white rounded-full text-slate-400 hover:text-slate-900 transition-all border border-slate-100 shadow-sm"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                    <div className="relative w-full max-w-6xl bg-white rounded-none sm:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
+                        {/* Fixed Header/Close Button on Mobile */}
+                        <div className="absolute top-4 right-4 z-50">
+                            <button 
+                                onClick={() => setSelectedProject(null)}
+                                className="p-2.5 bg-slate-900/10 hover:bg-slate-900/20 backdrop-blur-md rounded-full text-slate-900 transition-all border border-black/5"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            <div className="flex flex-col lg:flex-row h-full">
-                                {/* Details (Left/Top) */}
-                                <div className="lg:w-1/3 p-6 sm:p-10 border-b lg:border-b-0 lg:border-r border-slate-50">
-                                <div className="flex items-center gap-2 mb-6">
-                                    <span className="px-3 py-1 bg-purple-100 text-purple-700 text-[10px] font-black uppercase rounded-lg tracking-wider">
-                                        Year {selectedProject.thaiYear}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{selectedProject.department}</span>
-                                </div>
-
-                                <h2 className="text-2xl font-bold text-slate-900 mb-6 leading-tight">{selectedProject.name}</h2>
-                                
-                                <div className="space-y-6">
-                                    <div className="p-5 bg-slate-50 rounded-3xl">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                                            <ClipboardCheck className="w-3.5 h-3.5" /> สรุปผลงาน
-                                        </h4>
-                                        <p className="text-xs font-medium text-slate-600 leading-relaxed whitespace-pre-line">
-                                            {selectedProject.description || "ไม่มีข้อมูลสรุปผล"}
-                                        </p>
+                        {/* Scrollable Content Container */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+                            <div className="flex flex-col md:flex-row min-h-full">
+                                {/* Left Section: Details */}
+                                <div className="flex-1 md:flex-initial md:w-1/3 p-6 sm:p-10 border-b md:border-b-0 md:border-r border-slate-50 bg-white">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <span className="px-3 py-1 bg-purple-100 text-purple-700 text-[10px] font-black uppercase rounded-lg tracking-wider">Year {selectedProject.thaiYear}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{selectedProject.department}</span>
                                     </div>
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div className="flex items-center gap-3 p-4 bg-purple-50/50 rounded-2xl">
-                                            <Calendar className="w-4 h-4 text-purple-600" />
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">วันที่จัดโครงการจริง</p>
-                                                <p className="text-xs font-bold text-slate-700">{selectedProject.actualDate || "-"}</p>
-                                            </div>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-6 leading-tight">{selectedProject.name}</h2>
+                                    <div className="space-y-6">
+                                        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                                <ClipboardCheck className="w-4 h-4" /> สรุปผลงาน
+                                            </h4>
+                                            <p className="text-[13px] font-medium text-slate-600 leading-relaxed whitespace-pre-line">{selectedProject.description || "ไม่มีข้อมูลสรุปผล"}</p>
                                         </div>
-                                        <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl">
-                                            <Banknote className="w-4 h-4 text-blue-600" />
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">งบประมาณที่ใช้รวม</p>
-                                                <p className="text-xs font-black text-slate-700">
-                                                    ฿{((selectedProject.actualBudget || selectedProject.budgetUsed || 0) + (selectedProject.actualBudgetExternal || 0)).toLocaleString()}
-                                                    {selectedProject.actualBudgetExternal ? (
-                                                        <span className="text-[9px] text-blue-400 block font-bold">
-                                                            (งบภายใน: ฿{(selectedProject.actualBudget || selectedProject.budgetUsed || 0).toLocaleString()} + งบสมทบ: ฿{selectedProject.actualBudgetExternal.toLocaleString()})
-                                                        </span>
-                                                    ) : null}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {(selectedProject.targetPax || selectedProject.actualPax) && (
-                                            <div className="flex items-center gap-3 p-4 bg-emerald-50/50 rounded-2xl">
-                                                <Users className="w-4 h-4 text-emerald-600" />
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div className="flex items-center gap-4 p-5 bg-purple-50 rounded-2xl border border-purple-100/50">
+                                                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
+                                                    <Calendar className="w-5 h-5" />
+                                                </div>
                                                 <div>
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">จำนวนผู้เข้าร่วม (จริง/เป้าหมาย)</p>
-                                                    <p className="text-xs font-bold text-slate-700">
-                                                        {selectedProject.actualPax || 0} / {selectedProject.targetPax || 0} คน
-                                                    </p>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">วันที่จัดโครงการจริง</p>
+                                                    <p className="text-sm font-bold text-slate-700">{selectedProject.actualDate || "-"}</p>
                                                 </div>
                                             </div>
-                                        )}
-                                        {selectedProject.kpi && (
-                                            <div className="flex items-center gap-3 p-4 bg-amber-50/50 rounded-2xl">
-                                                <Target className="w-4 h-4 text-amber-600" />
+                                            <div className="flex items-center gap-4 p-5 bg-blue-50 rounded-2xl border border-blue-100/50">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                                                    <Banknote className="w-5 h-5" />
+                                                </div>
                                                 <div>
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ตัวชี้วัดความสำเร็จ (KPI)</p>
-                                                    <p className="text-xs font-bold text-slate-700">{selectedProject.kpi}</p>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">งบประมาณที่ใช้รวม</p>
+                                                    <p className="text-sm font-black text-slate-700">฿{((selectedProject.actualBudget || selectedProject.budgetUsed || 0) + (selectedProject.actualBudgetExternal || 0)).toLocaleString()}</p>
                                                 </div>
                                             </div>
-                                        )}
-                                        <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl">
-                                            <Users className="w-4 h-4 text-slate-400" />
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">โครงการรับผิดชอบโดย</p>
-                                                <p className="text-xs font-bold text-slate-700">{selectedProject.lead || "-"}</p>
-                                            </div>
+                                            {(selectedProject.targetPax || selectedProject.actualPax) && (
+                                                <div className="flex items-center gap-4 p-5 bg-emerald-50 rounded-2xl border border-emerald-100/50">
+                                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                                        <Users className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">จำนวนผู้เข้าร่วม</p>
+                                                        <p className="text-sm font-bold text-slate-700">{selectedProject.actualPax || 0} / {selectedProject.targetPax || 0} คน</p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                                </div>
-                            </div>
 
-                            {/* Gallery (Right/Bottom) */}
-                            <div className="lg:w-2/3 p-6 sm:p-10 bg-slate-50/30">
-                                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
-                                    <ImageIcon className="w-3.5 h-3.5" /> ภาพบรรยากาศโครงการ ({selectedProject.summaryImages?.length || 0})
-                                </h3>
-                                
-                                {selectedProject.summaryImages && selectedProject.summaryImages.length > 0 ? (
-                                    <div className="grid grid-cols-3 gap-4 pb-20">
-                                        {selectedProject.summaryImages.map((img, idx) => {
-                                            const imageUrl = getMediaUrl(img);
-                                            return (
+                                {/* Right Section: Gallery */}
+                                <div className="flex-1 md:w-2/3 p-6 sm:p-10 bg-slate-50/50">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-2">
+                                        <ImageIcon className="w-4 h-4" /> ภาพบรรยากาศโครงการ ({selectedProject.summaryImages?.length || 0})
+                                    </h3>
+                                    {selectedProject.summaryImages && selectedProject.summaryImages.length > 0 ? (
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {selectedProject.summaryImages.map((img, idx) => (
                                                 <div 
                                                     key={idx} 
-                                                    onClick={() => setFullScreenImage(imageUrl)}
-                                                    className="group/img aspect-[4/3] rounded-2xl overflow-hidden border-2 border-white shadow-md hover:shadow-2xl transition-all cursor-zoom-in relative"
+                                                    onClick={() => setFullScreenImage(getMediaUrl(img))}
+                                                    className="group/img aspect-square rounded-3xl overflow-hidden border-4 border-white shadow-md hover:shadow-2xl transition-all cursor-zoom-in relative"
                                                 >
                                                     <img 
-                                                        src={imageUrl} 
+                                                        src={getMediaUrl(img)} 
                                                         alt={`${selectedProject.name} ${idx + 1}`} 
-                                                        className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" 
+                                                        className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-700" 
                                                     />
-                                                    <div className="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-all flex items-center justify-center opacity-0 group-hover/img:opacity-100">
-                                                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white scale-75 group-hover/img:scale-100 transition-transform">
+                                                    <div className="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/40 transition-all flex items-center justify-center opacity-0 group-hover/img:opacity-100">
+                                                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white scale-75 group-hover/img:scale-100 transition-transform duration-300">
                                                             <ImageIcon className="w-6 h-6" />
                                                         </div>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-slate-300 bg-white/50 rounded-[3rem] border-2 border-dashed border-slate-200 p-8">
-                                        <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] italic opacity-50">ไม่พบภาพบรรยากาศ</p>
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="h-60 flex flex-col items-center justify-center text-slate-300 bg-white/40 rounded-[2.5rem] border-4 border-dashed border-slate-200 p-8">
+                                            <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] italic opacity-50 text-center">ไม่พบภาพบรรยากาศในระบบ</p>
+                                        </div>
+                                    )}
+                                    <div className="h-20" /> {/* Bottom spacer for mobile */}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Full Screen Image Viewer */}
+            {/* Lightbox... */}
             {fullScreenImage && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={() => setFullScreenImage(null)} />
-                    
-                    <button 
-                        onClick={() => setFullScreenImage(null)}
-                        className="absolute top-8 right-8 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
-
+                    <button onClick={() => setFullScreenImage(null)} className="absolute top-8 right-8 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10"><X className="w-6 h-6" /></button>
                     <div className="relative w-full h-full flex items-center justify-center">
-                        <img 
-                            src={fullScreenImage} 
-                            alt="Full Screen View" 
-                            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
-                        />
+                        <img src={fullScreenImage} alt="Full Screen View" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
                     </div>
                 </div>
             )}
@@ -400,11 +358,7 @@ function CompletedProjectsContent() {
 
 export default function CompletedProjectsPage() {
     return (
-        <Suspense fallback={
-            <div className="flex items-center justify-center h-[60vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        }>
+        <Suspense fallback={<div className="flex items-center justify-center h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
             <CompletedProjectsContent />
         </Suspense>
     );
