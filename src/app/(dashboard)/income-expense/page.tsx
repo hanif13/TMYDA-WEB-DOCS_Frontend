@@ -863,7 +863,7 @@ export default function IncomeExpensePage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">จำนวนเงิน (บาท) *</label>
-                                        <input type="number" required min="0" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                                        <input type="number" step="any" required min="0" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
                                             placeholder="0.00"
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-black text-blue-600 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300" />
                                     </div>

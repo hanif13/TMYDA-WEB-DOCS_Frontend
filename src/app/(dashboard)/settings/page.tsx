@@ -100,7 +100,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-slate-500 mb-1.5 block">งบประมาณรวม (บาท)</label>
-                        <input type="number" value={totalBudget} onChange={e => !isViewer && setTotalBudget(e.target.value)} readOnly={isViewer}
+                        <input type="number" step="any" value={totalBudget} onChange={e => !isViewer && setTotalBudget(e.target.value)} readOnly={isViewer}
                             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none focus:border-blue-400 transition-all" />
                     </div>
                     <div>

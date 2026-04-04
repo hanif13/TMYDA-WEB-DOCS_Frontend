@@ -1250,9 +1250,10 @@ export default function AnnualProjectsPage() {
                                         <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">งบประมาณจัดสรร (฿)</label>
                                         <input
                                             type="number"
+                                            step="any"
                                             required
                                             value={addFormData.budget || ""}
-                                            onChange={e => setAddFormData({ ...addFormData, budget: parseInt(e.target.value) || 0 })}
+                                            onChange={e => setAddFormData({ ...addFormData, budget: Number(e.target.value) || 0 })}
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none"
                                             placeholder="ระบุงบประมาณ..."
                                         />

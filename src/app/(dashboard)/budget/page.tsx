@@ -374,14 +374,14 @@ export default function BudgetPage() {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="text-xs font-semibold text-slate-600 mb-1.5 block">จำนวนเงิน (บาท) *</label>
-                                    <input type="number" required min="0" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                                    <input type="number" step="any" required min="0" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
                                         placeholder="0"
                                         className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none focus:border-blue-400 transition-all" />
                                 </div>
                                 {form.type === "รายจ่าย" && (
                                     <div>
                                         <label className="text-xs font-semibold text-slate-600 mb-1.5 block">ยอดคืน (ถ้ามี)</label>
-                                        <input type="number" min="0" value={form.returnedAmount} onChange={e => setForm(p => ({ ...p, returnedAmount: e.target.value }))}
+                                        <input type="number" step="any" min="0" value={form.returnedAmount} onChange={e => setForm(p => ({ ...p, returnedAmount: e.target.value }))}
                                             placeholder="0"
                                             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none focus:border-blue-400 transition-all" />
                                     </div>
