@@ -8,7 +8,7 @@ import {
     CheckCircle2, Clock, UploadCloud, Archive, FileEdit, ChevronRight,
     CalendarDays, Users, Banknote, AlertCircle, Loader, Plus, FileText,
     Download, Eye, X, ChevronDown, Trash2, CalendarHeart, ClipboardList,
-    ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw, Calendar
+    ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw, Calendar, Save
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DOC_TYPES } from "@/lib/constants";
@@ -599,6 +599,17 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
     const [reportText, setReportText] = useState("");
     const [actualDateText, setActualDateText] = useState("");
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
+    
+    // Edit Mode State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({
+        name: "",
+        lead: "",
+        projectType: "",
+        budget: "",
+        subDepartment: "",
+        months: [] as number[]
+    });
 
     const fetchProject = async () => {
         setIsLoading(true);
@@ -635,6 +646,15 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                     budgetUsed: found.budgetUsed || 0
                 });
                 setActualDateText(found.actualDate || "");
+                // Populate edit form
+                setEditForm({
+                    name: found.name,
+                    lead: found.lead,
+                    projectType: found.projectType,
+                    budget: found.budget.toString(),
+                    subDepartment: found.subDepartment || "",
+                    months: found.months || []
+                });
             }
         } catch (error) {
             toast.error("ไม่สามารถโหลดข้อมูลโครงการได้");
@@ -715,6 +735,41 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
         }
     };
 
+    const handleSaveEdit = async () => {
+        if (!editForm.name || !editForm.lead || !editForm.budget) {
+            return toast.error("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
+        }
+        setIsUpdating(true);
+        try {
+            const deptId = departments.find(d => d.name === project?.department)?.id;
+            await updateProject(id, {
+                name: editForm.name,
+                lead: editForm.lead,
+                projectType: editForm.projectType,
+                budget: Number(editForm.budget),
+                subDepartment: editForm.subDepartment,
+                months: editForm.months,
+                departmentId: deptId
+            });
+            toast.success("แก้ไขข้อมูลโครงการสำเร็จ!");
+            setIsEditing(false);
+            onUpdate();
+        } catch (error) {
+            toast.error("ไม่สามารถบันทึกข้อมูลได้");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const toggleEditMonth = (m: number) => {
+        setEditForm(prev => {
+            const newMonths = prev.months.includes(m)
+                ? prev.months.filter(x => x !== m)
+                : [...prev.months, m];
+            return { ...prev, months: newMonths };
+        });
+    };
+
     if (!project) return (
         <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center backdrop-blur-sm">
             <Loader className="w-8 h-8 animate-spin text-white" />
@@ -731,19 +786,56 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                             <Archive className="w-7 h-7 text-blue-400" />
                         </div>
                         <div>
-                            <h3 className="text-xl font-bold">{project.name}</h3>
+                            {isEditing ? (
+                                <input 
+                                    className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xl font-bold w-full outline-none focus:bg-white/20"
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({...editForm, name: e.target.value})}
+                                />
+                            ) : (
+                                <h3 className="text-xl font-bold">{project.name}</h3>
+                            )}
                             <div className="flex items-center gap-3 mt-1 text-slate-400">
                                 <span className="text-[11px] font-black uppercase tracking-widest">{project.department}</span>
                                 <span className="text-slate-600">·</span>
                                 <span className="text-xs font-bold text-blue-400 flex items-center gap-1">
-                                    <Banknote className="w-3.5 h-3.5" /> ฿{project.budget.toLocaleString()}
+                                    <Banknote className="w-3.5 h-3.5" /> 
+                                    {isEditing ? (
+                                        <input 
+                                            type="number"
+                                            className="bg-transparent border-b border-blue-400/30 text-blue-400 outline-none w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            value={editForm.budget}
+                                            onChange={e => setEditForm({...editForm, budget: e.target.value})}
+                                        />
+                                    ) : (
+                                        `฿${project.budget.toLocaleString()}`
+                                    )}
                                 </span>
                             </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
-                        <X className="w-6 h-6" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {!isViewer && (
+                            isEditing ? (
+                                <>
+                                    <button onClick={() => setIsEditing(false)} className="h-12 px-6 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all text-xs font-bold">
+                                        ยกเลิก
+                                    </button>
+                                    <button onClick={handleSaveEdit} disabled={isUpdating} className="h-12 px-6 flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-2xl transition-all text-xs font-bold gap-2">
+                                        {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        บันทึก
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={() => setIsEditing(true)} className="h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all" title="แก้ไขโครงการ">
+                                    <FileEdit className="w-5 h-5 text-blue-400" />
+                                </button>
+                            )
+                        )}
+                        <button onClick={onClose} className="h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Sub Header / Tabs */}
@@ -779,9 +871,55 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                     <div className="bg-slate-50 rounded-3xl p-6 space-y-4">
                                         <div className="flex items-start gap-3">
                                             <Users className="w-4 h-4 text-slate-400 mt-0.5" />
-                                            <div>
+                                            <div className="flex-1">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase">หัวหน้าโครงการ</p>
-                                                <p className="text-sm font-bold text-slate-700">{project.lead}</p>
+                                                {isEditing ? (
+                                                    <input 
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 focus:border-blue-400"
+                                                        value={editForm.lead}
+                                                        onChange={e => setEditForm({...editForm, lead: e.target.value})}
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-bold text-slate-700">{project.lead}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
+                                            <Target className="w-4 h-4 text-slate-400 mt-0.5" />
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">ประเภทโครงการ</p>
+                                                {isEditing ? (
+                                                    <select 
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 cursor-pointer focus:border-blue-400"
+                                                        value={editForm.projectType}
+                                                        onChange={e => setEditForm({...editForm, projectType: e.target.value})}
+                                                    >
+                                                        {PROJECT_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                                    </select>
+                                                ) : (
+                                                    <p className="text-sm font-bold text-slate-700">{project.projectType}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
+                                            <LayoutDashboard className="w-4 h-4 text-slate-400 mt-0.5" />
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">ฝ่าย/กลุ่มงาน</p>
+                                                {isEditing ? (
+                                                    <select 
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 cursor-pointer focus:border-blue-400"
+                                                        value={editForm.subDepartment}
+                                                        onChange={e => setEditForm({...editForm, subDepartment: e.target.value})}
+                                                    >
+                                                        {departments.find(d => d.name === project.department)?.subDepts.map(sd => (
+                                                            <option key={sd} value={sd}>{sd}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <p className="text-sm font-bold text-slate-700">{project.subDepartment || "-"}</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -810,17 +948,28 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <CalendarDays className="w-3.5 h-3.5" /> การดำเนินการรายเดือน
                                         </h4>
                                         <div className="grid grid-cols-3 gap-3">
-                                            {project.months.map(m => (
-                                                <button key={m} onClick={() => !isViewer && project.step === "in_progress" && handleToggleMonth(m)}
-                                                    className={cn("p-4 rounded-[1.5rem] border-2 transition-all text-left group relative overflow-hidden",
-                                                        project.completedMonths.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200",
-                                                        isViewer && "cursor-default text-opacity-50"
-                                                    )}>
-                                                    <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m-1]}</p>
-                                                    <p className="text-sm font-bold">{project.completedMonths.includes(m) ? "เสร็จแล้ว" : "รอดำเนินงาน"}</p>
-                                                    {project.completedMonths.includes(m) && <CheckCircle2 className="absolute -right-2 -bottom-2 w-10 h-10 opacity-20" />}
-                                                </button>
-                                            ))}
+                                            {isEditing ? (
+                                                Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                                    <button key={m} type="button" onClick={() => toggleEditMonth(m)}
+                                                        className={cn("p-4 rounded-[1.5rem] border-2 transition-all text-left",
+                                                            editForm.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200")}>
+                                                        <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m-1]}</p>
+                                                        <p className="text-sm font-bold">{editForm.months.includes(m) ? "เลือกแล้ว" : "ไม่ได้เลือก"}</p>
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                project.months.map(m => (
+                                                    <button key={m} onClick={() => !isViewer && project.step === "in_progress" && handleToggleMonth(m)}
+                                                        className={cn("p-4 rounded-[1.5rem] border-2 transition-all text-left group relative overflow-hidden",
+                                                            project.completedMonths.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200",
+                                                            isViewer && "cursor-default text-opacity-50"
+                                                        )}>
+                                                        <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m-1]}</p>
+                                                        <p className="text-sm font-bold">{project.completedMonths.includes(m) ? "เสร็จแล้ว" : "รอดำเนินงาน"}</p>
+                                                        {project.completedMonths.includes(m) && <CheckCircle2 className="absolute -right-2 -bottom-2 w-10 h-10 opacity-20" />}
+                                                    </button>
+                                                ))
+                                            )}
                                         </div>
                                         <p className="text-[10px] text-slate-400 mt-4 leading-relaxed font-medium">หมายเหตุ: สำหรับโครงการต่อเนื่อง คุณสามารถเลือกเดือนที่ดำเนินการเสร็จแล้วได้โดยไม่ต้องปิดโครงการ</p>
                                     </section>
