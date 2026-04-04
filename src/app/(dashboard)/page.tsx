@@ -167,12 +167,6 @@ export default function DashboardPage() {
               <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${stat.bg}`}>
                 <stat.icon className={`h-5 w-5 ${stat.text}`} />
               </div>
-              <div className="flex items-center gap-1 text-xs font-semibold">
-                {stat.changeType === 'up' && <ArrowUpRight className="w-3.5 h-3.5 text-green-500" />}
-                {stat.changeType === 'down' && <ArrowDownRight className="w-3.5 h-3.5 text-green-500" />}
-                {stat.changeType === 'warn' && <CircleDot className="w-3.5 h-3.5 text-amber-500" />}
-                <span className={stat.changeType === 'warn' ? 'text-amber-600' : 'text-green-600'}>{stat.change}</span>
-              </div>
             </div>
             <div className="mt-3">
               <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
