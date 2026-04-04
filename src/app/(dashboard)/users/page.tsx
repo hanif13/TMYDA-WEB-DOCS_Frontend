@@ -5,35 +5,25 @@ import { useSession } from "next-auth/react";
 import { 
     Users, ShieldCheck, User, Plus, MoreHorizontal, 
     Loader, X, Check, Trash2, Key, Mail, Building2,
-    ShieldAlert, Eye, UserCog
+    ShieldAlert, Eye, UserCog, Phone, Facebook,
+    FileUp, Download, AlertCircle
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { 
     fetchUsers, createUser, updateUser, deleteUser,
-    fetchDepartments 
+    fetchDepartments, uploadUsersCsv 
 } from "@/lib/api";
 
-const ROLES = ["SUPER_ADMIN", "ADMIN", "VIEWER"];
-
-const PERMISSIONS = [
-    { id: 'ACCESS_DASHBOARD', label: 'หน้าหลัก (Dashboard)' },
-    { id: 'ACCESS_COMPLETED_PROJECTS', label: 'โครงการที่เสร็จสิ้น' },
-    { id: 'ACCESS_COMMITTEE', label: 'คณะกรรมการ' },
-    { id: 'ACCESS_DOCUMENTS', label: 'การจัดการเอกสาร' },
-    { id: 'ACCESS_REGISTRY', label: 'ทะเบียนเอกสาร' },
-    { id: 'ACCESS_INCOME_EXPENSE', label: 'รายรับ-รายจ่าย' },
-    { id: 'ACCESS_ANNUAL_PROJECTS', label: 'โครงการประจำปี' },
-    { id: 'ACCESS_PROJECTS', label: 'จัดการโครงการ' },
-    { id: 'ACCESS_USERS', label: 'จัดการผู้ใช้งาน' },
-    { id: 'ACCESS_YEARS', label: 'จัดการปีการทำงาน' },
-];
-
-const roleColors: Record<string, string> = {
-    "SUPER_ADMIN": "bg-purple-100 text-purple-700 border-purple-200",
-    "ADMIN": "bg-blue-100 text-blue-700 border-blue-200",
-    "VIEWER": "bg-slate-100 text-slate-600 border-slate-200",
+const ROLES_CONFIG: Record<string, { label: string; color: string; icon: string; desc: string }> = {
+    SUPER_ADMIN: { label: 'ผู้ดูแลระบบ', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: '🛡️', desc: 'ทำได้ทุกอย่าง (สูงสุด 3 คน)' },
+    ADMIN: { label: 'ผู้ใช้งาน', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: '👤', desc: 'จัดการโครงการ เอกสาร คณะกรรมการ' },
+    FINANCE: { label: 'ผู้จัดการการเงิน', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: '💰', desc: 'จัดการรายรับ-รายจ่าย' },
+    VIEWER: { label: 'ผู้ใช้ทั่วไป', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: '👁️', desc: 'ดูข้อมูล ขอเอกสาร ดาวน์โหลด' },
 };
+
+const ROLES = Object.keys(ROLES_CONFIG);
+const MAX_SUPER_ADMINS = 3;
 
 export default function UsersPage() {
     const { data: session } = useSession();
@@ -42,8 +32,11 @@ export default function UsersPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadResults, setUploadResults] = useState<any | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [deptFilter, setDeptFilter] = useState("all");
     const [dbDepartments, setDbDepartments] = useState<any[]>([]);
@@ -55,6 +48,9 @@ export default function UsersPage() {
         name: "",
         role: "VIEWER",
         departmentId: "",
+        email: "",
+        phoneNumber: "",
+        facebook: "",
         permissions: [] as string[]
     });
 
@@ -97,6 +93,9 @@ export default function UsersPage() {
                 name: user.name,
                 role: user.role,
                 departmentId: user.departmentId || "",
+                email: user.email || "",
+                phoneNumber: user.phoneNumber || "",
+                facebook: user.facebook || "",
                 permissions: user.permissions || []
             });
         } else {
@@ -107,6 +106,9 @@ export default function UsersPage() {
                 name: "",
                 role: "VIEWER",
                 departmentId: dbDepartments.length > 0 ? dbDepartments[0].id : "",
+                email: "",
+                phoneNumber: "",
+                facebook: "",
                 permissions: ["ACCESS_DASHBOARD"]
             });
         }
@@ -144,6 +146,47 @@ export default function UsersPage() {
         }
     };
 
+    const handleUploadCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setUploadResults(null);
+        try {
+            const res = await uploadUsersCsv(file);
+            setUploadResults(res);
+            toast.success(`นำเข้าข้อมูลสมาชิกสำเร็จ (${res.success}/${res.total})`);
+            loadData();
+        } catch (error: any) {
+            toast.error(error.message || "การอัปโหลดล้มเหลว");
+        } finally {
+            setIsUploading(false);
+            // Clear file input
+            e.target.value = '';
+        }
+    };
+
+    const downloadTemplate = () => {
+        const headers = ["username", "password", "name", "department", "role"];
+        const rows = [
+            ["user01", "123456", "สมชาย ใจดี", "สมาคมฯ", "ผู้ใช้งาน"],
+            ["user02", "password123", "สมหญิง รักเรียน", "กอฮา", "ผู้ใช้ทั่วไป"]
+        ];
+        
+        const csvContent = "\ufeff" + // UTF-8 BOM for Excel
+            [headers, ...rows].map(e => e.join(",")).join("\n");
+            
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "user_import_template.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const togglePermission = (permId: string) => {
         setFormData(prev => ({
             ...prev,
@@ -172,12 +215,23 @@ export default function UsersPage() {
                     <p className="text-sm text-slate-500 mt-1 font-medium">จัดการบัญชีผู้ใช้และกำหนดสิทธิ์การเข้าถึงรายบุคคล</p>
                 </div>
                 {isSuperAdmin && (
-                    <button 
-                        onClick={() => handleOpenModal()}
-                        className="flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-bold px-6 py-3.5 rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95"
-                    >
-                        <Plus className="w-5 h-5" /> เพิ่มผู้ใช้งานใหม่
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => {
+                                setUploadResults(null);
+                                setShowUploadModal(true);
+                            }}
+                            className="flex items-center justify-center gap-2 bg-white text-slate-600 text-sm font-bold px-6 py-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                        >
+                            <FileUp className="w-5 h-5" /> นำเข้า CSV
+                        </button>
+                        <button 
+                            onClick={() => handleOpenModal()}
+                            className="flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-bold px-6 py-3.5 rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95"
+                        >
+                            <Plus className="w-5 h-5" /> เพิ่มผู้ใช้งานใหม่
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -185,15 +239,20 @@ export default function UsersPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {ROLES.map((role) => {
                     const count = users.filter(u => u.role === role).length;
+                    const cfg = ROLES_CONFIG[role];
                     return (
                         <div key={role} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{role}</p>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">{cfg.icon}</span>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{cfg.label}</p>
+                            </div>
                             <div className="flex items-end justify-between">
                                 <h3 className="text-2xl font-black text-slate-800">{count}</h3>
-                                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center", roleColors[role])}>
+                                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center", cfg.color)}>
                                     <UserCog className="w-4 h-4" />
                                 </div>
                             </div>
+                            <p className="text-[10px] text-slate-400 mt-2">{cfg.desc}</p>
                         </div>
                     );
                 })}
@@ -262,8 +321,11 @@ export default function UsersPage() {
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-800 text-sm">{user.name}</p>
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold mt-0.5">
-                                                        <Mail className="w-3 h-3" /> @{user.username}
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 font-bold mt-0.5">
+                                                        <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> @{user.username}</span>
+                                                        {user.email && <span className="flex items-center gap-1 text-blue-500/60"><Mail className="w-3 h-3" /> {user.email}</span>}
+                                                        {user.phoneNumber && <span className="flex items-center gap-1 text-emerald-500/60"><Phone className="w-3 h-3" /> {user.phoneNumber}</span>}
+                                                        {user.facebook && <span className="flex items-center gap-1 text-indigo-500/60"><Facebook className="w-3 h-3" /> {user.facebook}</span>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -271,9 +333,9 @@ export default function UsersPage() {
                                         <td className="px-5 py-5">
                                             <span className={cn(
                                                 "px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border",
-                                                roleColors[user.role]
+                                                ROLES_CONFIG[user.role]?.color || "bg-slate-100 text-slate-600 border-slate-200"
                                             )}>
-                                                {user.role}
+                                                {ROLES_CONFIG[user.role]?.label || user.role}
                                             </span>
                                         </td>
                                         <td className="px-5 py-5">
@@ -354,48 +416,52 @@ export default function UsersPage() {
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ระดับสิทธิ์ *</label>
                                     <select required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}>
-                                        {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                                        {ROLES.map(role => {
+                                            const cfg = ROLES_CONFIG[role];
+                                            const isDisabled = role === 'SUPER_ADMIN' && users.filter(u => u.role === 'SUPER_ADMIN').length >= MAX_SUPER_ADMINS && formData.role !== 'SUPER_ADMIN';
+                                            return <option key={role} value={role} disabled={isDisabled}>{cfg.icon} {cfg.label}{isDisabled ? ' (เต็มแล้ว)' : ''}</option>;
+                                        })}
+                                    </select>
+                                    {formData.role && <p className="text-[10px] text-slate-400 mt-1.5">{ROLES_CONFIG[formData.role]?.desc}</p>}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">หน่วยงาน *</label>
+                                    <select required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.departmentId} onChange={e => setFormData({ ...formData, departmentId: e.target.value })}>
+                                        <option value="">เลือกหน่วยงาน...</option>
+                                        {dbDepartments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">หน่วยงาน *</label>
-                                <select required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.departmentId} onChange={e => setFormData({ ...formData, departmentId: e.target.value })}>
-                                    <option value="">เลือกหน่วยงาน...</option>
-                                    {dbDepartments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-
-                            {/* Permissions Grid */}
-                            <div>
-                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-5 flex items-center gap-2">
-                                    <ShieldCheck className="w-4 h-4" /> กำหนดสิทธิ์การเข้าถึงหน้าต่าง ๆ
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {PERMISSIONS.map(perm => (
-                                        <button 
-                                            key={perm.id} 
-                                            type="button"
-                                            onClick={() => togglePermission(perm.id)}
-                                            className={cn(
-                                                "flex items-center justify-between p-4 rounded-2xl border-2 transition-all group",
-                                                formData.permissions.includes(perm.id) 
-                                                    ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm" 
-                                                    : "bg-white border-slate-50 text-slate-400 hover:border-slate-100"
-                                            )}
-                                        >
-                                            <span className="text-xs font-bold">{perm.label}</span>
-                                            {formData.permissions.includes(perm.id) ? (
-                                                <div className="h-5 w-5 rounded-full bg-blue-600 flex items-center justify-center">
-                                                    <Check className="w-3 h-3 text-white" />
-                                                </div>
-                                            ) : (
-                                                <div className="h-5 w-5 rounded-full border border-slate-200 group-hover:border-slate-300" />
-                                            )}
-                                        </button>
-                                    ))}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">อีเมล</label>
+                                    <input type="email" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="example@email.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">เบอร์โทรศัพท์</label>
+                                    <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="08x-xxx-xxxx" value={formData.phoneNumber} onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Facebook (ชื่อโปรไฟล์)</label>
+                                    <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="ชื่อ Facebook..." value={formData.facebook} onChange={e => setFormData({ ...formData, facebook: e.target.value })} />
+                                </div>
+                            </div>
+
+                            {/* Role Description */}
+                            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 flex items-center gap-2">
+                                    <ShieldCheck className="w-4 h-4" /> สิทธิ์ของ {ROLES_CONFIG[formData.role]?.label || formData.role}
+                                </h4>
+                                <p className="text-sm text-slate-600 font-medium">
+                                    {formData.role === 'SUPER_ADMIN' && 'ทำได้ทุกอย่าง — จัดการผู้ใช้, แก้ไขทุกหน้า, ตั้งค่าระบบ, ดูรายรับ-รายจ่าย'}
+                                    {formData.role === 'ADMIN' && 'จัดการโครงการ, เพิ่มเอกสาร, จัดการคณะกรรมการ, ดูรายรับ-รายจ่าย (อ่านอย่างเดียว)'}
+                                    {formData.role === 'FINANCE' && 'จัดการรายรับ-รายจ่ายทั้งหมด, ดูหน้าอื่นได้ (อ่านอย่างเดียว), ขอเอกสารได้'}
+                                    {formData.role === 'VIEWER' && 'ดูข้อมูลทุกหน้า, ขอเอกสาร, ดาวน์โหลดเอกสาร — ไม่สามารถแก้ไขข้อมูลใดๆ'}
+                                </p>
                             </div>
 
                             <div className="flex gap-4 pt-6">
@@ -410,6 +476,119 @@ export default function UsersPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Bulk Upload Modal */}
+            {showUploadModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[3rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                        <div className="p-8 bg-blue-600 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center">
+                                    <FileUp className="w-7 h-7" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black">นำเข้าข้อมูลสมาชิก (CSV)</h3>
+                                    <p className="text-blue-100 text-xs font-bold mt-1 uppercase tracking-widest">Bulk User Import</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowUploadModal(false)} className="h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-10 space-y-8">
+                            {!uploadResults ? (
+                                <>
+                                    <div className="space-y-4">
+                                        <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center text-center group hover:border-blue-500 transition-all">
+                                            <input 
+                                                type="file" 
+                                                accept=".csv" 
+                                                onChange={handleUploadCsv}
+                                                className="hidden" 
+                                                id="csv-upload"
+                                                disabled={isUploading}
+                                            />
+                                            <label htmlFor="csv-upload" className="cursor-pointer flex flex-col items-center">
+                                                {isUploading ? (
+                                                    <>
+                                                        <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                                                        <p className="text-lg font-black text-slate-800">กำลังประมวลผลข้อมูล...</p>
+                                                        <p className="text-sm text-slate-500 font-medium mt-1">กรุณารอสักครู่ ระบบกำลังนำเข้าข้อมูลสมาชิก</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="h-16 w-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                            <FileUp className="w-8 h-8 text-blue-600" />
+                                                        </div>
+                                                        <p className="text-lg font-black text-slate-800">เลือกไฟล์ CSV</p>
+                                                        <p className="text-sm text-slate-500 font-medium mt-1">ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์จากเครื่อง</p>
+                                                    </>
+                                                )}
+                                            </label>
+                                        </div>
+
+                                        <div className="flex items-start gap-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-black text-blue-900 uppercase tracking-widest">คำแนะนำการใช้งาน</p>
+                                                <ul className="text-[11px] text-blue-700/80 font-bold space-y-1 mt-2 list-disc pl-4">
+                                                    <li>ไฟล์ต้องเป็นรูปแบบ CSV (UTF-8) เท่านั้น</li>
+                                                    <li>หัวตารางต้องมี: username, password, name, department, role</li>
+                                                    <li>ระดับสิทธิ์ระบุเป็น: ผู้ดูแลระบบ, ผู้ใช้งาน, ผู้จัดการการเงิน, ผู้ใช้ทั่วไป</li>
+                                                    <li>หากมี username เดิมในระบบ ระบบจะทำการ "อัปเดตทับ" ข้อมูลเดิม</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        onClick={downloadTemplate}
+                                        className="w-full py-4 bg-slate-900 text-white rounded-2xl text-sm font-black flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
+                                    >
+                                        <Download className="w-5 h-5" /> ดาวน์โหลดไฟล์ตัวอย่าง (.csv)
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-3xl text-center">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">สำเร็จ</p>
+                                            <h4 className="text-3xl font-black text-emerald-700">{uploadResults.success}</h4>
+                                            <p className="text-[10px] text-emerald-600/60 font-bold mt-1">รายการ ({uploadResults.updated} อัปเดต)</p>
+                                        </div>
+                                        <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl text-center">
+                                            <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">ล้มเหลว</p>
+                                            <h4 className="text-3xl font-black text-rose-700">{uploadResults.failed}</h4>
+                                            <p className="text-[10px] text-rose-600/60 font-bold mt-1">รายการ</p>
+                                        </div>
+                                    </div>
+
+                                    {uploadResults.errors.length > 0 && (
+                                        <div className="max-h-40 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
+                                            {uploadResults.errors.map((err: any, i: number) => (
+                                                <div key={i} className="flex items-center gap-2 text-[11px] font-bold text-rose-600">
+                                                    <AlertCircle className="w-3.5 h-3.5" />
+                                                    <span>แถวที่ {err.row}: {err.error}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        onClick={() => {
+                                            setUploadResults(null);
+                                            setShowUploadModal(false);
+                                        }}
+                                        className="w-full py-4 bg-blue-600 text-white rounded-2xl text-sm font-black shadow-lg shadow-blue-500/20"
+                                    >
+                                        ตกลง
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

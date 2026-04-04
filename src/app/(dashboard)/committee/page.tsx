@@ -8,6 +8,29 @@ import Papa from 'papaparse';
 import { CommitteeMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
+import { 
+    DndContext, 
+    closestCenter, 
+    KeyboardSensor, 
+    PointerSensor, 
+    useSensor, 
+    useSensors,
+    DragEndEvent,
+    defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+    rectSortingStrategy
+} from '@dnd-kit/sortable';
+import { DragOverlay } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
+import { GripVertical, MoreVertical, LayoutGrid, List } from 'lucide-react';
+import { reorderCommitteeMembers, reorderDepartments, createDepartment, updateDepartment, deleteDepartment } from '@/lib/api';
 
 const DEPT_STYLES: Record<string, { color: string, text: string }> = {
     'admin': { color: 'bg-blue-600', text: 'text-blue-600' },
@@ -26,6 +49,230 @@ const getDeptStyles = (name: string) => {
 import { useSession } from 'next-auth/react';
 import { useYear } from '@/context/YearContext';
 
+// --- UI Shared Components ---
+
+function MemberCard({ member, isDragging, onEdit, onDelete, canEdit, isEditMode, attributes, listeners, isOverlay }: any) {
+    return (
+        <div 
+            className={cn(
+                "group bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all duration-200 relative",
+                isDragging ? "opacity-0" : "opacity-100",
+                !isOverlay && "hover:shadow-md hover:border-blue-100",
+                isOverlay && "shadow-2xl border-blue-200 ring-4 ring-blue-50/50 scale-105"
+            )}
+        >
+            {canEdit && (
+                <div className={cn(
+                    "absolute top-4 right-4 flex items-center gap-1 transition-opacity z-10",
+                    isEditMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}>
+                    {isEditMode && (
+                        <div {...attributes} {...listeners} className="p-2 text-slate-300 hover:text-blue-500 cursor-grab active:cursor-grabbing">
+                            <GripVertical className="w-4 h-4" />
+                        </div>
+                    )}
+                    {!isOverlay && (
+                        <>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onEdit(member); }}
+                                className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                                <Pencil className="w-4 h-4" />
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDelete(member.id, member.name); }}
+                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
+            
+            <div className="flex gap-4">
+                <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-100">
+                    {member.photoUrl ? (
+                        <img 
+                            src={getMediaUrl(member.photoUrl)} 
+                            alt={member.name} 
+                            className="w-full h-full object-cover" 
+                        />
+                    ) : (
+                        <Users className="w-10 h-10 text-slate-300" />
+                    )}
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                        {member.name}
+                    </h3>
+                    <p className="text-sm font-medium text-slate-500 mb-2">
+                        {member.position}
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-50 space-y-2.5">
+                {member.phoneNumber && (
+                    <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{member.phoneNumber}</span>
+                    </div>
+                )}
+                {member.email && (
+                    <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="truncate">{member.email}</span>
+                    </div>
+                )}
+                {member.occupation && (
+                    <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="truncate">{member.occupation}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function DepartmentHeader({ dept, canEdit, isEditMode, onEditDept, onDeleteDept, styles, attributes, listeners, isOverlay }: any) {
+    return (
+        <div className={cn(
+            "flex items-center justify-between group py-2 px-4 rounded-2xl transition-all",
+            isOverlay && "bg-white shadow-xl border border-blue-100 ring-2 ring-blue-50"
+        )}>
+            <div className="flex items-center gap-4">
+                {isEditMode && canEdit && (
+                    <div {...attributes} {...listeners} className="p-1 text-slate-300 hover:text-blue-500 cursor-grab active:cursor-grabbing">
+                        <GripVertical className="w-5 h-5" />
+                    </div>
+                )}
+                <div className={cn("h-8 w-1.5 rounded-full shadow-sm", styles?.color || 'bg-blue-600')} />
+                <h2 className="text-xl font-black text-slate-800 tracking-tight">{dept.name}</h2>
+                {isEditMode && canEdit && !isOverlay && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                            onClick={() => onEditDept(dept)}
+                            className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => onDeleteDept(dept.id, dept.name)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// --- Sortable Item Components ---
+
+function SortableMember({ member, canEdit, isEditMode, handleEdit, handleDelete }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: member.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <MemberCard 
+                member={member} 
+                canEdit={canEdit} 
+                isEditMode={isEditMode} 
+                onEdit={handleEdit} 
+                onDelete={handleDelete}
+                attributes={attributes}
+                listeners={listeners}
+                isDragging={isDragging}
+            />
+        </div>
+    );
+}
+
+function SortableDepartment({ dept, members, canEdit, isEditMode, handleEdit, handleDelete, handleEditDept, handleDeleteDept, getDeptStyles, setIsModalOpen, setFormData }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: dept.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    const deptMembers = members.filter((m: any) => m.departmentId === dept.id);
+    const styles = getDeptStyles(dept.name);
+
+    if (deptMembers.length === 0 && !canEdit) return null;
+
+    return (
+        <div ref={setNodeRef} style={style} className={cn("space-y-6", isDragging && "opacity-0")}>
+            <DepartmentHeader 
+                dept={dept} 
+                canEdit={canEdit} 
+                isEditMode={isEditMode} 
+                onEditDept={handleEditDept} 
+                onDeleteDept={handleDeleteDept} 
+                styles={styles} 
+                attributes={attributes} 
+                listeners={listeners} 
+            />
+
+            {deptMembers.length > 0 ? (
+                <SortableContext items={deptMembers.map((m: any) => m.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {deptMembers.map((member: any) => (
+                            <SortableMember 
+                                key={member.id} 
+                                member={member} 
+                                canEdit={canEdit}
+                                isEditMode={isEditMode}
+                                handleEdit={handleEdit}
+                                handleDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                </SortableContext>
+            ) : (
+                <div className="bg-slate-50/50 border border-dashed border-slate-200 rounded-3xl py-14 flex flex-col items-center justify-center gap-3 mx-4 outline-none">
+                    <Users className="w-10 h-10 text-slate-300" />
+                    <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">ยังไม่มีข้อมูลในส่วนนี้</p>
+                    {canEdit && (
+                        <button 
+                            onClick={() => {
+                                setFormData((prev: any) => ({ ...prev, departmentId: dept.id }));
+                                setIsModalOpen(true);
+                            }}
+                            className="text-blue-600 text-sm font-black hover:scale-105 transition-transform"
+                        >
+                            + เพิ่มรายชื่อแรก
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function CommitteePage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
@@ -37,7 +284,13 @@ export default function CommitteePage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
     
+    // Department Management State
+    const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
+    const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+    const [deptFormData, setDeptFormData] = useState({ name: '', theme: '' });
+
     const [formData, setFormData] = useState({
         name: '',
         position: '',
@@ -53,19 +306,35 @@ export default function CommitteePage() {
     const csvInputRef = useRef<HTMLInputElement>(null);
 
     const [dbDepartments, setDbDepartments] = useState<any[]>([]);
+    
+    // Smooth DND State
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [activeMember, setActiveMember] = useState<CommitteeMember | null>(null);
+    const [activeDept, setActiveDept] = useState<any | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     const loadMembers = async () => {
         try {
             setLoading(true);
             const [membersData, deptsData] = await Promise.all([
                 fetchCommitteeMembers(selectedYear || undefined),
-                fetchDepartments()
+                fetchDepartments(selectedYear || undefined, 'committee')
             ]);
             setMembers(membersData);
             setDbDepartments(deptsData);
             
             // Set default departmentId if not set
-            if (!formData.departmentId && deptsData.length > 0) {
+            if ((!formData.departmentId || formData.departmentId === 'admin') && deptsData.length > 0) {
                 setFormData(prev => ({ ...prev, departmentId: deptsData[0].id }));
             }
         } catch (error) {
@@ -118,18 +387,45 @@ export default function CommitteePage() {
                     const dIdx = getCol(['หน่วยงาน', 'department']);
                     const ordIdx = getCol(['ลำดับ', 'order']);
 
-                    const mappedData = dataRows.map((row, idx) => {
+                    const mappedData: any[] = [];
+                    const uniqueDeptNames = Array.from(new Set(dataRows.map(row => {
+                        const dName = (dIdx >= 0 && row[dIdx] ? row[dIdx] : inferredDept).trim();
+                        return dName;
+                    }).filter(Boolean)));
+
+                    // 1. Automatically create missing departments
+                    let currentDepts = [...dbDepartments];
+                    for (const dName of uniqueDeptNames) {
+                        const exists = currentDepts.some((d: any) => dName.includes(d.name) || d.name.includes(dName));
+                        if (!exists) {
+                            try {
+                                const newDept = await createDepartment({ name: dName, order: currentDepts.length }, selectedYear || 2567, true);
+                                currentDepts.push(newDept);
+                            } catch (err) {
+                                console.error("Failed to auto-create department:", dName);
+                            }
+                        }
+                    }
+                    
+                    // Refresh local state and local reference
+                    setDbDepartments(currentDepts);
+
+                    // 2. Map data with newly created IDs
+                    dataRows.forEach((row, idx) => {
                         const name = nIdx >= 0 ? row[nIdx] : '';
-                        if (!name || !name.trim()) return null;
+                        if (!name || !name.trim()) return;
 
                         const deptName = (dIdx >= 0 && row[dIdx] ? row[dIdx] : inferredDept).trim();
-                        let foundDeptId = dbDepartments.length > 0 ? dbDepartments[0].id : "";
-                        if (deptName && dbDepartments.length > 0) {
-                            const match = dbDepartments.find((d: any) => deptName.includes(d.name) || d.name.includes(deptName) || d.id === deptName);
+                        let foundDeptId = currentDepts.length > 0 ? currentDepts[0].id : "";
+                        
+                        if (deptName) {
+                            const match = currentDepts.find((d: any) => deptName.includes(d.name) || d.name.includes(deptName) || d.id === deptName);
                             if (match) foundDeptId = match.id;
                         }
 
-                        return {
+                        if (!foundDeptId) return; // Skip if still no dept
+
+                        mappedData.push({
                             name: name.trim(),
                             position: pIdx >= 0 && row[pIdx] ? row[pIdx].trim() : 'กรรมการ',
                             phoneNumber: phIdx >= 0 && row[phIdx] ? row[phIdx].trim() : "",
@@ -138,8 +434,8 @@ export default function CommitteePage() {
                             departmentId: foundDeptId,
                             order: ordIdx >= 0 && !isNaN(Number(row[ordIdx])) ? Number(row[ordIdx]) : idx,
                             thaiYear: selectedYear || 2567
-                        };
-                    }).filter(Boolean);
+                        });
+                    });
 
                     if (mappedData.length === 0) {
                         toast.error("รูปแบบข้อมูลในไฟล์ CSV ไม่ถูกต้อง", { id: "csv-upload" });
@@ -151,7 +447,7 @@ export default function CommitteePage() {
                     loadMembers();
                 } catch (err) {
                     console.error("CSV Upload Error:", err);
-                    toast.error("เกิดข้อผิดพลาดในการประมวลผลข้อมูล", { id: "csv-upload" });
+                    toast.error("เกิดข้อผิดพลาดในการนำเข้าข้อมูล", { id: "csv-upload" });
                 }
             },
             error: () => toast.error("ไม่สามารถอ่านไฟล์ CSV ได้", { id: "csv-upload" })
@@ -243,6 +539,141 @@ export default function CommitteePage() {
         }
     };
 
+    // --- REORDER HANDLERS ---
+    const handleDragStart = (event: any) => {
+        const { active } = event;
+        const id = active.id as string;
+        setActiveId(id);
+        
+        const member = members.find(m => m.id === id);
+        if (member) {
+            setActiveMember(member);
+            setActiveDept(null);
+        } else {
+            const dept = dbDepartments.find(d => d.id === id);
+            if (dept) {
+                setActiveDept(dept);
+                setActiveMember(null);
+            }
+        }
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveId(null);
+        setActiveMember(null);
+        setActiveDept(null);
+
+        if (!over || active.id === over.id) return;
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        // Determine if we are dragging a member or a department
+        const isActiveMember = members.some(m => m.id === activeId);
+        const isOverMember = members.some(m => m.id === overId);
+
+        if (isActiveMember) {
+            // Reordering Members
+            const oldIndex = members.findIndex(m => m.id === activeId);
+            const newIndex = members.findIndex(m => m.id === overId);
+            
+            let newMembers = [...members];
+            
+            // If dropping over a member
+            if (newIndex !== -1) {
+                // Find target department
+                const targetDeptId = members[newIndex].departmentId;
+                
+                // Update local state first for snappiness
+                const updatedMembers = arrayMove(members, oldIndex, newIndex).map((m, idx) => {
+                    if (m.id === activeId) return { ...m, departmentId: targetDeptId, order: idx };
+                    return { ...m, order: idx };
+                });
+                
+                setMembers(updatedMembers);
+                
+                // Sync to backend
+                try {
+                    await reorderCommitteeMembers(updatedMembers.map((m, idx) => ({ 
+                        id: m.id, 
+                        order: idx,
+                        departmentId: m.id === activeId ? targetDeptId : m.departmentId
+                    })));
+                } catch (err) {
+                    toast.error("ไม่สามารถบันทึกลำดับได้");
+                    loadMembers(); // Revert
+                }
+            } else {
+                // Dropping over a department container (handle via over.id if it's a dept id)
+                const targetDept = dbDepartments.find(d => d.id === overId);
+                if (targetDept) {
+                    const updatedMembers = members.map(m => {
+                        if (m.id === activeId) return { ...m, departmentId: targetDept.id };
+                        return m;
+                    });
+                    setMembers(updatedMembers);
+                    try {
+                        await reorderCommitteeMembers([{ id: activeId, order: 0, departmentId: targetDept.id }]);
+                    } catch (err) {
+                        loadMembers();
+                    }
+                }
+            }
+        } else {
+            // Reordering Departments
+            const oldIndex = dbDepartments.findIndex(d => d.id === activeId);
+            const newIndex = dbDepartments.findIndex(d => d.id === overId);
+            
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const newDepts = arrayMove(dbDepartments, oldIndex, newIndex);
+                setDbDepartments(newDepts);
+                
+                try {
+                    await reorderDepartments(newDepts.map((d, idx) => ({ id: d.id, order: idx })));
+                } catch (err) {
+                    toast.error("ไม่สามารถบันทึกลำดับหน่วยงานได้");
+                    loadMembers();
+                }
+            }
+        }
+    };
+
+    // --- DEPARTMENT MANAGEMENT ---
+    const handleSaveDept = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingDeptId) {
+                await updateDepartment(editingDeptId, deptFormData);
+                toast.success("แก้ไขหน่วยงานสำเร็จ");
+            } else {
+                await createDepartment(
+                    { ...deptFormData, order: dbDepartments.length }, 
+                    selectedYear || undefined,
+                    true
+                );
+                toast.success("เพิ่มหน่วยงานสำเร็จ");
+            }
+            setIsDeptModalOpen(false);
+            setEditingDeptId(null);
+            setDeptFormData({ name: '', theme: '' });
+            loadMembers();
+        } catch (err) {
+            toast.error("ไม่สามารถบันทึกหน่วยงานได้");
+        }
+    };
+
+    const handleDeleteDept = async (id: string, name: string) => {
+        if (!window.confirm(`ยืนยันการลบหน่วยงาน "${name}"? (ต้องไม่มีสมาชิกเหลืออยู่)`)) return;
+        try {
+            await deleteDepartment(id, selectedYear || undefined);
+            toast.success("ลบหน่วยงานสำเร็จ");
+            loadMembers();
+        } catch (err: any) {
+            toast.error(err.message || "ไม่สามารถลบหน่วยงานได้");
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
@@ -263,7 +694,23 @@ export default function CommitteePage() {
                 </div>
 
                 {canEdit && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Edit Mode Toggle */}
+                        <button 
+                            onClick={() => setIsEditMode(!isEditMode)}
+                            className={cn(
+                                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg",
+                                isEditMode 
+                                    ? "bg-slate-800 text-white shadow-slate-200" 
+                                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-sm"
+                            )}
+                        >
+                            <Pencil className="w-4 h-4" />
+                            {isEditMode ? "เสร็จสิ้นการแก้ไข" : "แก้ไขข้อมูล"}
+                        </button>
+
+                        <div className="h-8 w-px bg-slate-200 mx-1 hidden md:block" />
+
                         <input 
                             type="file" 
                             accept=".csv" 
@@ -282,7 +729,7 @@ export default function CommitteePage() {
                             onClick={() => {
                                 setEditingId(null);
                                 setFormData({
-                                    name: '', position: '', phoneNumber: '', email: '', occupation: '', departmentId: 'admin', order: '0'
+                                    name: '', position: '', phoneNumber: '', email: '', occupation: '', departmentId: dbDepartments[0]?.id || 'admin', order: '0'
                                 });
                                 setPhoto(null);
                                 setPhotoPreview(null);
@@ -293,107 +740,70 @@ export default function CommitteePage() {
                             <Plus className="w-5 h-5" />
                             เพิ่มรายชื่อ
                         </button>
+                        
+                        {isEditMode && (
+                            <button 
+                                onClick={() => {
+                                    setEditingDeptId(null);
+                                    setDeptFormData({ name: '', theme: '' });
+                                    setIsDeptModalOpen(true);
+                                }}
+                                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold transition-all"
+                            >
+                                <LayoutGrid className="w-5 h-5" />
+                                เพิ่มหน่วยงาน
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
 
-            {dbDepartments.map((dept: any) => {
-                const deptMembers = members.filter(m => m.departmentId === dept.id);
-                const styles = getDeptStyles(dept.name);
-                // Only hide if empty AND NOT admin (admin should see all to add)
-                if (deptMembers.length === 0 && !canEdit) return null;
-
-                return (
-                    <div key={dept.id} className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className={cn("h-8 w-1 rounded-full", styles.color)} />
-                            <h2 className="text-xl font-bold text-slate-800">{dept.name}</h2>
-                        </div>
-
-                        {deptMembers.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {deptMembers.map((member) => (
-                                    <div key={member.id} className="group bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-100 transition-all duration-200 relative">
-                                        {canEdit && (
-                                            <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                                <button 
-                                                    onClick={() => handleEdit(member)}
-                                                    className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDelete(member.id, member.name)}
-                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        )}
-                                        
-                                        <div className="flex gap-4">
-                                            <div className="h-24 w-24 rounded-2xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-100">
-                                                {member.photoUrl ? (
-                                                    <img 
-                                                        src={getMediaUrl(member.photoUrl)} 
-                                                        alt={member.name} 
-                                                        className="w-full h-full object-cover" 
-                                                    />
-                                                ) : (
-                                                    <Users className="w-10 h-10 text-slate-300" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                                                    {member.name}
-                                                </h3>
-                                                <p className="text-sm font-medium text-slate-500 mb-2">
-                                                    {member.position}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-4 pt-4 border-t border-slate-50 space-y-2.5">
-                                            {member.phoneNumber && (
-                                                <div className="flex items-center gap-2.5 text-xs text-slate-600">
-                                                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span>{member.phoneNumber}</span>
-                                                </div>
-                                            )}
-                                            {member.email && (
-                                                <div className="flex items-center gap-2.5 text-xs text-slate-600">
-                                                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="truncate">{member.email}</span>
-                                                </div>
-                                            )}
-                                            {member.occupation && (
-                                                <div className="flex items-center gap-2.5 text-xs text-slate-600">
-                                                    <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="truncate">{member.occupation}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl py-12 flex flex-col items-center justify-center gap-3">
-                                <Users className="w-8 h-8 text-slate-300" />
-                                <p className="text-sm text-slate-400 font-medium">ยังไม่มีข้อมูลในส่วนนี้</p>
-                                <button 
-                                    onClick={() => {
-                                        setFormData(prev => ({ ...prev, departmentId: dept.id }));
-                                        setIsModalOpen(true);
-                                    }}
-                                    className="text-blue-600 text-sm font-bold hover:underline"
-                                >
-                                    เพิ่มรายชื่อแรก
-                                </button>
-                            </div>
-                        )}
+            <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                modifiers={isEditMode ? [] : [restrictToVerticalAxis]}
+            >
+                <SortableContext 
+                    items={dbDepartments.map(d => d.id)} 
+                    strategy={verticalListSortingStrategy}
+                    disabled={!isEditMode}
+                >
+                    <div className="space-y-12">
+                        {dbDepartments.map((dept: any) => (
+                            <SortableDepartment 
+                                key={dept.id}
+                                dept={dept}
+                                members={members}
+                                canEdit={canEdit}
+                                isEditMode={isEditMode}
+                                handleEdit={handleEdit}
+                                handleDelete={handleDelete}
+                                handleEditDept={(d: any) => {
+                                    setEditingDeptId(d.id);
+                                    setDeptFormData({ name: d.name, theme: d.theme || '' });
+                                    setIsDeptModalOpen(true);
+                                }}
+                                handleDeleteDept={handleDeleteDept}
+                                getDeptStyles={getDeptStyles}
+                                setIsModalOpen={setIsModalOpen}
+                                setFormData={setFormData}
+                            />
+                        ))}
                     </div>
-                );
-            })}
+                </SortableContext>
+
+                <DragOverlay dropAnimation={null}>
+                    {activeId ? (
+                        activeMember ? (
+                            <MemberCard member={activeMember} isOverlay />
+                        ) : activeDept ? (
+                            <DepartmentHeader dept={activeDept} styles={getDeptStyles(activeDept.name)} isOverlay />
+                        ) : null
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
 
             {/* Create Member Modal */}
             {isModalOpen && (
@@ -513,6 +923,41 @@ export default function CommitteePage() {
                                 ) : (
                                     "บันทึกข้อมูล"
                                 )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Department Modal */}
+            {isDeptModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDeptModalOpen(false)} />
+                    <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-slate-900">{editingDeptId ? 'แก้ไขหน่วยงาน' : 'เพิ่มหน่วยงานใหม่'}</h2>
+                            <button onClick={() => setIsDeptModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSaveDept} className="p-6 space-y-6">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">ชื่อหน่วยงาน</label>
+                                <input
+                                    required
+                                    className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all"
+                                    placeholder="เช่น สำนักอำนวยการ"
+                                    value={deptFormData.name}
+                                    onChange={e => setDeptFormData({ ...deptFormData, name: e.target.value })}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all"
+                            >
+                                {editingDeptId ? "บันทึกการแก้ไข" : "สร้างหน่วยงาน"}
                             </button>
                         </form>
                     </div>

@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { annualPlanStatusLabels, annualPlanStatusStyles } from "@/lib/constants";
 import { AnnualProject, AnnualPlan, Department } from "@/lib/types";
-import { fetchAnnualPlans, createProject, fetchDepartments, updateProject, deleteProject, createProjectBulk } from "@/lib/api";
+import { fetchAnnualPlans, createProject, fetchDepartments, updateProject, deleteProject, createProjectBulk, createDepartment } from "@/lib/api";
 import Papa from "papaparse";
 import { useYear } from "@/context/YearContext";
 import { getDeptStyle } from "@/lib/dept-styles";
@@ -55,7 +55,8 @@ type ViewMode = "quarter" | "department" | "list";
 export default function AnnualProjectsPage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
-    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    const isViewer = userRole === "VIEWER" || userRole === "FINANCE";
     const [plans, setPlans] = useState<AnnualPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>("quarter");
@@ -116,12 +117,36 @@ export default function AnnualProjectsPage() {
                 }
 
                 try {
+                    const currentPlan = plans.find(p => p.id === selectedPlanId);
+                    const targetYear = currentPlan?.thaiYear || selectedYear || 2567;
+                    
+                    // 1. Resolve unique department names from CSV
+                    const uniqueDeptNames = Array.from(new Set(data.map(row => {
+                        const dName = String(row['หน่วยงาน'] || row.department || "").trim();
+                        return dName;
+                    }).filter(Boolean)));
+
+                    // 2. Automatically create missing departments for this plan's year
+                    let currentDepts = [...departments];
+                    for (const dName of uniqueDeptNames) {
+                        const exists = currentDepts.some((d: any) => dName.includes(d.name) || d.name.includes(dName));
+                        if (!exists) {
+                            try {
+                                const newDept = await createDepartment({ name: dName, order: currentDepts.length }, targetYear);
+                                currentDepts.push(newDept);
+                            } catch (err) {
+                                console.error("Failed to auto-create department:", dName);
+                            }
+                        }
+                    }
+                    setDepartments(currentDepts);
+
+                    // 3. Map data with resolved IDs
                     const mappedData = data.map(row => {
                         const monthsStr = String(row['เดือน'] || row['ช่วงเดือนที่จัด'] || row.months || "");
                         let months = parseThaiMonths(monthsStr);
 
                         if (months.length === 0) {
-                            // Fallback to numeric parsing if no thai strings matched
                             months = monthsStr.split(',').map(m => Number(m.trim())).filter(m => !isNaN(m) && m >= 1 && m <= 12);
                         }
 
@@ -129,16 +154,18 @@ export default function AnnualProjectsPage() {
                         let budgetNum = Number(budgetStr);
                         if (isNaN(budgetNum) || budgetStr.trim() === '-') budgetNum = 0;
 
-                        // Infer quarter from first month
                         const quarter = months.length > 0 ? Math.ceil(Math.min(...months) / 3) : 1;
 
-                        // Find matching department explicitly
                         const deptStr = String(row['หน่วยงาน'] || row.department || "");
-                        const foundDept = departments.find(d => deptStr.includes(d.name) || d.name.includes(deptStr));
+                        let foundDeptId = currentDepts.length > 0 ? currentDepts[0].id : "";
+                        const match = currentDepts.find(d => deptStr.includes(d.name) || d.name.includes(deptStr));
+                        if (match) foundDeptId = match.id;
+
+                        if (!foundDeptId) return null;
 
                         return {
                             name: row['โครงการ'] || row['ชื่อโครงการ'] || row.name,
-                            departmentId: foundDept?.id || (departments.length > 0 ? departments[0].id : ""),
+                            departmentId: foundDeptId,
                             subDepartment: row['สังกัด'] || row['กลุ่มงาน'] || row.subDepartment || "",
                             projectType: row['ประเภทโครงการ'] || row.projectType || PROJECT_TYPE_OPTIONS[0],
                             lead: row['ผู้รับผิดชอบ'] || row.lead || "-",
@@ -147,10 +174,10 @@ export default function AnnualProjectsPage() {
                             months: months,
                             isUnplanned: (row['นอกแผน'] || row.isUnplanned)?.toString().toLowerCase() === "true" || (row['นอกแผน'] || row.isUnplanned) === "1"
                         };
-                    }).filter(r => r.name);
+                    }).filter(r => r && r.name);
 
                     if (mappedData.length === 0) {
-                        toast.error("รูปแบบข้อมูลในไฟล์ CSV ไม่ถูกต้อง", { id: "csv-upload" });
+                        toast.error("รูปแบบข้อมูลในไฟล์ CSV ไม่ถูกต้อง หรือไม่พบหน่วยงาน", { id: "csv-upload" });
                         return;
                     }
 
@@ -171,7 +198,12 @@ export default function AnnualProjectsPage() {
     const refreshData = () => {
         setIsLoading(true);
         console.log("[DEBUG] Starting refreshData...");
-        Promise.all([fetchAnnualPlans(), fetchDepartments()])
+        
+        // Find the current plan's year for department filtering
+        const currentPlan = plans.find(p => p.id === selectedPlanId);
+        const targetYear = currentPlan?.thaiYear || selectedYear || 2567;
+
+        Promise.all([fetchAnnualPlans(), fetchDepartments(targetYear)])
             .then(([plansData, deptsData]) => {
                 const plansArr = Array.isArray(plansData) ? plansData : [];
                 const deptsArr = Array.isArray(deptsData) ? deptsData : [];
@@ -1038,13 +1070,13 @@ export default function AnnualProjectsPage() {
             {selectedProject && (
                 <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setSelectedProject(null)}>
                     <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                        <div className={cn("p-6 relative text-white", quarterColors[selectedProject.quarter - 1])}>
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+                        <div className={cn("px-6 pt-4 pb-5 relative text-white", quarterColors[selectedProject.quarter - 1])}>
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-2xl" />
                             <div className="relative z-10 flex items-start justify-between">
                                 <div className="flex-1">
                                     <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest">Q{selectedProject.quarter} · {quarterLabels[selectedProject.quarter - 1]}</span>
-                                    <h2 className="text-2xl font-black mt-4 leading-tight">{selectedProject.name}</h2>
-                                    <div className="flex items-center gap-2 mt-2 opacity-80">
+                                    <h2 className="text-xl font-black mt-2.5 leading-tight">{selectedProject.name}</h2>
+                                    <div className="flex items-center gap-2 mt-1.5 opacity-80">
                                         <Users className="w-3.5 h-3.5" />
                                         <p className="text-sm font-bold uppercase tracking-wider">{selectedProject.department}</p>
                                     </div>

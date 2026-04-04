@@ -19,104 +19,86 @@ type FieldDef = { key: string; label: string; type?: string; placeholder: string
 // ── Form fields per document type ─────────
 const REQUEST_FIELDS: Record<string, FieldDef[]> = {
     project_doc: [
-        { key: "projectName", label: "ชื่อโครงการ", placeholder: "เช่น อบรมหลักสูตรค่าย STAND UP ครั้งที่ 7" },
-        { key: "responsible", label: "ผู้รับผิดชอบโครงการ", placeholder: "ชื่อ-นามสกุล" },
-        { key: "advisor", label: "ที่ปรึกษาโครงการ", placeholder: "ชื่อ-นามสกุล (ตำแหน่ง)" },
-        { key: "projectType", label: "ลักษณะโครงการ", placeholder: "โครงการใหม่ / โครงการต่อเนื่อง" },
-        { key: "startDate", label: "วันที่เริ่มต้น", type: "date", placeholder: "" },
-        { key: "endDate", label: "วันที่สิ้นสุด", type: "date", placeholder: "" },
-        { key: "venue", label: "สถานที่ดำเนินงาน", placeholder: "เช่น มัสยิดอัลฮุสนา บิน อัฟฮาน" },
-        { key: "targetCount", label: "กลุ่มเป้าหมาย (จำนวน คน)", type: "number", placeholder: "เช่น 14" },
-        { key: "reason", label: "หลักการและเหตุผล", placeholder: "อธิบายความจำเป็นและความสำคัญ...", isTextarea: true },
-        { key: "objective", label: "วัตถุประสงค์", placeholder: "2.1 ...\n2.2 ...\n2.3 ...", isTextarea: true },
-        { key: "budget_transport", label: "งบ: ค่าเดินทาง (บาท)", type: "number", placeholder: "0" },
-        { key: "budget_meal", label: "งบ: ค่ามื้ออาหาร (บาท)", type: "number", placeholder: "0" },
-        { key: "budget_snack", label: "งบ: ค่าอาหารว่าง (บาท)", type: "number", placeholder: "0" },
-        { key: "budget_equipment", label: "งบ: ค่าอุปกรณ์ต่าง ๆ (บาท)", type: "number", placeholder: "0" },
-        { key: "budget_speaker", label: "งบ: ค่าวิทยากร (บาท)", type: "number", placeholder: "0" },
-        { key: "budget_venue", label: "งบ: ค่าห้องประชุม/สถานที่ (บาท)", type: "number", placeholder: "0" },
-        { key: "evaluation", label: "แผนการประเมินผล", placeholder: "เช่น ทำแบบสอบถาม, ติดตามผล 3 เดือน...", isTextarea: true },
-    ],
-    budget_claim: [
-        { key: "project", label: "ชื่อโครงการ / กิจกรรม", placeholder: "เช่น TMYDA Muslimah Word and Art Contest" },
-        { key: "totalAmount", label: "วงเงินที่ขออนุมัติ (บาท)", type: "number", placeholder: "เช่น 3000" },
-        { key: "bankName", label: "ธนาคาร", placeholder: "เช่น ไทยพาณิชย์, กรุงไทย..." },
-        { key: "bankAccount", label: "เลขบัญชี", placeholder: "เช่น 6622425860" },
-        { key: "bankAccountName", label: "ชื่อบัญชี", placeholder: "ชื่อ-นามสกุล เจ้าของบัญชี" },
-    ],
-    budget_report: [
-        { key: "subject", label: "เรื่อง", placeholder: "เช่น รายงานการใช้เงินเพื่อเข้าร่วมประชุม สมัชชาฯ" },
-        { key: "activity", label: "กิจกรรม / วันที่", placeholder: "เช่น เข้าร่วมประชุมคณะกรรมการ วันที่ 24/11/2567" },
-        { key: "budgetClaimed", label: "งบที่เบิกไป (บาท)", type: "number", placeholder: "เช่น 2300" },
-        { key: "budgetUsed", label: "ใช้จริง (บาท)", type: "number", placeholder: "เช่น 703" },
-        { key: "budgetReturned", label: "คืนองค์กร (บาท)", type: "number", placeholder: "เช่น 1597" },
-        { key: "expenseDetail", label: "รายละเอียดค่าใช้จ่ายจริง", placeholder: "เช่น ค่าเดินทาง 703 บาท (ตามใบเสร็จที่แนบ)...", isTextarea: true },
-    ],
-    invite_committee: [
-        { key: "recipientName", label: "ชื่อผู้รับเชิญ", placeholder: "เช่น นายสมศักดิ์ วิทยาการ" },
-        { key: "role", label: "บทบาท / หน้าที่", placeholder: "เช่น คณะกรรมการบริหาร" },
-        { key: "eventDate", label: "วันที่ประชุม/จัดงาน", type: "date", placeholder: "" },
-        { key: "eventTime", label: "เวลา", placeholder: "เช่น 09.00 – 17.00 น." },
-        { key: "venue", label: "สถานที่จัดงาน", placeholder: "เช่น ศูนย์เยาวชน ฟิตยะตุลฮัก" },
-        { key: "projectRef", label: "โครงการที่เกี่ยวข้อง", placeholder: "เช่น ประจำเดือน..." },
-    ],
-    invite_external: [
-        { key: "toOrg", label: "ถึง (หน่วยงานภายนอก)", placeholder: "เช่น มหาวิทยาลัยสงขลานครินทร์" },
-        { key: "attn", label: "ถึงบุคคล (ถ้าระบุ)", placeholder: "เช่น ผู้อำนวยการ..." },
-        { key: "subject", label: "เรื่อง", placeholder: "หัวข้อหนังสือ..." },
-        { key: "eventDate", label: "วันที่จัดกิจกรรม", type: "date", placeholder: "" },
-        { key: "detail", label: "รายละเอียด / เนื้อหา", placeholder: "ด้วย... จึงเรียนมาเพื่อ...", isTextarea: true },
-        { key: "attachments", label: "สิ่งที่ส่งมาด้วย (ถ้ามี)", placeholder: "เช่น โครงการ 1 ฉบับ" },
-    ],
-    invite_speaker: [
-        { key: "recipientName", label: "ชื่อวิทยากร", placeholder: "เช่น อ.สมศักดิ์" },
-        { key: "topic", label: "หัวข้อบรรยาย", placeholder: "เช่น ทักษะความเป็นผู้นำ" },
-        { key: "eventDate", label: "วันที่บรรยาย", type: "date", placeholder: "" },
-        { key: "eventTime", label: "เวลาที่บรรยาย", placeholder: "เช่น 09.00 – 12.00 น." },
-        { key: "venue", label: "สถานที่", placeholder: "เช่น มัสยิด..." },
-        { key: "compensation", label: "ค่าตอบแทนวิทยากร", placeholder: "ถ้ามี ระบุเงื่อนไข" },
-    ],
-    permission_parent: [
-        { key: "studentName", label: "ชื่อผู้เข้าร่วม (นักเรียน)", placeholder: "ชื่อ-นามสกุล" },
-        { key: "activityDate", label: "ช่วงวันที่จัดกิจกรรม", placeholder: "เช่น 1-3 เมษายน 2569" },
-        { key: "venue", label: "สถานที่จัดกิจกรรม", placeholder: "เช่น ค่ายพักแรม..." },
-        { key: "emergencyContact", label: "เบอร์ติดต่อฉุกเฉินของผู้จัด", placeholder: "เช่น 081-xxx-xxxx" },
-    ],
-    permission_school: [
-        { key: "schoolName", label: "ชื่อโรงเรียน/มหาวิทยาลัย", placeholder: "เช่น มหาวิทยาลัย..." },
-        { key: "studentName", label: "ชื่อนักเรียน/นักศึกษา", placeholder: "นาย/นางสาว..." },
-        { key: "activityDate", label: "ช่วงวันที่เข้าร่วม", placeholder: "เช่น 1-3 เมษายน 2569" },
-        { key: "reason", label: "เหตุผลที่ขออนุญาตลากิจ", placeholder: "อธิบายสั้นๆ..." },
-    ],
-    request_support: [
-        { key: "toOrg", label: "ถึง (บุคคลหรือหน่วยงาน)", placeholder: "เช่น บริษัท..." },
-        { key: "supportType", label: "สิ่งที่ขอความอนุเคราะห์", placeholder: "เช่น สนับสนุนเครื่องดื่ม, สถานที่, งบประมาณ" },
-        { key: "projectDetails", label: "รายละเอียดโครงการสั้นๆ", placeholder: "อธิบายเพื่อประกอบการพิจารณา...", isTextarea: true },
-    ],
-    announcement: [
-        { key: "subject", label: "เรื่อง", placeholder: "เช่น ประกาศรับสมัครอาสาสมัคร" },
-        { key: "detail", label: "รายละเอียดประกาศ", placeholder: "เนื้อหา...", isTextarea: true },
-        { key: "effectiveDate", label: "มีผลตั้งแต่วันที่", type: "date", placeholder: "" },
-    ],
-    appointment: [
-        { key: "subject", label: "เรื่องคำสั่งแต่งตั้ง", placeholder: "เช่น แต่งตั้งคณะกรรมการจัดงาน..." },
-        { key: "appointeeInfo", label: "รายชื่อผู้ได้รับการแต่งตั้ง", placeholder: "1. นาย...\n2. นางสาว...", isTextarea: true },
-        { key: "effectiveDate", label: "มีผลตั้งแต่วันที่", type: "date", placeholder: "" },
-    ],
-    cert_conduct: [
-        { key: "personName", label: "ชื่อผู้ขอรับรอง", placeholder: "ชื่อ-นามสกุล" },
-        { key: "position", label: "ตำแหน่งในองค์กร / หน้าที่", placeholder: "เช่น ฝ่ายกิจกรรม" },
-        { key: "reason", label: "วัตถุประสงค์การนำไปใช้", placeholder: "เช่น เพื่อแนบประกอบการสมัครงาน / ทุนการศึกษา" },
+        { key: "projectName", label: "ชื่อโครงการ", placeholder: "เช่น ค่ายร็อบบานีย์ หรือ ค่าย Stand up" },
+        { key: "departmentOrg", label: "หน่วยงาน/สังกัด", placeholder: "เช่น สำนักบริหารโครงการ" },
+        { key: "leaderName", label: "ผู้รับผิดชอบโครงการ", placeholder: "ชื่อ-นามสกุล และตำแหน่ง" },
+        { key: "advisorName", label: "ที่ปรึกษาโครงการ", placeholder: "รายการชื่อที่ปรึกษา" },
+        { key: "reason", label: "หลักการและเหตุผล", placeholder: "บรรยายที่มาของปัญหา...", isTextarea: true },
+        { key: "objective", label: "วัตถุประสงค์", placeholder: "รายการเป้าหมายของโครงการ...", isTextarea: true },
+        { key: "timeline", label: "แผนการดำเนินงาน", placeholder: "ตารางกิจกรรมและระยะเวลาในแต่ละเดือน...", isTextarea: true },
+        { key: "targetGroup", label: "สถานที่และกลุ่มเป้าหมาย", placeholder: "ระบุสถานที่จัดและจำนวนผู้เข้าร่วม..." },
+        { key: "budgetDetail", label: "งบประมาณที่ใช้", placeholder: "ตารางแยกประเภทค่าใช้จ่าย เช่น ค่าอาหาร, ค่าวิทยากร, ค่าเสื้อ...", isTextarea: true },
+        { key: "expectedResult", label: "ผลที่คาดว่าจะได้รับ", placeholder: "รายการสิ่งที่คาดว่าจะเกิดหลังจบโครงการ...", isTextarea: true }
     ],
     final_report: [
-        { key: "project", label: "ชื่อโครงการที่รายงาน", placeholder: "ชื่อโครงการ..." },
-        { key: "venue", label: "สถานที่ดำเนินการ", placeholder: "สถานที่ที่จัดกิจกรรม..." },
-        { key: "dateRange", label: "ระยะเวลาดำเนินการ", placeholder: "เช่น 6 – 8 กันยายน 2567" },
-        { key: "participantCount", label: "จำนวนผู้เข้าร่วมจริง (คน)", type: "number", placeholder: "เช่น 14" },
-        { key: "budgetUsed", label: "งบที่ใช้จริง (บาท)", type: "number", placeholder: "เช่น 11525" },
-        { key: "summary", label: "สรุปผลการดำเนินงาน", placeholder: "ผลที่ได้รับ ความสำเร็จตามวัตถุประสงค์...", isTextarea: true },
-        { key: "result", label: "ปัญหา/อุปสรรค และข้อเสนอแนะ", placeholder: "ปัญหาที่พบ และสิ่งที่ควรปรับปรุงครั้งต่อไป...", isTextarea: true },
+        { key: "summary", label: "สรุปผลการดำเนินงาน", placeholder: "เนื้อหาภาพรวมการจัดกิจกรรม...", isTextarea: true },
+        { key: "processEvaluation", label: "การประเมินผลด้านกระบวนการ", placeholder: "ตารางให้คะแนน 1-5 ในหัวข้อ การประชุม, การดำเนินงาน, การติดตาม...", isTextarea: true },
+        { key: "resourceEvaluation", label: "การประเมินผลด้านทรัพยากร", placeholder: "ตารางให้คะแนนความเหมาะสมของ งบประมาณ, สถานที่, สภาพแวดล้อม...", isTextarea: true },
+        { key: "highlight", label: "จุดเด่นของโครงการ", placeholder: "เช่น ความเป็นพี่น้อง...", isTextarea: true },
+        { key: "obstacles", label: "ปัญหาและอุปสรรค", placeholder: "เช่น การสื่อสารระหว่างฝ่าย...", isTextarea: true },
+        { key: "suggestion", label: "ข้อเสนอแนะ", placeholder: "ข้อเสนอแนะในการจัดกิจกรรมครั้งต่อไป...", isTextarea: true },
+        { key: "budgetUsedDetail", label: "สรุปค่าใช้จ่ายจริง", placeholder: "ตารางรายการจ่ายจริงเปรียบเทียบกับงบที่ได้รับ...", isTextarea: true },
+        { key: "attachments", label: "ภาคผนวก (แนบลิงก์รูปภาพ)", placeholder: "เช่น วางลิงก์ Google Drive รวบรวมรูปภาพกิจกรรม" }
     ],
+    announcement: [
+        { key: "subject", label: "เรื่อง", placeholder: "หัวข้อประกาศ" },
+        { key: "detail", label: "เนื้อหาประกาศ", placeholder: "รายละเอียดสิ่งที่ต้องการแจ้งให้ทราบ...", isTextarea: true },
+        { key: "effectiveDate", label: "ประกาศ ณ วันที่", type: "date", placeholder: "" }
+    ],
+    appointment: [
+        { key: "position", label: "ตำแหน่งที่แต่งตั้ง", placeholder: "เช่น ผู้อำนวยการสำนักงบประมาณ" },
+        { key: "appointeeName", label: "ชื่อผู้ได้รับแต่งตั้ง", placeholder: "ชื่อ-นามสกุล บุคคลหรือคณะกรรมการ" },
+        { key: "responsibilities", label: "หน้าที่และความรับผิดชอบ", placeholder: "รายละเอียดภาระงานที่มอบหมาย...", isTextarea: true },
+        { key: "effectiveDate", label: "วันที่มีผลบังคับใช้", type: "date", placeholder: "" }
+    ],
+    budget_claim: [
+        { key: "subject", label: "เรื่อง", placeholder: "ขออนุมัติเบิกเงินเพื่อจัดกิจกรรม..." },
+        { key: "totalAmountStr", label: "ยอดเงินที่ขอเบิก", placeholder: "ระบุเป็นตัวเลขและตัวอักษร (เช่น 5,000 บาท ห้าพันบาทถ้วน)" },
+        { key: "expenseDetail", label: "รายละเอียดค่าใช้จ่ายเบื้องต้น", placeholder: "ตารางประมาณการจ่าย...", isTextarea: true },
+        { key: "accountDetail", label: "ช่องทางการรับเงิน", placeholder: "เลขบัญชี/พร้อมเพย์ ธนาคาร และชื่อเจ้าของบัญชี" }
+    ],
+    budget_report: [
+        { key: "realExpenseDetail", label: "รายละเอียดการใช้จ่ายตามจริง", placeholder: "ตารางสรุปยอดจ่ายทั้งหมด...", isTextarea: true },
+        { key: "remainingAmount", label: "ยอดเงินคงเหลือ", placeholder: "คำนวณยอดเงินที่ต้องคืนสมาคม (บาท)" },
+        { key: "receiptReplacement", label: "ใบรับรองแทนใบเสร็จ", placeholder: "ระบุยอดเงินกรณีไม่มีใบเสร็จรับเงินจากร้านค้า...", isTextarea: true },
+        { key: "returnSlip", label: "หลักฐานการโอนคืน", placeholder: "แนบลิงก์ภาพสลิปการโอนเงินคืนงบประมาณที่เหลือ" }
+    ],
+    invite_committee: [
+        { key: "recipientName", label: "ชื่อผู้รับ", placeholder: "ชื่อกรรมการ/ตำแหน่งภายในสมาคม" },
+        { key: "objective", label: "วัตถุประสงค์การเชิญ", placeholder: "เช่น เพื่อวางแผนงานประจำปี หรือพิจารณางบประมาณ" },
+        { key: "schedule", label: "กำหนดการ", placeholder: "วัน เวลา และสถานที่ประชุม...", isTextarea: true }
+    ],
+    cert_conduct: [
+        { key: "personName", label: "ชื่อ-นามสกุล ผู้ได้รับการรับรอง", placeholder: "ชื่อ-นามสกุล" },
+        { key: "position", label: "สังกัด/ตำแหน่ง", placeholder: "ตำแหน่งในองค์กร" },
+        { key: "certificationText", label: "ข้อความรับรอง", placeholder: "การยืนยันสถานะความเป็นสมาชิกและความประพฤติ...", isTextarea: true }
+    ],
+    invite_external: [
+        { key: "toPerson", label: "เรียน", placeholder: "ระบุชื่อบุคคล หรือหัวหน้าหน่วยงานภายนอก" },
+        { key: "projectDetail", label: "ชื่อโครงการและรายละเอียดกิจกรรม", placeholder: "รายละเอียดกิจกรรมสังเขป...", isTextarea: true },
+        { key: "benefitsAndRoles", label: "สิทธิประโยชน์/บทบาทของผู้เข้าร่วม", placeholder: "คำอธิบายบทบาทและสิทธิประโยชน์...", isTextarea: true }
+    ],
+    invite_speaker: [
+        { key: "toPerson", label: "เรียน", placeholder: "ชื่อวิทยากร" },
+        { key: "topic", label: "หัวข้อบรรยาย", placeholder: "เช่น เทคนิคการบริหารโครงการ" },
+        { key: "dateTime", label: "วันและเวลา", placeholder: "เช่น 12 มีนาคม 2569 เวลา 09.00 - 12.00 น." },
+        { key: "targetGroup", label: "กลุ่มเป้าหมาย", placeholder: "จำนวนและระดับการศึกษาของผู้ฟัง" }
+    ],
+    permission_parent: [
+        { key: "activityName", label: "ชื่อกิจกรรม", placeholder: "ชื่อค่าย/โครงการ" },
+        { key: "travelAndHotel", label: "รายละเอียดการเดินทางและที่พัก", placeholder: "กำหนดการเดินทางและสถานที่พัก...", isTextarea: true },
+        { key: "consentText", label: "ส่วนยินยอม", placeholder: "ข้าพเจ้า... ผู้ปกครองของ... อนุญาตให้เข้าร่วมกิจกรรม...", isTextarea: true }
+    ],
+    permission_school: [
+        { key: "toPerson", label: "เรียน", placeholder: "เช่น อธิการบดี หรือ ผู้อำนวยการโรงเรียน" },
+        { key: "studentName", label: "ชื่อนักเรียน/นักศึกษาที่เชิญ", placeholder: "ชื่อ-นามสกุลผู้เข้าร่วม" },
+        { key: "reason", label: "เหตุผลที่ต้องใช้ตัวบุคคล", placeholder: "เพื่อเข้าร่วมโครงการพัฒนาศักยภาพ/ทักษะชีวิต...", isTextarea: true }
+    ],
+    request_support: [
+        { key: "toPerson", label: "เรียน", placeholder: "ชื่อผู้ให้การสนับสนุน หรือห้างร้าน" },
+        { key: "requestItem", label: "สิ่งที่ต้องการขอ", placeholder: "เช่น งบประมาณสนับสนุน, วัสดุอุปกรณ์, หรือสถานที่...", isTextarea: true },
+        { key: "benefits", label: "ประโยชน์ที่จะได้รับ", placeholder: "เช่น การส่งเสริมเยาวชนมุสลิม การโฆษณาสนับสนุน...", isTextarea: true }
+    ]
 };
 
 const REQUEST_CATEGORIES = [
@@ -162,15 +144,7 @@ const REQUEST_CATEGORIES = [
 
 const ALL_REQUEST_TYPES = REQUEST_CATEGORIES.flatMap(c => c.types);
 
-// ── Budget line-item types (for budget_claim richer UX) ──────────────────
-type LineItem = { id: number; description: string; amount: string };
 
-function isBudgetKey(k: string) { return k.startsWith("budget_"); }
-
-function calcBudgetTotal(fields: Record<string, string>) {
-    return ["budget_transport", "budget_meal", "budget_snack", "budget_equipment", "budget_speaker", "budget_venue", "budget_other"]
-        .reduce((s, k) => s + (Number(fields[k]) || 0), 0);
-}
 
 // ── Status configs ─────────────────────────────────────────────────────────
 const requestStatusConfig: Record<string, { className: string }> = {
@@ -183,9 +157,12 @@ type Tab = "request" | "pending";
 
 export default function DocumentsPage() {
     const { data: session } = useSession();
-    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    // Everyone can request documents, but only SUPER_ADMIN/ADMIN can manage (edit/delete/change status)
+    const isManager = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+    const isViewer = !isManager;
     const { selectedYear } = useYear();
-    const [tab, setTab] = useState<Tab>(isViewer ? "pending" : "request");
+    const [tab, setTab] = useState<Tab>("request");
     const [requests, setRequests] = useState<DocRequest[]>([]);
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState<DocRequest | null>(null);
@@ -267,11 +244,6 @@ export default function DocumentsPage() {
         
         // Fields
         const fields = { ...req.fields };
-        if (fields._lineItems) {
-            setLineItems(JSON.parse(fields._lineItems));
-        } else {
-            setLineItems([{ id: Date.now(), description: "", amount: "" }]);
-        }
         setRequestFields(fields);
         
         setStep(1);
@@ -298,7 +270,6 @@ export default function DocumentsPage() {
 
     // Form Fields (Step 3)
     const [requestFields, setRequestFields] = useState<Record<string, string>>({});
-    const [lineItems, setLineItems] = useState<LineItem[]>([{ id: 1, description: "", amount: "" }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Sub-departments derived from selected Org
@@ -309,17 +280,6 @@ export default function DocumentsPage() {
         setRequestFields(p => ({ ...p, [key]: val }));
     }
 
-    function addLineItem() {
-        setLineItems(p => [...p, { id: Date.now(), description: "", amount: "" }]);
-    }
-    function updateLineItem(id: number, field: "description" | "amount", val: string) {
-        setLineItems(p => p.map(li => li.id === id ? { ...li, [field]: val } : li));
-    }
-    function removeLineItem(id: number) {
-        setLineItems(p => p.filter(li => li.id !== id));
-    }
-    const lineItemTotal = lineItems.reduce((s, li) => s + (Number(li.amount) || 0), 0);
-
     function resetRequestForm() {
         setStep(1);
         setRequesterOrg("");
@@ -327,7 +287,6 @@ export default function DocumentsPage() {
         setRequesterName("");
         setSelectedRequestType(null);
         setRequestFields({});
-        setLineItems([{ id: 1, description: "", amount: "" }]);
         setEditingRequestId(null);
     }
 
@@ -350,14 +309,8 @@ export default function DocumentsPage() {
         
         try {
             const rt = ALL_REQUEST_TYPES.find(r => r.id === selectedRequestType);
-            
-            // Merge line items into fields for budget_claim
             const finalFields = { ...requestFields };
-            if (selectedRequestType === "budget_claim") {
-                finalFields._lineItems = JSON.stringify(lineItems);
-                finalFields._lineTotal = String(lineItemTotal);
-            }
-
+            
             const fullDept = `${requesterOrg}${requesterSubDept ? ` (${requesterSubDept})` : ""}`;
             
             if (editingRequestId) {
@@ -405,7 +358,7 @@ export default function DocumentsPage() {
             {/* Tabs */}
             <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
                 {[
-                    ...(!isViewer ? [{ id: "request", label: "ขอจัดทำเอกสารใหม่", icon: Send }] : []),
+                    { id: "request", label: "ขอจัดทำเอกสารใหม่", icon: Send },
                     { id: "pending", label: `คำขอทั้งหมด${pendingCount > 0 ? ` · ${pendingCount} รอ` : ""}`, icon: Inbox },
                 ].map(t => (
                     <button key={t.id} onClick={() => {
@@ -529,10 +482,7 @@ export default function DocumentsPage() {
                             {(() => {
                                 const rt = ALL_REQUEST_TYPES.find(r => r.id === selectedRequestType);
                                 const fields = REQUEST_FIELDS[selectedRequestType!] ?? [];
-                                const budgetFields = fields.filter(f => isBudgetKey(f.key));
-                                const normalFields = fields.filter(f => !isBudgetKey(f.key));
-                                const budgetTotal = calcBudgetTotal(requestFields);
-                                const isBudgetClaim = selectedRequestType === "budget_claim";
+                                const normalFields = fields;
 
                                 return (
                                     <>
@@ -579,69 +529,7 @@ export default function DocumentsPage() {
                                                 </div>
                                             ))}
 
-                                            {/* ── budget_claim: free-form line items ── */}
-                                            {isBudgetClaim && (
-                                                <div>
-                                                    <div className="flex items-center justify-between mb-2 mt-8">
-                                                        <p className="text-sm font-bold text-slate-800">📋 รายการค่าใช้จ่าย</p>
-                                                        <button type="button" onClick={addLineItem}
-                                                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold bg-blue-50 px-3 py-1.5 rounded-lg">
-                                                            <Plus className="w-3.5 h-3.5" /> เพิ่มรายการเบิก
-                                                        </button>
-                                                    </div>
-                                                    <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                                                        <div className="grid grid-cols-[1.5rem_1fr_8rem_2rem] gap-3 px-4 py-2.5 bg-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wide">
-                                                            <span>ที่</span><span>รายการ</span><span className="text-right">จำนวนเงิน (บาท)</span><span></span>
-                                                        </div>
-                                                        {lineItems.map((li, idx) => (
-                                                            <div key={li.id} className="grid grid-cols-[1.5rem_1fr_8rem_2rem] gap-3 items-center px-4 py-3 border-t border-slate-200">
-                                                                <span className="text-sm text-slate-400 font-medium">{idx + 1}</span>
-                                                                <input value={li.description} onChange={e => updateLineItem(li.id, "description", e.target.value)}
-                                                                    placeholder="ระบุชื่อรายการ..."
-                                                                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 bg-white w-full" />
-                                                                <input type="number" min="0" value={li.amount} onChange={e => updateLineItem(li.id, "amount", e.target.value)}
-                                                                    placeholder="0"
-                                                                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-right outline-none focus:border-blue-400 bg-white w-full" />
-                                                                {lineItems.length > 1 ? (
-                                                                    <button type="button" onClick={() => removeLineItem(li.id)}
-                                                                        className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors">
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
-                                                                ) : <span />}
-                                                            </div>
-                                                        ))}
-                                                        <div className="flex items-center justify-between px-5 py-3.5 bg-amber-50 border-t border-amber-200">
-                                                            <span className="text-sm font-bold text-amber-800">รวมเป็นเงินทั้งสิ้น</span>
-                                                            <span className="text-lg font-bold text-amber-700">฿{lineItemTotal.toLocaleString()} บาท</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
 
-                                            {/* budget keys (for project_doc) */}
-                                            {budgetFields.length > 0 && !isBudgetClaim && (
-                                                <div className="mt-8">
-                                                    <p className="text-sm font-bold text-slate-800 mb-3">💰 งบประมาณแยกตามหมวดหมู่</p>
-                                                    <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                                                        {budgetFields.map((f, i) => (
-                                                            <div key={f.key} className={cn("flex items-center gap-4 px-5 py-3.5", i < budgetFields.length - 1 && "border-b border-slate-200")}>
-                                                                <span className="text-sm font-medium text-slate-600 flex-1">{f.label}</span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-sm font-semibold text-slate-400">฿</span>
-                                                                    <input type="number" min="0" value={requestFields[f.key] ?? ""}
-                                                                        onChange={e => setField(f.key, e.target.value)}
-                                                                        placeholder="0"
-                                                                        className="w-32 border border-slate-200 rounded-lg px-3 py-2 text-sm text-right outline-none focus:border-blue-400 bg-white" />
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                        <div className="flex items-center justify-between px-5 py-4 bg-blue-50 border-t border-blue-200">
-                                                            <span className="text-sm font-bold text-blue-800">รวมงบประมาณทั้งสิ้น</span>
-                                                            <span className="text-lg font-bold text-blue-700">฿{budgetTotal.toLocaleString()} บาท</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
 
                                             <div className="bg-blue-50/50 rounded-xl p-4 text-sm text-blue-800 border-l-4 border-blue-500 mt-8 font-medium">
                                                 เมื่อส่งคำขอแล้ว ฝ่ายเลขาธิการจะรับทราบและนำข้อมูลนี้ไปจัดทำเอกสารแบบฟอร์มมาตรฐานให้คุณ
@@ -668,11 +556,7 @@ export default function DocumentsPage() {
                     {pendingRequests.map(req => {
                         const rt = ALL_REQUEST_TYPES.find(r => r.label === req.requestType);
                         const statusCls = requestStatusConfig[req.status]?.className ?? "bg-slate-100 text-slate-600";
-                        const lineItemsData: LineItem[] | null = req.fields._lineItems ? JSON.parse(req.fields._lineItems) as LineItem[] : null;
-                        const lineTotal = req.fields._lineTotal ? Number(req.fields._lineTotal) : 0;
-                        const displayFields = Object.entries(req.fields).filter(([k]) => !k.startsWith("_") && !isBudgetKey(k));
-                        const budgetUsed = req.fields.budgetUsed || req.fields._lineTotal;
-                        const budgetReturned = req.fields.budgetReturned;
+                        const displayFields = Object.entries(req.fields).filter(([k]) => !k.startsWith("_"));
 
                         return (
                             <div key={req.id} className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -793,9 +677,7 @@ export default function DocumentsPage() {
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">ข้อมูลรายละเอียดเอกสาร</p>
                                 <div className="space-y-4">
                                     {(() => {
-                                        const lineItemsData: LineItem[] | null = selectedRequest.fields._lineItems ? JSON.parse(selectedRequest.fields._lineItems) as LineItem[] : null;
-                                        const displayFields = Object.entries(selectedRequest.fields).filter(([k]) => !k.startsWith("_") && !isBudgetKey(k));
-                                        const budgetFields = Object.entries(selectedRequest.fields).filter(([k]) => isBudgetKey(k));
+                                        const displayFields = Object.entries(selectedRequest.fields).filter(([k]) => !k.startsWith("_"));
 
                                         return (
                                             <>
@@ -824,56 +706,6 @@ export default function DocumentsPage() {
                                                     }) }
                                                 </div>
 
-                                                {/* Line Items for Budget Claim */}
-                                                {lineItemsData && (
-                                                    <div className="mt-6">
-                                                        <p className="text-xs font-bold text-slate-400 mb-3">รายการเบิกงบประมาณ</p>
-                                                        <div className="border border-slate-100 rounded-2xl overflow-hidden">
-                                                            <table className="w-full text-sm">
-                                                                <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase">
-                                                                    <tr>
-                                                                        <th className="px-4 py-2 text-left w-12 text-slate-400">#</th>
-                                                                        <th className="px-4 py-2 text-left text-slate-400">รายการ</th>
-                                                                        <th className="px-4 py-2 text-right text-slate-400">จำนวนเงิน</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-slate-50">
-                                                                    {lineItemsData.map((li, i) => (
-                                                                        <tr key={li.id}>
-                                                                            <td className="px-4 py-3 text-slate-400">{i+1}</td>
-                                                                            <td className="px-4 py-3 font-medium text-slate-700">{li.description}</td>
-                                                                            <td className="px-4 py-3 text-right font-bold text-slate-800">฿{Number(li.amount).toLocaleString()}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                    <tr className="bg-amber-50">
-                                                                        <td colSpan={2} className="px-4 py-3 font-bold text-amber-800">รวมทั้งสิ้น</td>
-                                                                        <td className="px-4 py-3 text-right font-bold text-amber-800 text-base">฿{Number(selectedRequest.fields._lineTotal).toLocaleString()}</td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Budget breakdown for Project Doc */}
-                                                {budgetFields.length > 0 && !lineItemsData && (
-                                                    <div className="mt-6 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50 p-4">
-                                                        <p className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">หมวดหมู่งบประมาณ</p>
-                                                        <div className="space-y-2">
-                                                            {budgetFields.map(([k, v]) => {
-                                                                const allFields = Object.values(REQUEST_FIELDS).flat();
-                                                                const fieldDef = allFields.find(f => f.key === k);
-                                                                if (!v || Number(v) === 0) return null;
-                                                                return (
-                                                                    <div key={k} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100">
-                                                                        <span className="text-xs font-semibold text-slate-600">{fieldDef?.label || k}</span>
-                                                                        <span className="text-sm font-bold text-slate-800">฿{Number(v).toLocaleString()}</span>
-                                                                    </div>
-                                                                );
-                                                            }) }
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </>
                                         );
                                     })()}

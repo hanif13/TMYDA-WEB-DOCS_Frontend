@@ -42,7 +42,8 @@ const docTypeColors: Record<string, string> = {
 export default function ProjectsPage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
-    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    const isViewer = userRole === "VIEWER" || userRole === "FINANCE";
     const router = useRouter();
     const [projects, setProjects] = useState<Project[]>([]);
     const [annualPlans, setAnnualPlans] = useState<AnnualPlan[]>([]);
@@ -585,7 +586,8 @@ export default function ProjectsPage() {
 
 function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { id: string, onClose: () => void, onUpdate: () => void, allDocs: any[], departments: Department[] }) {
     const { data: session } = useSession();
-    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    const isViewer = userRole === "VIEWER" || userRole === "FINANCE";
     const [project, setProject] = useState<Project | null>(null);
     const [tab, setTab] = useState<"info" | "docs">("info");
     const [isLoading, setIsLoading] = useState(true);
@@ -782,13 +784,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                 <p className="text-sm font-bold text-slate-700">{project.lead}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-start gap-3">
-                                            <CalendarDays className="w-4 h-4 text-slate-400 mt-0.5" />
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">ระยะเวลา (ตามแผน)</p>
-                                                <p className="text-sm font-bold text-slate-700">{project.startDate || "ยังไม่ระบุ"} - {project.endDate || "ยังไม่ระบุ"}</p>
-                                            </div>
-                                        </div>
+
                                         {project.actualDate && (
                                             <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
                                                 <Calendar className="w-4 h-4 text-purple-400 mt-0.5" />

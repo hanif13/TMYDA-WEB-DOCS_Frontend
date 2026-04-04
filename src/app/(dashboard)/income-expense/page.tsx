@@ -32,7 +32,8 @@ type Tab = "overview" | "transactions" | "disbursement" | "add";
 export default function IncomeExpensePage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
-    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    const isViewer = userRole !== "SUPER_ADMIN" && userRole !== "FINANCE";
 
     const [transactions, setTransactions] = useState<BudgetTransaction[]>([]);
     const [projects, setProjects] = useState<{
@@ -78,7 +79,7 @@ export default function IncomeExpensePage() {
         ]).then(([txData, plansData, docsData, deptsData]) => {
             const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
                 id: t.id,
-                date: new Date(t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
+                date: new Date(t.date || t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
                 type: t.type === "income" ? "รายรับ" : t.type === "expense" ? "รายจ่าย" : "คืนเงิน",
                 description: t.title,
                 department: t.department?.name || "",
@@ -88,6 +89,7 @@ export default function IncomeExpensePage() {
                 recordedBy: "ทีมงบประมาณ",
                 docRef: t.docRef || undefined,
                 slipUrl: t.slipUrl || undefined,
+                note: t.note || undefined,
             }));
             setTransactions(mappedTx);
 
@@ -228,13 +230,14 @@ export default function IncomeExpensePage() {
             const formData = new FormData();
             formData.append("date", new Date().toISOString());
             formData.append("title", form.description);
-            formData.append("type", form.type === "รายรับ" ? "income" : form.type === "รายจ่าย" ? "expense" : "refund");
+            formData.append("type", form.subType === "refund" ? "refund" : form.type === "รายรับ" ? "income" : "expense");
             formData.append("amount", form.amount);
             formData.append("category", form.subType);
             formData.append("docRef", form.docRef);
             formData.append("months", JSON.stringify(form.months));
             formData.append("departmentId", form.departmentId);
             if (form.projectId) formData.append("projectId", form.projectId);
+            if (form.note) formData.append("note", form.note);
             if (selectedYear) formData.append("thaiYear", selectedYear.toString());
             if (selectedFile) formData.append("file", selectedFile);
 
@@ -277,7 +280,10 @@ export default function IncomeExpensePage() {
             
             // Re-fetch projects to update budgetUsed
             fetchAnnualPlans().then(plansData => {
-                const updatedProjects = plansData.flatMap((p: any) => p.projects || []).map((proj: any) => ({
+                const filteredPlans = (plansData as any[]).filter(p => !selectedYear || p.thaiYear === selectedYear);
+                const updatedProjects = filteredPlans.flatMap((p: any) => p.projects || [])
+                    .filter((proj: any) => proj.isStarted)
+                    .map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
                     department: proj.department?.name || "",
@@ -331,11 +337,12 @@ export default function IncomeExpensePage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
                     { label: "รายรับทั้งหมด", value: totalIncome, icon: TrendingUp, bg: "bg-green-50", text: "text-green-600", sign: "+" },
                     { label: "รายจ่ายทั้งหมด", value: totalExpense, icon: TrendingDown, bg: "bg-red-50", text: "text-red-600", sign: "-" },
                     { label: "ยอดคืนเงิน", value: totalReturn, icon: RefreshCw, bg: "bg-blue-50", text: "text-blue-600", sign: "+" },
+                    { label: "ยอดที่ใช้จ่ายจริง", value: totalExpense - totalReturn, icon: Banknote, bg: "bg-orange-50", text: "text-orange-600", sign: "" },
                     { label: "คงเหลือสุทธิ", value: balance, icon: Wallet, bg: balance > 0 ? "bg-emerald-50" : "bg-rose-50", text: balance > 0 ? "text-emerald-700" : "text-rose-700", sign: "" },
                 ].map(c => (
                     <div key={c.label} className="bg-white rounded-2xl border border-slate-100 p-5 card-hover">

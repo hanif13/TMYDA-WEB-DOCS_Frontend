@@ -1,76 +1,74 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard, FileText, FolderKanban, Settings,
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
-    Bell, Star, BookMarked, CalendarDays, Receipt
+    Bell, Star, BookMarked, CalendarDays, Receipt,
+    KeyRound, UserCircle, Shield, Wallet, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useYear } from '@/context/YearContext';
 
+// Role-based navigation configuration
 const navGroups = [
     {
         label: 'หลัก',
         items: [
-            { name: 'Dashboard', href: '/', icon: LayoutDashboard, permission: 'ACCESS_DASHBOARD' },
-            { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, permission: 'ACCESS_COMPLETED_PROJECTS' },
-            { name: 'คณะกรรมการ', href: '/committee', icon: Users, permission: 'ACCESS_COMMITTEE' },
+            { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'คณะกรรมการ', href: '/committee', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
         ],
     },
     {
         label: 'การดำเนินงาน',
         items: [
-            { name: 'เอกสาร', href: '/documents', icon: FileText, permission: 'ACCESS_DOCUMENTS' },
-            { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, permission: 'ACCESS_REGISTRY' },
-            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, permission: 'ACCESS_INCOME_EXPENSE' },
-            { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, permission: 'ACCESS_ANNUAL_PROJECTS' },
-            { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, permission: 'ACCESS_PROJECTS' },
+            { name: 'เอกสาร', href: '/documents', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
+            { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
         ],
     },
     {
         label: 'ระบบ',
         items: [
-            { name: 'ผู้ใช้งาน', href: '/users', icon: Users, permission: 'ACCESS_USERS' },
-            { name: 'จัดการปีการทำงาน', href: '/settings/years', icon: CalendarDays, permission: 'ACCESS_YEARS' },
+            { name: 'ผู้ใช้งาน', href: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
+            { name: 'จัดการปีการทำงาน', href: '/settings/years', icon: CalendarDays, roles: ['SUPER_ADMIN'] },
         ],
     },
 ];
 
+// Role display config
+const ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+    SUPER_ADMIN: { label: 'ผู้ดูแลระบบ', color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
+    ADMIN: { label: 'ผู้ใช้งาน', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
+    FINANCE: { label: 'ผู้จัดการการเงิน', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20' },
+    VIEWER: { label: 'ผู้ใช้ทั่วไป', color: 'text-slate-400', bgColor: 'bg-slate-500/20' },
+};
 
 import { useSession, signOut } from 'next-auth/react';
 
 export function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const { data: session } = useSession();
     const { selectedYear, setSelectedYear, availableYears } = useYear();
     const [yearSwitcherOpen, setYearSwitcherOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
 
     const user = session?.user as any;
-    const role = user?.role || 'USER';
-    const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
-    const isSuperAdmin = role === 'SUPER_ADMIN';
+    const role = user?.role || 'VIEWER';
+    const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.VIEWER;
 
-    console.log('--- SIDEBAR DEBUG ---');
-    console.log('User Name:', user?.name);
-    console.log('User Role:', role);
-    console.log('User Permissions:', JSON.stringify(permissions));
-    console.log('Is Super Admin:', isSuperAdmin);
-
-    // Filter navigation based on permissions and role
+    // Filter navigation based on role
     const filteredGroups = navGroups.map(group => {
         const filteredItems = group.items.filter(item => {
-            // Super Admin sees everything
-            if (isSuperAdmin) return true;
-            
-            // Check if user has explicit permission for this item
-            const hasPerm = permissions.includes(item.permission);
-            console.log(`- Checking item ${item.name}: perm=${item.permission}, hasPerm=${hasPerm}`);
-            return hasPerm;
+            return item.roles.includes(role);
         });
-        
+
         return {
             ...group,
             items: filteredItems
@@ -95,7 +93,7 @@ export function Sidebar() {
             <div className="px-3 py-4 border-b border-white/5 bg-white/5 shadow-inner">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 mb-2">ปีการทำงานปัจจุบัน</p>
                 <div className="relative">
-                    <button 
+                    <button
                         onClick={() => setYearSwitcherOpen(!yearSwitcherOpen)}
                         className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-white hover:border-blue-500/50 transition-all duration-300 group"
                     >
@@ -119,8 +117,8 @@ export function Sidebar() {
                                     }}
                                     className={cn(
                                         "w-full flex items-center justify-between px-4 py-3 text-sm font-bold transition-all",
-                                        selectedYear === year 
-                                            ? "bg-blue-600 text-white" 
+                                        selectedYear === year
+                                            ? "bg-blue-600 text-white"
                                             : "text-slate-400 hover:bg-white/5 hover:text-white"
                                     )}
                                 >
@@ -156,8 +154,8 @@ export function Sidebar() {
                                         )}
                                     >
                                         <item.icon className={cn("flex-shrink-0 h-4 w-4", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-300")} />
-                                         <span className="truncate">{item.name}</span>
-                                     </Link>
+                                        <span className="truncate">{item.name}</span>
+                                    </Link>
                                 );
                             })}
                         </div>
@@ -168,19 +166,53 @@ export function Sidebar() {
 
             {/* User Profile */}
             <div className="p-3 border-t border-white/5">
-                <div 
-                    onClick={() => signOut()}
-                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
-                    title="คลิกเพื่อออกจากระบบ"
-                >
-                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-lg">
-                        {user?.name?.charAt(0) || <Users className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-200 truncate">{user?.name || 'ผู้ใช้งาน'}</p>
-                        <p className="text-xs text-slate-500 truncate">{user?.department || user?.role || 'Fityatulhak'}</p>
-                    </div>
-                    <LogOut className="w-4 h-4 text-slate-600 group-hover:text-rose-500 transition-colors flex-shrink-0" />
+                {/* Role Badge */}
+                <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2", roleConfig.bgColor)}>
+                    <Shield className={cn("w-3.5 h-3.5", roleConfig.color)} />
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wider", roleConfig.color)}>{roleConfig.label}</span>
+                </div>
+
+                {/* Profile Menu */}
+                <div className="relative">
+                    <button
+                        onClick={() => setProfileOpen(!profileOpen)}
+                        className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group"
+                    >
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-lg">
+                            {user?.name?.charAt(0) || <Users className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                            <p className="text-sm font-semibold text-slate-200 truncate">{user?.name || 'ผู้ใช้งาน'}</p>
+                            <p className="text-[10px] text-slate-500 truncate">@{user?.username || 'user'}</p>
+                        </div>
+                        <ChevronDown className={cn("w-4 h-4 text-slate-600 transition-transform duration-200", profileOpen && "rotate-180")} />
+                    </button>
+
+                    {/* Profile Dropdown */}
+                    {profileOpen && (
+                        <div className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                            <div className="p-1.5">
+                                <button
+                                    onClick={() => {
+                                        setProfileOpen(false);
+                                        router.push('/profile');
+                                    }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                    <KeyRound className="w-4 h-4 text-slate-500" />
+                                    <span className="font-medium">หน้าโปรไฟล์</span>
+                                </button>
+                                <div className="h-px bg-white/5 my-1" />
+                                <button
+                                    onClick={() => signOut()}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    <span className="font-medium">ออกจากระบบ</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

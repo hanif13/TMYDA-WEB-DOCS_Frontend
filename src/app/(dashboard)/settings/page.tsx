@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
     const { data: session } = useSession();
-    const isViewer = (session?.user as any)?.role === "VIEWER";
+    const userRole = (session?.user as any)?.role || "VIEWER";
+    const isViewer = userRole !== "SUPER_ADMIN";
 
     const [orgName, setOrgName] = useState("ฟิตยะตุลฮัก");
     const [orgNameEn, setOrgNameEn] = useState("Fityatulhak");

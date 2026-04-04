@@ -24,7 +24,8 @@ const statusConfig: Record<string, { label: string, className: string }> = {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const { selectedYear } = useYear();
-  const isViewer = (session?.user as any)?.role === "VIEWER";
+  const userRole = (session?.user as any)?.role || "VIEWER";
+  const isViewer = userRole === "VIEWER" || userRole === "FINANCE";
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [documents, setDocuments] = useState<StoredDocument[]>([]);

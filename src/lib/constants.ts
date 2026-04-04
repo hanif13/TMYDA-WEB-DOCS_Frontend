@@ -9,6 +9,7 @@ export const ORG_PREFIX_BY_DEPT: Record<string, string> = {
     "สำนักอำนวยการ": "ที่ สอ.ฟฮ",
     "สมาคมพัฒนาเยาวชนมุสลิมไทย": "ที่ สพยท.",
     "สำนักกิจการสตรี สมาคมฯ": "ที่ สพยท.",
+    "สำนักกิจการสตรี": "ที่ สพยท.",
 };
 
 export const MASTER_CATEGORIES = [

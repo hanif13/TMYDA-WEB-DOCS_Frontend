@@ -61,7 +61,7 @@ export default function RegistryPage() {
     const loadMetadata = async () => {
         try {
             const [depts, cats] = await Promise.all([
-                fetchDepartments(),
+                fetchDepartments('all'),
                 fetchCategories()
             ]);
             setDbDepartments(depts);

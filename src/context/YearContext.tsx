@@ -36,6 +36,12 @@ export function YearProvider({ children }: { children: ReactNode }) {
             const savedYear = localStorage.getItem("workingYear");
             if (savedYear && years.includes(Number(savedYear))) {
                 setSelectedYearState(Number(savedYear));
+            } else if (years.length > 0) {
+                const newYear = years[0];
+                localStorage.setItem("workingYear", newYear.toString());
+                setSelectedYearState(newYear);
+            } else {
+                setSelectedYearState(null);
             }
         } catch (error) {
             console.error("Failed to fetch available years:", error);
@@ -58,6 +64,20 @@ export function YearProvider({ children }: { children: ReactNode }) {
             setPlans(fetchedPlans);
             const years = fetchedPlans.map((p: any) => p.thaiYear).sort((a: number, b: number) => b - a);
             setAvailableYears(years);
+            
+            setSelectedYearState((prev) => {
+                if (prev !== null && !years.includes(prev)) {
+                    if (years.length > 0) {
+                        const newYear = years[0];
+                        localStorage.setItem("workingYear", newYear.toString());
+                        return newYear;
+                    } else {
+                        localStorage.removeItem("workingYear");
+                        return null;
+                    }
+                }
+                return prev;
+            });
         } catch (error) {
             console.error("Failed to refresh years:", error);
         }

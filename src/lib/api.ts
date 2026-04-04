@@ -289,7 +289,7 @@ export async function createCommitteeMember(data: FormData | any) {
 export async function createCommitteeBulk(data: any[]) {
     return apiFetch<any>("/committee/bulk", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify({ committees: data }),
     });
 }
 
@@ -307,8 +307,49 @@ export async function deleteCommitteeMember(id: string) {
 }
 
 // ─── DEPARTMENTS ──────────────────────────────────────────
-export async function fetchDepartments() {
-    return apiFetch<any[]>("/departments");
+export async function fetchDepartments(year?: number | string, scope?: 'global' | 'committee') {
+    let url = "/departments?";
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (scope) params.append("scope", scope);
+    
+    return apiFetch<any[]>(url + params.toString());
+}
+
+export async function createDepartment(data: any, year?: number, isCommitteeOnly?: boolean) {
+    const body = year ? { ...data, thaiYear: year, isCommitteeOnly } : { ...data, isCommitteeOnly };
+    return apiFetch<any>("/departments", {
+        method: "POST",
+        body: JSON.stringify(body),
+    });
+}
+
+export async function updateDepartment(id: string, data: any) {
+    return apiFetch<any>(`/departments/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteDepartment(id: string, year?: number) {
+    const query = year ? `?year=${year}` : '';
+    return apiFetch<any>(`/departments/${id}${query}`, {
+        method: "DELETE",
+    });
+}
+
+export async function reorderDepartments(orders: { id: string, order: number }[]) {
+    return apiFetch<any>("/departments/reorder", {
+        method: "PUT",
+        body: JSON.stringify({ orders }),
+    });
+}
+
+export async function reorderCommitteeMembers(orders: { id: string, order: number, departmentId?: string }[]) {
+    return apiFetch<any>("/committee/reorder", {
+        method: "PUT",
+        body: JSON.stringify({ orders }),
+    });
 }
 
 export async function fetchCategories() {
@@ -347,3 +388,44 @@ export async function deleteUser(id: string) {
     });
 }
 
+// Self-service: Change own password
+export async function changePassword(data: { currentPassword: string; newPassword: string }) {
+    return apiFetch<any>(`/users/me/password`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+// Self-service: Get own profile
+export async function getMyProfile() {
+    return apiFetch<any>(`/users/me`);
+}
+
+// Self-service: Update own profile
+export async function updateMyProfile(data: { 
+    name?: string; 
+    email?: string; 
+    phoneNumber?: string; 
+    facebook?: string; 
+    departmentId?: string 
+}) {
+    return apiFetch<any>(`/users/me`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+// Admin: Bulk upload users via CSV
+export async function uploadUsersCsv(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return apiFetch<any>(`/users/upload`, {
+        method: "POST",
+        body: formData,
+        // Let the browser set the boundary for FormData
+        headers: {
+            'Accept': 'application/json',
+        }
+    });
+}
