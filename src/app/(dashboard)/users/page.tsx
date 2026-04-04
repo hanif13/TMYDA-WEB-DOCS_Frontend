@@ -2,24 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { 
-    Users, ShieldCheck, User, Plus, MoreHorizontal, 
+import {
+    Users, ShieldCheck, User, Plus, MoreHorizontal,
     Loader, X, Check, Trash2, Key, Mail, Building2,
     ShieldAlert, Eye, UserCog, Phone, Facebook,
     FileUp, Download, AlertCircle
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { 
+import {
     fetchUsers, createUser, updateUser, deleteUser,
-    fetchDepartments, uploadUsersCsv 
+    fetchDepartments, uploadUsersCsv
 } from "@/lib/api";
 
-const ROLES_CONFIG: Record<string, { label: string; color: string; icon: string; desc: string }> = {
-    SUPER_ADMIN: { label: 'ผู้ดูแลระบบ', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: '🛡️', desc: 'ทำได้ทุกอย่าง (สูงสุด 3 คน)' },
-    ADMIN: { label: 'ผู้ใช้งาน', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: '👤', desc: 'จัดการโครงการ เอกสาร คณะกรรมการ' },
-    FINANCE: { label: 'ผู้จัดการการเงิน', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: '💰', desc: 'จัดการรายรับ-รายจ่าย' },
-    VIEWER: { label: 'ผู้ใช้ทั่วไป', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: '👁️', desc: 'ดูข้อมูล ขอเอกสาร ดาวน์โหลด' },
+const ROLES_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
+    SUPER_ADMIN: { label: 'ผู้ดูแลระบบ', color: 'bg-amber-100 text-amber-700 border-amber-200', desc: 'ทำได้ทุกอย่าง (สูงสุด 3 คน)' },
+    ADMIN: { label: 'ผู้ใช้งาน', color: 'bg-blue-100 text-blue-700 border-blue-200', desc: 'จัดการโครงการ เอกสาร คณะกรรมการ' },
+    FINANCE: { label: 'ผู้จัดการการเงิน', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', desc: 'จัดการรายรับ-รายจ่าย' },
+    VIEWER: { label: 'ผู้ใช้ทั่วไป', color: 'bg-slate-100 text-slate-600 border-slate-200', desc: 'ดูข้อมูล ขอเอกสาร ดาวน์โหลด' },
 };
 
 const ROLES = Object.keys(ROLES_CONFIG);
@@ -172,10 +172,10 @@ export default function UsersPage() {
             ["user01", "123456", "สมชาย ใจดี", "สมาคมฯ", "ผู้ใช้งาน"],
             ["user02", "password123", "สมหญิง รักเรียน", "กอฮา", "ผู้ใช้ทั่วไป"]
         ];
-        
+
         const csvContent = "\ufeff" + // UTF-8 BOM for Excel
             [headers, ...rows].map(e => e.join(",")).join("\n");
-            
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -197,8 +197,8 @@ export default function UsersPage() {
     };
 
     const filteredUsers = users.filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                             u.username.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            u.username.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesDept = deptFilter === "all" || u.departmentId === deptFilter;
         return matchesSearch && matchesDept;
     });
@@ -216,7 +216,7 @@ export default function UsersPage() {
                 </div>
                 {isSuperAdmin && (
                     <div className="flex items-center gap-3">
-                        <button 
+                        <button
                             onClick={() => {
                                 setUploadResults(null);
                                 setShowUploadModal(true);
@@ -225,7 +225,7 @@ export default function UsersPage() {
                         >
                             <FileUp className="w-5 h-5" /> นำเข้า CSV
                         </button>
-                        <button 
+                        <button
                             onClick={() => handleOpenModal()}
                             className="flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-bold px-6 py-3.5 rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95"
                         >
@@ -243,7 +243,7 @@ export default function UsersPage() {
                     return (
                         <div key={role} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center gap-2 mb-2">
-                                <span className="text-lg">{cfg.icon}</span>
+                                <span className="text-lg"></span>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{cfg.label}</p>
                             </div>
                             <div className="flex items-end justify-between">
@@ -271,7 +271,7 @@ export default function UsersPage() {
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <select 
+                            <select
                                 className="pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
                                 value={deptFilter}
                                 onChange={e => setDeptFilter(e.target.value)}
@@ -352,14 +352,14 @@ export default function UsersPage() {
                                         <td className="px-8 py-5 text-right">
                                             {isSuperAdmin && (
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleOpenModal(user)}
                                                         className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all"
                                                         title="แก้ไขผู้ใช้งาน"
                                                     >
                                                         <UserCog className="w-4 h-4" />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleDelete(user.id, user.name)}
                                                         className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-all"
                                                         title="ลบผู้ใช้งาน"
@@ -419,7 +419,7 @@ export default function UsersPage() {
                                         {ROLES.map(role => {
                                             const cfg = ROLES_CONFIG[role];
                                             const isDisabled = role === 'SUPER_ADMIN' && users.filter(u => u.role === 'SUPER_ADMIN').length >= MAX_SUPER_ADMINS && formData.role !== 'SUPER_ADMIN';
-                                            return <option key={role} value={role} disabled={isDisabled}>{cfg.icon} {cfg.label}{isDisabled ? ' (เต็มแล้ว)' : ''}</option>;
+                                            return <option key={role} value={role} disabled={isDisabled}> {cfg.label}{isDisabled ? ' (เต็มแล้ว)' : ''}</option>;
                                         })}
                                     </select>
                                     {formData.role && <p className="text-[10px] text-slate-400 mt-1.5">{ROLES_CONFIG[formData.role]?.desc}</p>}
@@ -466,8 +466,8 @@ export default function UsersPage() {
 
                             <div className="flex gap-4 pt-6">
                                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-2xl transition-all">ยกเลิก</button>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     disabled={isSubmitting}
                                     className="flex-[2] bg-blue-600 text-white py-4 rounded-[1.5rem] text-sm font-black shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
@@ -503,11 +503,11 @@ export default function UsersPage() {
                                 <>
                                     <div className="space-y-4">
                                         <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center text-center group hover:border-blue-500 transition-all">
-                                            <input 
-                                                type="file" 
-                                                accept=".csv" 
+                                            <input
+                                                type="file"
+                                                accept=".csv"
                                                 onChange={handleUploadCsv}
-                                                className="hidden" 
+                                                className="hidden"
                                                 id="csv-upload"
                                                 disabled={isUploading}
                                             />
@@ -544,7 +544,7 @@ export default function UsersPage() {
                                         </div>
                                     </div>
 
-                                    <button 
+                                    <button
                                         onClick={downloadTemplate}
                                         className="w-full py-4 bg-slate-900 text-white rounded-2xl text-sm font-black flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
                                     >
@@ -577,7 +577,7 @@ export default function UsersPage() {
                                         </div>
                                     )}
 
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setUploadResults(null);
                                             setShowUploadModal(false);
