@@ -9,8 +9,9 @@ import {
     KeyRound, UserCircle, Shield, Wallet, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
 import { useYear } from '@/context/YearContext';
+import { useSession, signOut } from 'next-auth/react';
+import { useState, useEffect, useRef } from 'react';
 
 // Role-based navigation configuration
 const navGroups = [
@@ -49,19 +50,44 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: strin
     VIEWER: { label: 'ผู้ใช้ทั่วไป', color: 'text-slate-400', bgColor: 'bg-slate-500/20' },
 };
 
-import { useSession, signOut } from 'next-auth/react';
-
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const pathname = usePathname();
     const router = useRouter();
     const { data: session } = useSession();
     const { selectedYear, setSelectedYear, availableYears } = useYear();
+    
+    // States for dropdowns
     const [yearSwitcherOpen, setYearSwitcherOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+
+    // Refs for click-outside detection
+    const yearSwitcherRef = useRef<HTMLDivElement>(null);
+    const profileRef = useRef<HTMLDivElement>(null);
 
     const user = session?.user as any;
     const role = user?.role || 'VIEWER';
     const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.VIEWER;
+
+    // 1. Close dropdowns when navigating to a new page
+    useEffect(() => {
+        setYearSwitcherOpen(false);
+        setProfileOpen(false);
+    }, [pathname]);
+
+    // 2. Close dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (yearSwitcherRef.current && !yearSwitcherRef.current.contains(event.target as Node)) {
+                setYearSwitcherOpen(false);
+            }
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+                setProfileOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     // Filter navigation based on role
     const filteredGroups = navGroups.map(group => {
@@ -76,7 +102,21 @@ export function Sidebar() {
     }).filter(group => group.items.length > 0);
 
     return (
-        <div className="w-64 flex-shrink-0 bg-[#0f172a] h-screen hidden md:flex flex-col">
+        <>
+            {/* Backdrop for mobile */}
+            <div 
+                className={cn(
+                    "fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity duration-300 md:hidden",
+                    isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}
+                onClick={onClose}
+            />
+
+            {/* Sidebar drawer */}
+            <div className={cn(
+                "fixed inset-y-0 left-0 w-64 bg-[#0f172a] h-screen flex flex-col z-50 transition-transform duration-300 md:relative md:translate-x-0",
+                isOpen ? "translate-x-0" : "-translate-x-full"
+            )}>
             {/* Logo */}
             <div className="h-16 flex items-center px-5 border-b border-white/5">
                 <div className="flex items-center gap-2.5">
@@ -92,7 +132,7 @@ export function Sidebar() {
             {/* Year Switcher */}
             <div className="px-3 py-4 border-b border-white/5 bg-white/5 shadow-inner">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 mb-2">ปีการทำงานปัจจุบัน</p>
-                <div className="relative">
+                <div className="relative" ref={yearSwitcherRef}>
                     <button
                         onClick={() => setYearSwitcherOpen(!yearSwitcherOpen)}
                         className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-white hover:border-blue-500/50 transition-all duration-300 group"
@@ -103,7 +143,7 @@ export function Sidebar() {
                             </div>
                             <span className="text-xl font-black tracking-tight">{selectedYear || '—'}</span>
                         </div>
-                        <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-300", yearSwitcherOpen && "rotate-180")} />
+                        <ChevronDown className={cn("w-4 h-4 text-slate-600 transition-transform duration-300", yearSwitcherOpen && "rotate-180")} />
                     </button>
 
                     {yearSwitcherOpen && (
@@ -146,6 +186,9 @@ export function Sidebar() {
                                     <Link
                                         key={item.href}
                                         href={item.href}
+                                        onClick={() => {
+                                            if (window.innerWidth < 768) onClose();
+                                        }}
                                         className={cn(
                                             "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                                             isActive
@@ -173,7 +216,7 @@ export function Sidebar() {
                 </div>
 
                 {/* Profile Menu */}
-                <div className="relative">
+                <div className="relative" ref={profileRef}>
                     <button
                         onClick={() => setProfileOpen(!profileOpen)}
                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group"
@@ -185,12 +228,12 @@ export function Sidebar() {
                             <p className="text-sm font-semibold text-slate-200 truncate">{user?.name || 'ผู้ใช้งาน'}</p>
                             <p className="text-[10px] text-slate-500 truncate">@{user?.username || 'user'}</p>
                         </div>
-                        <ChevronDown className={cn("w-4 h-4 text-slate-600 transition-transform duration-200", profileOpen && "rotate-180")} />
+                        <ChevronRight className={cn("w-4 h-4 text-slate-600 transition-transform duration-200", profileOpen && "-rotate-90")} />
                     </button>
 
                     {/* Profile Dropdown */}
                     {profileOpen && (
-                        <div className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                        <div className="absolute bottom-full left-0 w-full mb-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
                             <div className="p-1.5">
                                 <button
                                     onClick={() => {
@@ -199,8 +242,8 @@ export function Sidebar() {
                                     }}
                                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                                 >
-                                    <KeyRound className="w-4 h-4 text-slate-500" />
-                                    <span className="font-medium">หน้าโปรไฟล์</span>
+                                    <UserCircle className="w-4 h-4 text-slate-500" />
+                                    <span className="font-medium">ดูโปรไฟล์</span>
                                 </button>
                                 <div className="h-px bg-white/5 my-1" />
                                 <button
@@ -216,5 +259,6 @@ export function Sidebar() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

@@ -253,20 +253,29 @@ export default function DashboardPage() {
                 </h4>
                 <div className="space-y-3">
                   {latest3Completed.length > 0 ? latest3Completed.map(proj => (
-                    <div key={proj.id} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-white shadow-sm hover:border-slate-200 transition-all cursor-default group">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0", getDeptStyle(proj.department).bg)}>
-                          <span className={cn("text-[10px] font-black", getDeptStyle(proj.department).text)}>
+                    <Link 
+                      key={proj.id} 
+                      href={`/completed-projects?id=${proj.id}`}
+                      className="bg-white p-4 rounded-3xl flex items-center justify-between border border-transparent shadow-sm hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/5 transition-all group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner uppercase", getDeptStyle(proj.department).bg)}>
+                          <span className={getDeptStyle(proj.department).text}>
                             {proj.department.substring(0, 2)}
                           </span>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors leading-snug mb-1">{proj.name}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">เสร็จเมื่อ: {proj.actualDate || proj.endDate}</p>
+                        <div className="min-w-0 pr-4">
+                          <p className="text-sm font-black text-slate-800 group-hover:text-blue-600 transition-colors leading-tight mb-1">{proj.name}</p>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                            <CalendarDays className="w-3 h-3" />
+                            {proj.actualDate || proj.endDate}
+                          </div>
                         </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-1" />
-                    </div>
+                      <div className="p-2 rounded-xl bg-slate-50 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:translate-x-0.5" />
+                      </div>
+                    </Link>
                   )) : (
                     <div className="text-center py-8 text-slate-400 text-xs italic">ยังไม่มีโครงการที่บันทึกว่าเสร็จสิ้น</div>
                   )}
@@ -287,7 +296,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {committeeByDept.map((dept) => (
                 <div key={dept.id} className={cn("p-6 rounded-[2rem] border text-center space-y-2 group transition-all duration-300", dept.style.bg.replace('bg-', 'bg-opacity-10 bg-'), "border-slate-100")}>
                   <p className={cn("text-3xl font-black leading-none", dept.style.text)}>{dept.count}</p>

@@ -11,10 +11,11 @@ const breadcrumbMap: Record<string, string> = {
     '/projects': 'จัดการโครงการ',
     '/budget': 'งบประมาณ & รายงาน',
     '/users': 'ผู้ใช้งาน',
+    '/registry': 'ทะเบียนเอกสาร',
     '/settings': 'ตั้งค่า',
 };
 
-export function Header() {
+export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
     const pathname = usePathname();
     const { data: session } = useSession();
     const pageName = breadcrumbMap[pathname] ?? 'หน้าหลัก';
@@ -22,16 +23,26 @@ export function Header() {
 
     return (
         <header className="bg-white/90 backdrop-blur-sm border-b border-slate-100 sticky top-0 z-30">
-            <div className="flex items-center justify-between h-16 px-6">
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-1.5 text-sm text-slate-500">
-                    <Link href="/" className="hover:text-slate-700 transition-colors">หน้าหลัก</Link>
-                    {pathname !== '/' && (
-                        <>
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-                            <span className="text-slate-800 font-semibold">{pageName}</span>
-                        </>
-                    )}
+            <div className="flex items-center justify-between h-16 px-4 md:px-6">
+                {/* Mobile Menu Toggle & Breadcrumbs */}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onMenuToggle}
+                        className="p-2 -ml-2 text-slate-500 hover:bg-slate-50 rounded-lg md:hidden transition-colors"
+                        aria-label="Toggle Menu"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                    
+                    <div className="flex items-center gap-1.5 text-xs md:text-sm text-slate-500">
+                        <Link href="/" className="hover:text-slate-700 transition-colors hidden sm:inline">หน้าหลัก</Link>
+                        {pathname !== '/' && (
+                            <>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-300 hidden sm:inline" />
+                                <span className="text-slate-800 font-semibold truncate max-w-[120px] md:max-w-none">{pageName}</span>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right side actions */}

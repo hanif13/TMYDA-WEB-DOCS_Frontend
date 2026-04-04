@@ -128,28 +128,28 @@ export default function ProfilePage() {
                     <div className="absolute -top-16 -right-16 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
                     <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl" />
                     
-                    <div className="relative z-10 flex items-center justify-between">
+                    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-5">
-                            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-indigo-500/30">
+                            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-indigo-500/30 ring-4 ring-white/10">
                                 {profileData.name.charAt(0) || user?.name?.charAt(0) || "U"}
                             </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-white">{profileData.name || user?.name || "ผู้ใช้งาน"}</h2>
-                                <p className="text-sm text-slate-400">@{user?.username || "user"}</p>
+                            <div className="min-w-0">
+                                <h2 className="text-2xl font-black text-white tracking-tight leading-tight mb-1">{profileData.name || user?.name || "ผู้ใช้งาน"}</h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">@{user?.username || "user"}</p>
                             </div>
                         </div>
                         
                         <button 
                             onClick={() => setIsEditing(!isEditing)}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                                "flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-xs font-black transition-all flex-shrink-0 w-full sm:w-auto",
                                 isEditing 
-                                    ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20" 
-                                    : "bg-white/10 text-white border border-white/20 hover:bg-white/20"
+                                    ? "bg-rose-500 text-white shadow-lg shadow-rose-900/40 hover:bg-rose-600" 
+                                    : "bg-white text-slate-900 shadow-xl shadow-slate-950/20 hover:bg-blue-50"
                             )}
                         >
-                            {isEditing ? <X className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
-                            {isEditing ? "ยกเลิกแก้ไข" : "แก้ไขข้อมูล"}
+                            {isEditing ? <X className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                            {isEditing ? "ยกเลิกการแก้ไข" : "แก้ไขข้อมูลส่วนตัว"}
                         </button>
                     </div>
                 </div>
@@ -249,39 +249,40 @@ export default function ProfilePage() {
                             </div>
                         </form>
                     ) : (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-y-6 gap-x-5">
-                                <div className="space-y-1.5">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <User className="w-3 h-3" /> ชื่อผู้ใช้งาน
+                        <div className="space-y-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <User className="w-3.5 h-3.5 text-blue-500" /> ชื่อผู้ใช้งาน
                                     </p>
-                                    <p className="text-sm font-bold text-slate-800">@{user?.username || "—"}</p>
+                                    <p className="text-sm font-extrabold text-slate-800 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 inline-block">@{user?.username || "—"}</p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Building2 className="w-3 h-3" /> หน่วยงาน
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Building2 className="w-3.5 h-3.5 text-indigo-500" /> หน่วยงาน
                                     </p>
-                                    <p className="text-sm font-bold text-slate-800">
+                                    <p className="text-sm font-extrabold text-slate-800 leading-relaxed">
                                         {dbDepartments.find(d => d.id === profileData.departmentId)?.name || user?.department || "ไม่ระบุ"}
                                     </p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Mail className="w-3 h-3" /> อีเมล
+                                <div className="space-y-2 lg:col-span-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Mail className="w-3.5 h-3.5 text-rose-500" /> อีเมล
                                     </p>
-                                    <p className="text-sm font-bold text-slate-800">{profileData.email || "—"}</p>
+                                    <p className="text-sm font-extrabold text-slate-800 break-all">{profileData.email || "—"}</p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Phone className="w-3 h-3" /> เบอร์โทรศัพท์
+                                <div className="space-y-2 lg:col-span-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Phone className="w-3.5 h-3.5 text-emerald-500" /> เบอร์โทรศัพท์
                                     </p>
-                                    <p className="text-sm font-bold text-slate-800">{profileData.phoneNumber || "—"}</p>
+                                    <p className="text-sm font-extrabold text-slate-800">{profileData.phoneNumber || "—"}</p>
                                 </div>
-                                <div className="space-y-1.5 col-span-2">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Facebook className="w-3 h-3" /> Facebook
+                                <div className="space-y-2 col-span-1 sm:col-span-2">
+                                    <div className="h-px w-full bg-slate-50 my-2" />
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Facebook className="w-3.5 h-3.5 text-blue-600" /> Facebook
                                     </p>
-                                    <p className="text-sm font-bold text-slate-800">{profileData.facebook || "—"}</p>
+                                    <p className="text-sm font-extrabold text-slate-800">{profileData.facebook || "—"}</p>
                                 </div>
                             </div>
                             

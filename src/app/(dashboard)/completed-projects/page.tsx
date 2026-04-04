@@ -1,15 +1,16 @@
-
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { FolderCheck, Calendar, Users, Banknote, ExternalLink, Image as ImageIcon, Search, X, ChevronRight, Hash, Target, ClipboardCheck } from 'lucide-react';
 import { fetchAnnualPlans, API_BASE_URL, fetchDepartments, getMediaUrl } from '@/lib/api';
 import { AnnualProject, ProjectDocument } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
 
-export default function CompletedProjectsPage() {
+function CompletedProjectsContent() {
     const { selectedYear } = useYear();
+    const searchParams = useSearchParams();
     const [projects, setProjects] = useState<AnnualProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +60,31 @@ export default function CompletedProjectsPage() {
         };
         loadProjects();
     }, []);
+
+    // Handle auto-selection of project from URL
+    useEffect(() => {
+        if (!loading && projects.length > 0) {
+            const projectId = searchParams.get('id');
+            if (projectId) {
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    setSelectedProject(project);
+                }
+            }
+        }
+    }, [loading, projects, searchParams]);
+
+    // Body Scroll Lock
+    useEffect(() => {
+        if (selectedProject) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [selectedProject]);
 
     const filteredProjects = projects.filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -217,10 +243,10 @@ export default function CompletedProjectsPage() {
 
             {/* Image Gallery Modal */}
             {selectedProject && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedProject(null)} />
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setSelectedProject(null)} />
                     
-                    <div className="relative w-full max-w-5xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="relative w-full max-w-5xl bg-white rounded-none sm:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
                         <button 
                             onClick={() => setSelectedProject(null)}
                             className="absolute top-6 right-6 z-10 p-2 bg-white/80 hover:bg-white rounded-full text-slate-400 hover:text-slate-900 transition-all border border-slate-100 shadow-sm"
@@ -228,9 +254,10 @@ export default function CompletedProjectsPage() {
                             <X className="w-5 h-5" />
                         </button>
 
-                        <div className="flex flex-col lg:flex-row h-full">
-                            {/* Details (Left/Top) */}
-                            <div className="lg:w-1/3 p-10 border-b lg:border-b-0 lg:border-r border-slate-50 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="flex flex-col lg:flex-row h-full">
+                                {/* Details (Left/Top) */}
+                                <div className="lg:w-1/3 p-6 sm:p-10 border-b lg:border-b-0 lg:border-r border-slate-50">
                                 <div className="flex items-center gap-2 mb-6">
                                     <span className="px-3 py-1 bg-purple-100 text-purple-700 text-[10px] font-black uppercase rounded-lg tracking-wider">
                                         Year {selectedProject.thaiYear}
@@ -301,10 +328,11 @@ export default function CompletedProjectsPage() {
                                         </div>
                                     </div>
                                 </div>
+                                </div>
                             </div>
 
                             {/* Gallery (Right/Bottom) */}
-                            <div className="lg:w-2/3 p-10 bg-slate-50/30 overflow-y-auto">
+                            <div className="lg:w-2/3 p-6 sm:p-10 bg-slate-50/30">
                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
                                     <ImageIcon className="w-3.5 h-3.5" /> ภาพบรรยากาศโครงการ ({selectedProject.summaryImages?.length || 0})
                                 </h3>
@@ -367,5 +395,17 @@ export default function CompletedProjectsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function CompletedProjectsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-[60vh]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        }>
+            <CompletedProjectsContent />
+        </Suspense>
     );
 }

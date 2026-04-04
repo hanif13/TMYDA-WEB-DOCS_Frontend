@@ -171,6 +171,18 @@ export default function RegistryPage() {
 
     const [selectedDoc, setSelectedDoc] = useState<StoredDocument | null>(null);
 
+    // Body Scroll Lock
+    useEffect(() => {
+        if (selectedDoc || showAddModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [selectedDoc, showAddModal]);
+
     const handleAddDocument = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -638,32 +650,42 @@ export default function RegistryPage() {
 
             {/* VIEWER MODAL */}
             {selectedDoc && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-                    <div className="bg-white rounded-[2rem] w-full max-w-5xl h-[95vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-                        <div className="flex items-center justify-between px-8 py-6 border-b bg-white flex-shrink-0">
-                            <div>
-                                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">{selectedDoc.name}</h3>
-                                <p className="text-sm font-medium text-slate-500">{selectedDoc.docNo} · {selectedDoc.department}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <button 
-                                    onClick={() => {
-                                        if (selectedDoc.fileUrl) {
-                                            const link = document.createElement('a');
-                                            link.href = getMediaUrl(selectedDoc.fileUrl);
-                                            link.download = `${selectedDoc.docNo}_${selectedDoc.name}.pdf`;
-                                            document.body.appendChild(link);
-                                            link.click();
-                                            document.body.removeChild(link);
-                                        }
-                                    }}
-                                    className="px-6 py-2.5 text-sm font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-                                >
-                                    ดาวน์โหลด PDF
-                                </button>
-                                <button onClick={() => setSelectedDoc(null)} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-2xl transition-all">
-                                    <X className="w-5 h-5" />
-                                </button>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white rounded-none sm:rounded-[2rem] w-full max-w-5xl h-full sm:h-[95vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500">
+                        <div className="px-4 py-3 sm:px-8 sm:py-6 border-b bg-white flex-shrink-0 relative">
+                            <div className="flex items-start justify-between gap-4 mb-2 sm:mb-0">
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="text-sm sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight line-clamp-2 sm:line-clamp-none">{selectedDoc.name}</h3>
+                                    <p className="text-[9px] sm:text-sm font-medium text-slate-400 mt-0.5">{selectedDoc.docNo} · {selectedDoc.department}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button 
+                                        onClick={() => {
+                                            if (selectedDoc.fileUrl) {
+                                                const url = getMediaUrl(selectedDoc.fileUrl);
+                                                window.open(url, '_blank');
+                                            }
+                                        }}
+                                        className="hidden sm:block px-6 py-2.5 text-sm font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                                    >
+                                        ดาวน์โหลด PDF
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            if (selectedDoc.fileUrl) {
+                                                const url = getMediaUrl(selectedDoc.fileUrl);
+                                                window.open(url, '_blank');
+                                            }
+                                        }}
+                                        className="sm:hidden p-2 text-blue-600 bg-blue-50 rounded-lg"
+                                        title="Download"
+                                    >
+                                        <UploadCloud className="w-4 h-4 rotate-180" />
+                                    </button>
+                                    <button onClick={() => setSelectedDoc(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -704,22 +726,54 @@ function DocRow({ doc, seq, showDept = false, onClick, onEdit, onDelete, canEdit
     return (
         <div 
             onClick={onClick}
-            className="flex items-center gap-3 px-5 py-4 hover:bg-blue-50/30 transition-all group cursor-pointer border-l-4 border-transparent hover:border-blue-500"
+            className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-5 sm:py-4 hover:bg-blue-50/20 transition-all group cursor-pointer border-l-4 border-transparent hover:border-blue-500 relative"
         >
-            <span className="text-xs font-mono text-slate-300 w-6 text-right flex-shrink-0">{seq}</span>
-            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1.5 rounded-xl flex-shrink-0 min-w-[120px] text-center shadow-sm">
-                {doc.docNo}
-            </span>
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-700 transition-colors">{doc.name}</p>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {showDept && (
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg", cfg.badge)}>{doc.department}</span>
+            <div className="flex items-center justify-between sm:justify-start gap-4 mb-2 sm:mb-0">
+                <div className="flex items-center gap-3">
+                    <span className="text-[10px] sm:text-xs font-mono text-slate-300 w-4 text-left flex-shrink-0">{seq}</span>
+                    <span className="font-mono text-[10px] sm:text-xs font-black text-blue-700 bg-blue-50/80 backdrop-blur-sm border border-blue-100 px-3 py-1.5 rounded-xl flex-shrink-0 shadow-sm">
+                        {doc.docNo}
+                    </span>
+                </div>
+                {/* Mobile Actions */}
+                <div className="flex sm:hidden items-center gap-1">
+                    {canEdit && (
+                        <>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit?.(e); }}
+                                className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-white bg-slate-50 transition-all border border-slate-100"
+                            >
+                                <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDelete?.(e); }}
+                                className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 bg-slate-50 transition-all border border-slate-100"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        </>
                     )}
-                    <span className="text-[10px] font-medium text-slate-400">{doc.uploadedBy} · {doc.uploadedAt}</span>
                 </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+            <div className="flex-1 min-w-0">
+                <div className="flex flex-col">
+                    <p className="text-sm font-black text-slate-800 leading-snug group-hover:text-blue-700 transition-colors">{doc.name}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                        {showDept && (
+                            <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-lg border", cfg.badge)}>{doc.department}</span>
+                        )}
+                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400">
+                             <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[7px] text-slate-500 font-black">
+                                {doc.uploadedBy.substring(0, 1)}
+                             </div>
+                             {doc.uploadedBy} · {doc.uploadedAt}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {canEdit && (
                     <>
                         <button
@@ -739,6 +793,10 @@ function DocRow({ doc, seq, showDept = false, onClick, onEdit, onDelete, canEdit
                     </>
                 )}
                 <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+            </div>
+            {/* Mobile Chevron */}
+            <div className="sm:hidden absolute right-4 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
+                <ChevronRight className="w-4 h-4 text-slate-400" />
             </div>
         </div>
     );

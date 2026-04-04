@@ -82,6 +82,18 @@ export default function ProjectsPage() {
         }
     }, [departments]);
 
+    // Body Scroll Lock
+    useEffect(() => {
+        if (selectedId || showNewProject || showUnplannedForm || showPlannedForm) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [selectedId, showNewProject, showUnplannedForm, showPlannedForm]);
+
     const refreshData = async () => {
         setIsLoading(true);
         try {
@@ -327,17 +339,17 @@ export default function ProjectsPage() {
                     </h1>
                     <p className="text-sm text-slate-500 mt-0.5">จัดการโครงการที่กำลังดำเนินการและสรุปผลตามลำดับขั้นตอน</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative group min-w-[180px]">
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="relative group flex-1 sm:min-w-[180px]">
                         <select 
                             value={filterDept} 
                             onChange={e => setFilterDept(e.target.value)}
-                            className="w-full appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all pr-10 cursor-pointer text-slate-700 shadow-sm hover:shadow-md hover:border-blue-200"
+                            className="w-full appearance-none bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-2.5 text-[10px] sm:text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all pr-8 sm:pr-10 cursor-pointer text-slate-700 shadow-sm hover:shadow-md hover:border-blue-200"
                         >
                             <option value="">ทุกหน่วยงาน</option>
                             {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                         </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-blue-500 transition-colors" />
+                        <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-blue-500 transition-colors" />
                     </div>
                     <button onClick={() => refreshData()} className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all group shadow-sm hover:shadow-md" title="รีเฟรชข้อมูล">
                         <RefreshCcw className={cn("w-5 h-5 text-slate-400 group-hover:text-blue-600", isLoading && "animate-spin")} />
@@ -385,7 +397,7 @@ export default function ProjectsPage() {
             {/* Selection Modal: Planned vs Unplanned */}
             {showNewProject && (
                 <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-300">
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800">เริ่มโครงการใหม่</h3>
@@ -421,8 +433,8 @@ export default function ProjectsPage() {
 
             {/* Unplanned & Planned Forms */}
             {showUnplannedForm && (
-                <div className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl relative animate-in fade-in zoom-in duration-300 my-auto">
+                <div className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-0 sm:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-none sm:rounded-[3rem] w-full max-w-2xl min-h-screen sm:min-h-0 shadow-2xl relative animate-in fade-in zoom-in duration-300">
                         <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30 rounded-t-[3rem]">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800">สร้างโครงการนอกแผนงาน</h3>
@@ -787,33 +799,33 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
     );
 
     return (
-        <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-white rounded-[3rem] w-full max-w-4xl h-[85vh] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300 overflow-hidden" onClick={onClose}>
+            <div className="bg-white rounded-none sm:rounded-[3rem] w-full max-w-4xl h-full sm:h-[85vh] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
                 {/* Modal Header */}
-                <div className="p-8 bg-slate-900 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-5">
-                        <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center">
-                            <Archive className="w-7 h-7 text-blue-400" />
+                <div className="p-4 sm:p-8 bg-slate-900 text-white flex flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 sm:gap-5 min-w-0">
+                        <div className="h-8 w-8 sm:h-14 sm:w-14 bg-white/10 rounded-lg sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                            <Archive className="w-4 h-4 sm:w-7 sm:h-7 text-blue-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             {isEditing ? (
                                 <input 
-                                    className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xl font-bold w-full outline-none focus:bg-white/20"
+                                    className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm sm:text-xl font-bold w-full outline-none focus:bg-white/20"
                                     value={editForm.name}
                                     onChange={e => setEditForm({...editForm, name: e.target.value})}
                                 />
                             ) : (
-                                <h3 className="text-xl font-bold">{project.name}</h3>
+                                <h3 className="text-sm sm:text-xl font-bold truncate">{project.name}</h3>
                             )}
-                            <div className="flex items-center gap-3 mt-1 text-slate-400">
-                                <span className="text-[11px] font-black uppercase tracking-widest">{project.department}</span>
-                                <span className="text-slate-600">·</span>
-                                <span className="text-xs font-bold text-blue-400 flex items-center gap-1">
-                                    <Banknote className="w-3.5 h-3.5" /> 
+                            <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1 text-slate-400">
+                                <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest truncate">{project.department}</span>
+                                <span className="text-slate-600 hidden sm:inline">·</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-blue-400 flex items-center gap-1 shrink-0">
+                                    <Banknote className="w-3 sm:w-3.5 h-3 sm:h-3.5" /> 
                                     {isEditing ? (
                                         <input 
                                             type="number"
-                                            className="bg-transparent border-b border-blue-400/30 text-blue-400 outline-none w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            className="bg-transparent border-b border-blue-400/30 text-blue-400 outline-none w-16 sm:w-24 text-[10px] sm:text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             value={editForm.budget}
                                             onChange={e => setEditForm({...editForm, budget: e.target.value})}
                                         />
@@ -824,35 +836,35 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
                         {!isViewer && (
                             isEditing ? (
                                 <>
-                                    <button onClick={() => setIsEditing(false)} className="h-12 px-6 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all text-xs font-bold">
+                                    <button onClick={() => setIsEditing(false)} className="h-8 sm:h-12 px-3 sm:px-6 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl transition-all text-[9px] sm:text-xs font-bold">
                                         ยกเลิก
                                     </button>
-                                    <button onClick={handleSaveEdit} disabled={isUpdating} className="h-12 px-6 flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-2xl transition-all text-xs font-bold gap-2">
-                                        {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    <button onClick={handleSaveEdit} disabled={isUpdating} className="h-8 sm:h-12 px-3 sm:px-6 flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-lg sm:rounded-2xl transition-all text-[9px] sm:text-xs font-bold gap-1.5 sm:gap-2">
+                                        {isUpdating ? <Loader className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                         บันทึก
                                     </button>
                                 </>
                             ) : (
-                                <button onClick={() => setIsEditing(true)} className="h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all" title="แก้ไขโครงการ">
-                                    <FileEdit className="w-5 h-5 text-blue-400" />
+                                <button onClick={() => setIsEditing(true)} className="h-8 w-8 sm:h-12 sm:w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl transition-all" title="แก้ไขโครงการ">
+                                    <FileEdit className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-400" />
                                 </button>
                             )
                         )}
-                        <button onClick={onClose} className="h-12 w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
-                            <X className="w-6 h-6" />
+                        <button onClick={onClose} className="h-8 w-8 sm:h-12 sm:w-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl transition-all">
+                            <X className="w-4 h-4 sm:w-6 sm:h-6" />
                         </button>
                     </div>
                 </div>
 
                 {/* Sub Header / Tabs */}
-                <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                    <div className="flex gap-2">
-                        <button onClick={() => setTab("info")} className={cn("px-6 py-2.5 rounded-2xl text-sm font-bold transition-all", tab === "info" ? "bg-white shadow-sm text-blue-600" : "text-slate-400 hover:text-slate-600")}>จัดการสถานะ</button>
-                        <button onClick={() => setTab("docs")} className={cn("px-6 py-2.5 rounded-2xl text-sm font-bold transition-all", tab === "docs" ? "bg-white shadow-sm text-blue-600" : "text-slate-400 hover:text-slate-600")}>เอกสาร ({project.documents.length})</button>
+                <div className="px-4 sm:px-8 py-2 sm:py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-4">
+                    <div className="flex gap-1.5 sm:gap-2">
+                        <button onClick={() => setTab("info")} className={cn("px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm font-bold transition-all", tab === "info" ? "bg-white shadow-sm text-blue-600" : "text-slate-400 hover:text-slate-600")}>ข้อมูล</button>
+                        <button onClick={() => setTab("docs")} className={cn("px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm font-bold transition-all", tab === "docs" ? "bg-white shadow-sm text-blue-600" : "text-slate-400 hover:text-slate-600")}>เอกสาร ({project.documents.length})</button>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">สถานะปัจจุบัน:</span>
@@ -869,7 +881,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                 </div>
 
                 {/* Modal Body */}
-                <div className="flex-1 overflow-y-auto p-8 bg-white custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-white custom-scrollbar">
                     {tab === "info" ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                             {/* Left: Info & Month Control */}

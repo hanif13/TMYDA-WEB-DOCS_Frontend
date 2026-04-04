@@ -348,6 +348,18 @@ export default function CommitteePage() {
         loadMembers();
     }, [selectedYear]);
 
+    // Body Scroll Lock
+    useEffect(() => {
+        if (isModalOpen || isDeptModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isModalOpen, isDeptModalOpen]);
+
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -694,22 +706,22 @@ export default function CommitteePage() {
                 </div>
 
                 {canEdit && (
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         {/* Edit Mode Toggle */}
                         <button 
                             onClick={() => setIsEditMode(!isEditMode)}
                             className={cn(
-                                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg",
+                                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg text-[11px] sm:text-sm",
                                 isEditMode 
                                     ? "bg-slate-800 text-white shadow-slate-200" 
                                     : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-sm"
                             )}
                         >
-                            <Pencil className="w-4 h-4" />
-                            {isEditMode ? "เสร็จสิ้นการแก้ไข" : "แก้ไขข้อมูล"}
+                            <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            {isEditMode ? "เสร็จสิ้น" : "แก้ไขข้อมูล"}
                         </button>
 
-                        <div className="h-8 w-px bg-slate-200 mx-1 hidden md:block" />
+                        <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
 
                         <input 
                             type="file" 
@@ -720,10 +732,10 @@ export default function CommitteePage() {
                         />
                         <button 
                             onClick={() => csvInputRef.current?.click()}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-200"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-200 text-[11px] sm:text-sm"
                         >
-                            <UploadCloud className="w-5 h-5" />
-                            นำเข้า CSV
+                            <UploadCloud className="w-4 h-4 sm:w-5 sm:h-5" />
+                            CSV
                         </button>
                         <button 
                             onClick={() => {
@@ -735,9 +747,9 @@ export default function CommitteePage() {
                                 setPhotoPreview(null);
                                 setIsModalOpen(true);
                             }}
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 text-[11px] sm:text-sm"
                         >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                             เพิ่มรายชื่อ
                         </button>
                         
