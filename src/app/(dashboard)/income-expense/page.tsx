@@ -8,11 +8,12 @@ import {
     TrendingUp, TrendingDown, RefreshCw, Plus, X, ChevronDown, Loader,
     FileText, BarChart3, Wallet, CalendarDays, Users, Banknote, Eye,
     Link2, FolderKanban, Search, Filter, ChevronRight, ArrowUpDown,
-    Receipt, BookOpen, ClipboardList, UploadCloud, Trash2
+    Receipt, BookOpen, ClipboardList, UploadCloud, Trash2, CheckCircle2,
+    Target
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BudgetTransaction, TxType, StoredDocument, Project } from "@/lib/types";
-import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, deleteTransaction, fetchDepartments, getMediaUrl } from "@/lib/api";
+import { fetchTransactions, fetchAnnualPlans, fetchDocuments, createTransaction, updateTransaction, deleteTransaction, fetchDepartments, getMediaUrl } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
 import { getDeptStyle } from "@/lib/dept-styles";
 
@@ -47,6 +48,7 @@ export default function IncomeExpensePage() {
         startDate: string; 
         endDate: string;
         months: number[];
+        externalBudget: number;
     }[]>([]);
     const [documents, setDocuments] = useState<StoredDocument[]>([]);
     const [loading, setLoading] = useState(true);
@@ -90,6 +92,8 @@ export default function IncomeExpensePage() {
                 docRef: t.docRef || undefined,
                 slipUrl: t.slipUrl || undefined,
                 note: t.note || undefined,
+                originalDate: t.date || t.createdAt,
+                subType: t.category || "general",
             }));
             setTransactions(mappedTx);
 
@@ -107,6 +111,7 @@ export default function IncomeExpensePage() {
                 startDate: proj.startDate || "",
                 endDate: proj.endDate || "",
                 months: proj.months || [],
+                externalBudget: proj.actualBudgetExternal || 0,
             }));
             setProjects(allProjects);
 
@@ -153,7 +158,15 @@ export default function IncomeExpensePage() {
     const totalIncome = transactions.filter(t => t.type === "รายรับ").reduce((s, t) => s + t.amount, 0);
     const totalExpense = transactions.filter(t => t.type === "รายจ่าย").reduce((s, t) => s + t.amount, 0);
     const totalReturn = transactions.filter(t => t.type === "คืนเงิน").reduce((s, t) => s + t.amount, 0);
+    const totalExternalBudget = projects.reduce((s, p) => s + p.externalBudget, 0);
+    
+    // Split expenses into Project-based vs General Withdrawal
+    const totalProjectExpense = transactions.filter(t => t.type === "รายจ่าย" && t.subType === "project").reduce((s, t) => s + t.amount, 0);
+    const totalGeneralExpense = transactions.filter(t => t.type === "รายจ่าย" && t.subType === "general").reduce((s, t) => s + t.amount, 0);
+    
     const balance = totalIncome - totalExpense + totalReturn;
+    // totalActualSpent counts only project-related expenses + external budget
+    const totalActualSpent = (totalProjectExpense - totalReturn) + totalExternalBudget;
 
     const filteredTx = useMemo(() => {
         return transactions.filter(t => {
@@ -180,11 +193,14 @@ export default function IncomeExpensePage() {
     const deptBreakdown = useMemo(() => {
         return dbDepartments.map(d => {
             const inc = transactions.filter(t => t.department === d.name && t.type === "รายรับ").reduce((s, t) => s + t.amount, 0);
-            const exp = transactions.filter(t => t.department === d.name && t.type === "รายจ่าย").reduce((s, t) => s + t.amount, 0);
+            const expTotal = transactions.filter(t => t.department === d.name && t.type === "รายจ่าย").reduce((s, t) => s + t.amount, 0);
+            const expProj = transactions.filter(t => t.department === d.name && t.type === "รายจ่าย" && t.subType === "project").reduce((s, t) => s + t.amount, 0);
+            const expGen = transactions.filter(t => t.department === d.name && t.type === "รายจ่าย" && t.subType === "general").reduce((s, t) => s + t.amount, 0);
             const ret = transactions.filter(t => t.department === d.name && t.type === "คืนเงิน").reduce((s, t) => s + t.amount, 0);
-            return { ...d, income: inc, expense: exp, returned: ret, net: exp - ret };
+            const ext = projects.filter(p => p.department === d.name).reduce((s, p) => s + p.externalBudget, 0);
+            return { ...d, income: inc, expense: expProj, general: expGen, returned: ret, external: ext, net: (expProj - ret) + ext };
         });
-    }, [transactions, dbDepartments]);
+    }, [transactions, dbDepartments, projects]);
 
     /* ─── HANDLERS ─── */
     const handleDelete = async (id: string) => {
@@ -210,6 +226,7 @@ export default function IncomeExpensePage() {
                     startDate: proj.startDate || "",
                     endDate: proj.endDate || "",
                     months: proj.months || [],
+                    externalBudget: proj.actualBudgetExternal || 0,
                 }));
                 setProjects(allProjects);
             });
@@ -257,6 +274,8 @@ export default function IncomeExpensePage() {
                 note: res.note || undefined,
                 docRef: res.docRef || undefined,
                 slipUrl: res.slipUrl || undefined,
+                originalDate: res.date,
+                subType: res.category || "general",
             };
 
             setTransactions(prev => [newTx, ...prev]);
@@ -295,6 +314,7 @@ export default function IncomeExpensePage() {
                     startDate: proj.startDate || "",
                     endDate: proj.endDate || "",
                     months: proj.months || [],
+                    externalBudget: proj.actualBudgetExternal || 0,
                 }));
                 setProjects(updatedProjects);
             });
@@ -338,24 +358,49 @@ export default function IncomeExpensePage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                {[
-                    { label: "รายรับทั้งหมด", value: totalIncome, icon: TrendingUp, bg: "bg-green-50", text: "text-green-600", sign: "+" },
-                    { label: "รายจ่ายทั้งหมด", value: totalExpense, icon: TrendingDown, bg: "bg-red-50", text: "text-red-600", sign: "-" },
-                    { label: "ยอดคืนเงิน", value: totalReturn, icon: RefreshCw, bg: "bg-blue-50", text: "text-blue-600", sign: "+" },
-                    { label: "ยอดที่ใช้จ่ายจริง", value: totalExpense - totalReturn, icon: Banknote, bg: "bg-orange-50", text: "text-orange-600", sign: "" },
-                    { label: "คงเหลือสุทธิ", value: balance, icon: Wallet, bg: balance > 0 ? "bg-emerald-50" : "bg-rose-50", text: balance > 0 ? "text-emerald-700" : "text-rose-700", sign: "" },
-                ].map(c => (
-                    <div key={c.label} className="bg-white rounded-2xl border border-slate-100 p-5 card-hover">
-                        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center mb-3", c.bg)}>
-                            <c.icon className={cn("w-5 h-5", c.text)} />
+            <div className="space-y-4">
+                {/* Core Cards - 3 Main Overview Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                        { label: "รายรับทั้งหมด", value: totalIncome, icon: TrendingUp, sign: "+", color: "text-green-600", bg: "bg-green-50", iconColor: "text-green-500" },
+                        { label: "รายจ่ายทั้งหมด", value: totalExpense, icon: TrendingDown, sign: "-", color: "text-rose-600", bg: "bg-rose-50", iconColor: "text-rose-500" },
+                        { label: "คงเหลือสุทธิ", value: balance, icon: Wallet, sign: "", color: balance >= 0 ? "text-emerald-700" : "text-red-700", bg: balance >= 0 ? "bg-emerald-50" : "bg-red-50", iconColor: balance >= 0 ? "text-emerald-500" : "text-red-500" },
+                    ].map(c => (
+                        <div key={c.label} className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm shadow-slate-100/50 flex items-center gap-6 group hover:border-slate-200 transition-all duration-500 card-hover">
+                             <div className={cn("h-16 w-16 rounded-[1.75rem] flex items-center justify-center flex-shrink-0 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3", c.bg, c.iconColor)}>
+                                <c.icon className="h-8 w-8" />
+                             </div>
+                             <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">{c.label}</p>
+                                <p className={cn("text-3xl font-black tracking-tighter", c.color)}>
+                                    {c.sign === "-" ? "-" : ""}฿{c.value.toLocaleString()}
+                                </p>
+                             </div>
                         </div>
-                        <p className={cn("text-2xl font-bold", c.text)}>
-                            {c.sign === "-" ? "-" : ""}฿{c.value.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">{c.label}</p>
-                    </div>
-                ))}
+                    ))}
+                </div>
+
+                {/* Detail Cards - 4 Breakdown Metrics */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                        { label: "ยอดคืนเงิน", value: totalReturn, icon: RefreshCw, sign: "+", color: "text-blue-600", bg: "bg-blue-50", iconColor: "text-blue-500" },
+                        { label: "งบประมาณภายนอก", value: totalExternalBudget, icon: Target, sign: "+", color: "text-purple-600", bg: "bg-purple-50", iconColor: "text-purple-500" },
+                        { label: "ยอดใช้จ่ายจริง (โครงการ)", value: totalActualSpent, icon: CheckCircle2, sign: "", color: "text-orange-700", bg: "bg-orange-50", iconColor: "text-orange-500" },
+                        { label: "งบประมาณเบิกทั่วไป", value: totalGeneralExpense, icon: FileText, sign: "-", color: "text-pink-600", bg: "bg-pink-50", iconColor: "text-pink-500" },
+                    ].map(c => (
+                        <div key={c.label} className="bg-white/70 backdrop-blur-md rounded-[2rem] border border-slate-100 p-5 shadow-sm shadow-slate-100/50 group hover:border-slate-200 transition-all duration-300">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className={cn("h-9 w-9 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", c.bg, c.iconColor)}>
+                                    <c.icon className="h-4 w-4" />
+                                </div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{c.label}</p>
+                            </div>
+                            <p className={cn("text-xl font-black tracking-tight", c.color)}>
+                                {c.sign === "-" ? "-" : ""}฿{c.value.toLocaleString()}
+                            </p>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Tabs */}
@@ -389,10 +434,12 @@ export default function IncomeExpensePage() {
                                 <div className="bg-blue-500 h-full transition-all duration-700" style={{ width: `${totalIncome > 0 ? (totalReturn / totalIncome) * 100 : 0}%` }} />
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> รายรับ ฿{totalIncome.toLocaleString()}</span>
-                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> รายจ่าย ฿{totalExpense.toLocaleString()}</span>
+                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> รายจ่ายโครงการ ฿{totalProjectExpense.toLocaleString()}</span>
+                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-pink-500" /> เบิกทั่วไป ฿{totalGeneralExpense.toLocaleString()}</span>
                             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> คืนเงิน ฿{totalReturn.toLocaleString()}</span>
+                            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> งบภายนอก ฿{totalExternalBudget.toLocaleString()}</span>
                         </div>
                     </div>
 
@@ -418,14 +465,26 @@ export default function IncomeExpensePage() {
                                             )}
                                             {d.expense > 0 && (
                                                 <div className="flex justify-between text-xs">
-                                                    <span className="text-slate-400">รายจ่าย</span>
+                                                    <span className="text-slate-400">รายจ่ายโครงการ</span>
                                                     <span className="font-semibold text-red-600">-฿{d.expense.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {d.general > 0 && (
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-slate-400">เบิกทั่วไป</span>
+                                                    <span className="font-semibold text-pink-600">-฿{d.general.toLocaleString()}</span>
                                                 </div>
                                             )}
                                             {d.returned > 0 && (
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-slate-400">คืน</span>
                                                     <span className="font-semibold text-blue-600">+฿{d.returned.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {d.external > 0 && (
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-slate-400 font-medium">งบภายนอก</span>
+                                                    <span className="font-bold text-purple-600">+฿{d.external.toLocaleString()}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -584,7 +643,8 @@ export default function IncomeExpensePage() {
             {tab === "disbursement" && (
                 <div className="space-y-4">
                     {projectDisbursements.map(p => {
-                        const pct = p.budget > 0 ? Math.min(Math.round((p.net / p.budget) * 100), 100) : 0;
+                        const totalActualSpentProj = p.net + p.externalBudget;
+                        const pct = p.budget > 0 ? Math.min(Math.round((totalActualSpentProj / p.budget) * 100), 100) : 0;
                         const deptStyle = getDeptStyle(p.department);
                         const dc = `${deptStyle.bg} ${deptStyle.text}`;
                         const isExpanded = expandedProjectId === p.id;
@@ -648,18 +708,24 @@ export default function IncomeExpensePage() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     {[
                                                         { label: "งบประมาณที่อนุมัติ", value: p.budget, color: "blue", prefix: "฿" },
-                                                        { label: "เบิกจ่ายจริง (รายจ่าย)", value: p.expense, color: "red", prefix: "-฿" },
+                                                        { label: "เบิกจ่าย (ในระบบ)", value: p.net, color: "red", prefix: "-฿" },
+                                                        { label: "งบประมาณสมทบภายนอก", value: p.externalBudget, color: "purple", prefix: "฿" },
+                                                        { label: "รวมใช้จ่ายจริงทั้งหมด", value: p.net + p.externalBudget, color: "orange", prefix: "฿" },
                                                         { label: "ยอดคืนเงินคงเหลือ", value: p.returned, color: p.returned > 0 ? "emerald" : "slate", prefix: p.returned > 0 ? "+฿" : "฿" },
                                                     ].map((stat, i) => (
                                                         <div key={i} className={cn("p-4 rounded-2xl border flex flex-col items-center text-center", 
                                                             stat.color === "blue" ? "bg-blue-50/30 border-blue-100" :
                                                             stat.color === "red" ? "bg-red-50/30 border-red-100" :
+                                                            stat.color === "purple" ? "bg-purple-50/30 border-purple-100" :
+                                                            stat.color === "orange" ? "bg-orange-50/30 border-orange-100" :
                                                             stat.color === "emerald" ? "bg-emerald-50/30 border-emerald-100" : "bg-slate-50/30 border-slate-100"
                                                         )}>
                                                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
                                                             <p className={cn("text-xl font-black", 
                                                                 stat.color === "blue" ? "text-blue-600" :
                                                                 stat.color === "red" ? "text-red-600" :
+                                                                stat.color === "purple" ? "text-purple-600" :
+                                                                stat.color === "orange" ? "text-orange-700" :
                                                                 stat.color === "emerald" ? "text-emerald-700" : "text-slate-500"
                                                             )}>
                                                                 {stat.value > 0 ? `${stat.prefix}${stat.value.toLocaleString()}` : "—"}
@@ -979,7 +1045,18 @@ export default function IncomeExpensePage() {
         {showDetailTx && (
             <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowDetailTx(null)}>
                 <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                    <DetailModal tx={showDetailTx} onClose={() => setShowDetailTx(null)} findDoc={findDoc} onDelete={() => handleDelete(showDetailTx.id)} isViewer={isViewer} />
+                    <DetailModal 
+                        tx={showDetailTx} 
+                        onClose={() => setShowDetailTx(null)} 
+                        findDoc={findDoc} 
+                        onDelete={() => handleDelete(showDetailTx.id)} 
+                        isViewer={isViewer}
+                        projects={projects}
+                        dbDepartments={dbDepartments}
+                        documents={documents}
+                        refreshData={refreshData}
+                        selectedYear={selectedYear}
+                    />
                 </div>
             </div>
         )}
@@ -1023,136 +1100,304 @@ function TxRow({ tx, onClick, compact }: { tx: BudgetTransaction; onClick: () =>
 }
 
 /* ─── Detail Modal Component ─── */
-function DetailModal({ tx, onClose, findDoc, onDelete, isViewer }: { tx: BudgetTransaction; onClose: () => void; findDoc: (ref?: string) => StoredDocument | undefined; onDelete: () => void; isViewer?: boolean }) {
+function DetailModal({ 
+    tx, 
+    onClose, 
+    findDoc, 
+    onDelete, 
+    isViewer,
+    projects,
+    dbDepartments,
+    documents,
+    refreshData,
+    selectedYear
+}: { 
+    tx: BudgetTransaction; 
+    onClose: () => void; 
+    findDoc: (ref?: string) => StoredDocument | undefined; 
+    onDelete: () => void; 
+    isViewer?: boolean;
+    projects: any[];
+    dbDepartments: any[];
+    documents: any[];
+    refreshData: () => void;
+    selectedYear: number | null;
+}) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Form state initialized from tx
+    const [editForm, setEditForm] = useState({
+        title: tx.description,
+        amount: tx.amount.toString(),
+        departmentId: dbDepartments.find(d => d.name === tx.department)?.id || "",
+        projectId: tx.projectId || "",
+        date: tx.originalDate ? new Date(tx.originalDate).toISOString().split('T')[0] : "",
+        type: tx.type === "รายรับ" ? "income" : tx.type === "รายจ่าย" ? "expense" : "refund",
+        note: tx.note || "",
+        docRef: tx.docRef || "",
+        claimedBy: tx.claimedBy || "",
+        subType: tx.subType || "general",
+    });
+
+    const [editFile, setEditFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleSaveEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const formData = new FormData();
+            formData.append("title", editForm.title);
+            formData.append("amount", editForm.amount);
+            formData.append("date", editForm.date);
+            formData.append("type", editForm.type);
+            formData.append("departmentId", editForm.departmentId);
+            formData.append("projectId", editForm.projectId || "");
+            formData.append("note", editForm.note);
+            formData.append("docRef", editForm.docRef);
+            formData.append("category", editForm.subType);
+            if (editFile) formData.append("evidence", editFile);
+            if (selectedYear) formData.append("thaiYear", selectedYear.toString());
+
+            await updateTransaction(tx.id, formData);
+            toast.success("อัปเดตรายการสำเร็จ");
+            setIsEditing(false);
+            refreshData();
+            onClose(); // Close modal after edit
+        } catch (error) {
+            console.error("Update error:", error);
+            toast.error("ไม่สามารถอัปเดตรายการได้");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const cfg = txConfig[tx.type];
-    const Icon = cfg.icon;
+    const Icon = cfg.icon ?? TrendingUp;
     const doc = findDoc(tx.docRef);
 
+    if (isEditing) {
+        return (
+            <div className="flex flex-col h-full max-h-[90vh]">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div>
+                        <h3 className="text-lg font-black text-slate-800">แก้ไขรายการ</h3>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">ID: {tx.id.substring(0, 8)}...</p>
+                    </div>
+                    <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-white rounded-xl transition-all">
+                        <X className="w-5 h-5 text-slate-400" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSaveEdit} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">รายละเอียดรายการ *</label>
+                            <input required value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">จำนวนเงิน (บาท) *</label>
+                                <input type="number" step="any" required value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-black text-blue-600 outline-none focus:border-blue-500 focus:bg-white transition-all" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">วันที่ *</label>
+                                <input type="date" required value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หน่วยงาน *</label>
+                            <div className="relative">
+                                <select required value={editForm.departmentId} onChange={e => setEditForm(p => ({ ...p, departmentId: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                    {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">โครงการ (ถ้ามี)</label>
+                            <div className="relative">
+                                <select value={editForm.projectId} onChange={e => setEditForm(p => ({ ...p, projectId: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                    <option value="">ไม่เชื่อมกับโครงการ</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">เปลี่ยนสลิป (ถ้ามี)</label>
+                            <div 
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn("bg-slate-50 rounded-xl p-4 border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
+                                    editFile ? "border-blue-400 bg-blue-50/50" : "border-slate-200 hover:border-blue-300"
+                                )}
+                            >
+                                <UploadCloud className={cn("w-5 h-5", editFile ? "text-blue-500" : "text-slate-400")} />
+                                <span className="text-[11px] font-bold text-slate-500">{editFile ? editFile.name : "คลิกเพื่ออัปโหลดไฟล์ใหม่"}</span>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*,application/pdf" onChange={e => e.target.files?.[0] && setEditFile(e.target.files[0])} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หมายเหตุ</label>
+                            <textarea value={editForm.note} onChange={e => setEditForm(p => ({ ...p, note: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all min-h-[80px] resize-none" />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                        <button type="button" onClick={() => setIsEditing(false)}
+                            className="flex-1 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-all">
+                            ยกเลิก
+                        </button>
+                        <button type="submit" disabled={isSubmitting}
+                            className="flex-[2] py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-100 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                            {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : "บันทึกการแก้ไข"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        );
+    }
+
     return (
-        <>
-            {/* Header */}
-            <div className={cn("p-5", cfg.lightBg)}>
+        <div className="flex flex-col h-full max-h-[90vh]">
+            {/* View Mode Header */}
+            <div className={cn("p-6", cfg.lightBg)}>
                 <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-white/80")}>
-                            <Icon className={cn("w-5 h-5", cfg.color)} />
+                    <div className="flex items-center gap-4">
+                        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center bg-white shadow-sm transition-transform hover:scale-110")}>
+                            <Icon className={cn("w-6 h-6", cfg.color)} />
                         </div>
                         <div>
-                            <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", cfg.color, cfg.lightBg === "bg-green-50" ? "bg-green-100" : cfg.lightBg === "bg-red-50" ? "bg-red-100" : "bg-blue-100")}>
+                            <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg", cfg.color, cfg.lightBg === "bg-green-50" ? "bg-green-100" : cfg.lightBg === "bg-red-50" ? "bg-red-100" : "bg-blue-100")}>
                                 {cfg.label}
                             </span>
-                            <p className={cn("text-xl font-bold mt-1", cfg.color)}>
+                            <p className={cn("text-2xl font-black mt-0.5 tracking-tight", cfg.color)}>
                                 {cfg.sign}฿{tx.amount.toLocaleString()}
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                         {!isViewer && (
-                            <button onClick={onDelete} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-500">
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                            <>
+                                <button onClick={() => setIsEditing(true)} 
+                                    className="p-2.5 bg-white/80 hover:bg-white rounded-xl transition-all text-slate-600 hover:text-blue-600 shadow-sm border border-slate-100/50">
+                                    <ClipboardList className="w-5 h-5" />
+                                </button>
+                                <button onClick={onDelete} 
+                                    className="p-2.5 bg-white/80 hover:bg-white rounded-xl transition-all text-slate-400 hover:text-red-500 shadow-sm border border-slate-100/50">
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            </>
                         )}
-                        <button onClick={onClose} className="p-1.5 hover:bg-white/50 rounded-lg transition-colors">
+                        <button onClick={onClose} className="p-2.5 bg-white/80 hover:bg-white rounded-xl transition-all text-slate-400 shadow-sm border border-slate-100/50">
                             <X className="w-5 h-5 text-slate-500" />
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Body */}
-            <div className="p-5 space-y-4">
+            {/* View Mode Body */}
+            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                 <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">รายละเอียด</p>
-                    <p className="text-sm font-semibold text-slate-800 mt-0.5">{tx.description}</p>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">รายละเอียด</label>
+                    <p className="text-base font-bold text-slate-800 leading-snug">{tx.description}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400">วันที่</p>
-                        <p className="text-sm font-semibold text-slate-700 mt-0.5 flex items-center gap-1">
-                            <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> {tx.date}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">วันที่ดำเนินการ</label>
+                        <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-slate-300" /> {tx.date}
                         </p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400">หน่วยงาน</p>
-                        <p className="text-sm font-semibold text-slate-700 mt-0.5">{tx.department}</p>
+                    <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">หน่วยงานที่รับผิดชอบ</label>
+                        <p className="text-sm font-bold text-slate-700 truncate">{tx.department}</p>
                     </div>
                     {tx.projectName && (
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] text-slate-400">โครงการ</p>
-                            <p className="text-sm font-semibold text-slate-700 mt-0.5 flex items-center gap-1">
-                                <FolderKanban className="w-3.5 h-3.5 text-slate-400" /> {tx.projectName}
+                        <div className="col-span-2 bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">โครงการที่เกี่ยวข้อง</label>
+                            <p className="text-sm font-bold text-slate-700 flex items-center gap-2 font-black">
+                                <FolderKanban className="w-4 h-4 text-slate-300" /> {tx.projectName}
                             </p>
                         </div>
                     )}
-                    {tx.claimedBy && (
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] text-slate-400">เบิกจ่ายโดย</p>
-                            <p className="text-sm font-semibold text-slate-700 mt-0.5 flex items-center gap-1">
-                                <Users className="w-3.5 h-3.5 text-slate-400" /> {tx.claimedBy}
-                            </p>
-                        </div>
-                    )}
-                    <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400">บันทึกโดย</p>
-                        <p className="text-sm font-semibold text-slate-700 mt-0.5">{tx.recordedBy}</p>
+                    <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">เบิกจ่ายโดย</label>
+                        <p className="text-sm font-bold text-slate-700 truncate">{tx.claimedBy || "—"}</p>
+                    </div>
+                    <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">ผู้บันทึกระบบ</label>
+                        <p className="text-sm font-bold text-slate-700 truncate">{tx.recordedBy}</p>
                     </div>
                 </div>
+
+                {tx.note && (
+                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-dashed border-slate-200">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">หมายเหตุเพิ่มเติม</label>
+                        <p className="text-sm font-medium text-slate-600 italic leading-relaxed">{tx.note}</p>
+                    </div>
+                )}
 
                 {/* Document Reference */}
                 {(doc || tx.docRef) && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                        <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                            <Link2 className="w-3 h-3" /> เอกสารอ้างอิง
+                    <div className="bg-blue-50/50 border border-blue-100/50 rounded-[1.5rem] p-5">
+                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <Link2 className="w-3.5 h-3.5" /> เอกสารอ้างอิง
                         </p>
                         {doc ? (
-                            <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-                                    <FileText className="w-4 h-4 text-blue-500" />
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-xl bg-white shadow-sm border border-blue-100 flex items-center justify-center flex-shrink-0">
+                                    <FileText className="w-5 h-5 text-blue-500" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-blue-800">{doc.docNo}</p>
-                                    <p className="text-xs text-blue-600 truncate">{doc.name}</p>
-                                    <p className="text-[10px] text-blue-400 mt-0.5">{doc.type} · {doc.department} · {doc.uploadedAt}</p>
+                                    <p className="text-sm font-black text-blue-800 leading-none">{doc.docNo}</p>
+                                    <p className="text-[11px] font-bold text-blue-600 truncate mt-1">{doc.name}</p>
+                                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-1">{doc.type}</p>
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-blue-700">{tx.docRef}</p>
+                            <p className="text-sm font-bold text-blue-700">{tx.docRef}</p>
                         )}
                     </div>
                 )}
 
                 {/* Slip Attachment */}
                 {tx.slipUrl && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-                        <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1">
-                            <UploadCloud className="w-3 h-3" /> หลักฐานการโอน (สลิป)
+                    <div className="bg-amber-50/50 border border-amber-100/50 rounded-[1.5rem] p-5">
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <UploadCloud className="w-3.5 h-3.5" /> หลักฐานการดำเนินการ
                         </p>
                         <a 
                             href={getMediaUrl(tx.slipUrl)} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="flex items-center gap-3 bg-white border border-amber-200 rounded-lg p-2.5 hover:shadow-sm transition-all group/slip"
+                            className="flex items-center gap-4 bg-white border border-amber-200 rounded-xl p-3 hover:shadow-md transition-all group/slip active:scale-[0.98]"
                         >
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 group-hover/slip:bg-amber-200 transition-colors">
+                            <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 group-hover/slip:bg-amber-200 transition-colors">
                                 <FileText className="w-5 h-5 text-amber-600" />
                             </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-amber-900 truncate">ดูหลักฐานการโอน</p>
-                                <p className="text-[10px] text-amber-600 truncate">คลิกเพื่อเปิดไฟล์ในแท็บใหม่</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-black text-slate-800 truncate">เปิดหลักฐานการโอน</p>
+                                <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">คลิกเพื่อดูสลิป/เอกสาร PDF</p>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-amber-400" />
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover/slip:text-amber-500 transition-colors" />
                         </a>
                     </div>
                 )}
-
-                {tx.note && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                        <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider mb-1">หมายเหตุ</p>
-                        <p className="text-sm text-amber-800">{tx.note}</p>
-                    </div>
-                )}
             </div>
-        </>
+        </div>
     );
 }

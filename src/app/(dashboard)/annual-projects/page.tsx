@@ -236,6 +236,11 @@ export default function AnnualProjectsPage() {
                         completedMonths: proj.completedMonths || [],
                         isStarted: proj.isStarted || false,
                         isUnplanned: proj.isUnplanned || false,
+                        actualBudgetExternal: proj.actualBudgetExternal || 0,
+                        kpi: proj.kpi || "",
+                        targetPax: proj.targetPax || 0,
+                        actualPax: proj.actualPax || 0,
+                        actualDate: proj.actualDate || "",
                     })),
                 }));
                 console.log("[DEBUG] Mapped plans:", mapped);
@@ -509,7 +514,7 @@ export default function AnnualProjectsPage() {
                 if (result[p.department]) {
                     result[p.department].count++;
                     result[p.department].budget += p.budget;
-                    result[p.department].used += p.budgetUsed;
+                    result[p.department].used += (p.budgetUsed + (p.actualBudgetExternal || 0));
                 }
             });
         }
@@ -1142,6 +1147,17 @@ export default function AnnualProjectsPage() {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-emerald-50/50 p-5 rounded-[2rem] border border-emerald-100">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">เป้าหมายผู้เข้าร่วม</p>
+                                    <p className="text-xl font-black text-slate-900">{selectedProject.targetPax || 0} คน</p>
+                                </div>
+                                <div className="bg-emerald-50/50 p-5 rounded-[2rem] border border-emerald-100">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">ผู้เข้าร่วมจริง</p>
+                                    <p className="text-xl font-black text-slate-900">{selectedProject.actualPax || 0} คน</p>
+                                </div>
+                            </div>
+
                             <div className="space-y-4">
                                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                     <div className="h-px flex-1 bg-slate-100" /> ช่วงเวลาดำเนินงาน <div className="h-px flex-1 bg-slate-100" />
@@ -1165,14 +1181,24 @@ export default function AnnualProjectsPage() {
 
                             <div>
                                 <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                                    <span>งบประมาณที่ใช้จริง</span>
-                                    <span>ใช้ไป {Math.round((selectedProject.budgetUsed / (selectedProject.budget || 1)) * 100)}%</span>
+                                    <span>งบประมาณที่ใช้จริง (รวมงบสมทบ)</span>
+                                    <span>ใช้ไป {Math.round(((selectedProject.budgetUsed + (selectedProject.actualBudgetExternal || 0)) / (selectedProject.budget || 1)) * 100)}%</span>
                                 </div>
                                 <div className="relative h-4 w-full bg-slate-100 rounded-full overflow-hidden border border-white">
                                     <div
                                         className="absolute top-0 left-0 h-full bg-blue-600/90 rounded-full transition-all duration-1000 ease-out"
-                                        style={{ width: `${Math.min(100, (selectedProject.budgetUsed / (selectedProject.budget || 1)) * 100)}%` }}
+                                        style={{ width: `${Math.min(100, ((selectedProject.budgetUsed + (selectedProject.actualBudgetExternal || 0)) / (selectedProject.budget || 1)) * 100)}%` }}
                                     />
+                                </div>
+                                <div className="flex justify-between mt-2 px-1">
+                                    <div className="space-y-0.5">
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">งบภายใน</p>
+                                        <p className="text-xs font-black text-slate-700">฿{selectedProject.budgetUsed?.toLocaleString() || "0"}</p>
+                                    </div>
+                                    <div className="space-y-0.5 text-right">
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">งบสมทบภายนอก</p>
+                                        <p className="text-xs font-black text-emerald-600">฿{selectedProject.actualBudgetExternal?.toLocaleString() || "0"}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1328,7 +1354,8 @@ function ProjectRow({
     const dc = getDeptStyle(p.department);
     const StatusIcon = isReadyForComplete ? CheckCircle2 : (statusIcons[p.status] || Circle);
     const displayBudget = allocatedBudget ?? p.budget;
-    const pct = p.budget > 0 ? Math.round((p.budgetUsed / p.budget) * 100) : 0;
+    const totalSpent = (p.budgetUsed || 0) + (p.actualBudgetExternal || 0);
+    const pct = p.budget > 0 ? Math.round((totalSpent / p.budget) * 100) : 0;
 
     return (
         <div className="group relative">

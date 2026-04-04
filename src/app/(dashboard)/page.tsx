@@ -84,6 +84,8 @@ export default function DashboardPage() {
         projectId: t.projectId || undefined,
         amount: t.amount,
         recordedBy: "ทีมงบประมาณ",
+        originalDate: t.date || t.createdAt,
+        subType: t.category || "general",
       }));
       setTransactions(mappedTx);
       setUsersCount(usersData?.length || 0);

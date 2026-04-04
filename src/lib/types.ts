@@ -62,7 +62,11 @@ export interface Project {
     isUnplanned?: boolean;
     actualDate?: string;
     actualBudget?: number;
+    actualBudgetExternal?: number;
     budgetUsed?: number;
+    targetPax?: number;
+    actualPax?: number;
+    kpi?: string;
 }
 
 // ─── BUDGET TRANSACTIONS ──────────────────────────────────
@@ -81,6 +85,8 @@ export interface BudgetTransaction {
     docRef?: string;
     slipUrl?: string;
     note?: string;
+    originalDate: string;
+    subType: string;
 }
 
 // ─── ANNUAL PROJECTS ──────────────────────────────────────
@@ -99,8 +105,8 @@ export interface AnnualProject {
     endDate: string;
     description: string;
     kpi?: string;
-    participantTarget?: number;
-    participantActual?: number;
+    targetPax?: number;
+    actualPax?: number;
     months: number[];
     completedMonths: number[];
     isStarted: boolean;
@@ -109,6 +115,7 @@ export interface AnnualProject {
     documents: any[];
     actualDate?: string;
     actualBudget?: number;
+    actualBudgetExternal?: number;
     thaiYear?: number;
 }
 

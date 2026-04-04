@@ -119,6 +119,7 @@ export default function ProjectsPage() {
                     months: proj.months || [],
                     completedMonths: proj.completedMonths || [],
                     isStarted: proj.isStarted || false,
+                    externalBudget: proj.actualBudgetExternal || 0,
                     documents: proj.documents || [],
                 })),
             }));
@@ -136,6 +137,8 @@ export default function ProjectsPage() {
                         projectType: proj.projectType,
                         step: proj.status as ProjectStep,
                         budget: proj.budget,
+                        budgetUsed: proj.budgetUsed,
+                        externalBudget: proj.externalBudget,
                         lead: proj.lead,
                         startDate: proj.startDate,
                         endDate: proj.endDate,
@@ -608,6 +611,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
         projectType: "",
         budget: "",
         subDepartment: "",
+        externalBudget: "",
         months: [] as number[]
     });
 
@@ -643,7 +647,8 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                     })),
                     actualDate: found.actualDate,
                     actualBudget: found.actualBudget,
-                    budgetUsed: found.budgetUsed || 0
+                    budgetUsed: found.budgetUsed || 0,
+                    externalBudget: found.actualBudgetExternal || 0
                 });
                 setActualDateText(found.actualDate || "");
                 // Populate edit form
@@ -653,6 +658,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                     projectType: found.projectType,
                     budget: found.budget.toString(),
                     subDepartment: found.subDepartment || "",
+                    externalBudget: (found.actualBudgetExternal || 0).toString(),
                     months: found.months || []
                 });
             }
@@ -677,6 +683,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
             await updateProject(id, { completedMonths: newCompleted });
             setProject({ ...project, completedMonths: newCompleted });
             toast.success("อัปเดตสถานะเดือนสำเร็จ");
+            fetchProject();
         } catch (error) {
             toast.error("ไม่สามารถอัปเดตได้");
         }
@@ -728,6 +735,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
             
             toast.success(newStatus === "completed" ? "ปิดโครงการสำเร็จแล้ว!" : "อัปเดตสถานะสำเร็จ");
             onUpdate();
+            fetchProject();
         } catch (error) {
             toast.error("ไม่สามารถอัปเดตสถานะได้");
         } finally {
@@ -747,6 +755,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                 lead: editForm.lead,
                 projectType: editForm.projectType,
                 budget: Number(editForm.budget),
+                actualBudgetExternal: Number(editForm.externalBudget),
                 subDepartment: editForm.subDepartment,
                 months: editForm.months,
                 departmentId: deptId
@@ -754,6 +763,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
             toast.success("แก้ไขข้อมูลโครงการสำเร็จ!");
             setIsEditing(false);
             onUpdate();
+            fetchProject();
         } catch (error) {
             toast.error("ไม่สามารถบันทึกข้อมูลได้");
         } finally {
@@ -923,6 +933,23 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             </div>
                                         </div>
 
+                                        <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
+                                            <Banknote className="w-4 h-4 text-slate-400 mt-0.5" />
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">งบประมาณสบทบภายนอก (บริจาค)</p>
+                                                {isEditing ? (
+                                                    <input 
+                                                        type="number"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 focus:border-blue-400"
+                                                        value={editForm.externalBudget}
+                                                        onChange={e => setEditForm({...editForm, externalBudget: e.target.value})}
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-bold text-slate-700">฿{(project.externalBudget || 0).toLocaleString()}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
                                         {project.actualDate && (
                                             <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
                                                 <Calendar className="w-4 h-4 text-purple-400 mt-0.5" />
@@ -1065,8 +1092,14 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                         <span className="text-slate-900">{project.actualDate || "-"}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-700 border-t border-purple-100 pt-3">
-                                                        <span>งบประมาณที่ใช้จริง</span>
-                                                        <span className="text-slate-900 text-xs font-black">฿{project.budgetUsed?.toLocaleString() || "0"}</span>
+                                                        <span>งบประมาณที่ใช้รวมจริง</span>
+                                                        <span className="text-slate-900 text-xs font-black">
+                                                            ฿{( (project.budgetUsed || 0) + (isEditing ? Number(editForm.externalBudget || 0) : (project.externalBudget || 0)) ).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest text-slate-400 px-1">
+                                                        <span>(ในระบบ ฿{(project.budgetUsed || 0).toLocaleString()})</span>
+                                                        <span>(เงินบริจาค ฿{(isEditing ? Number(editForm.externalBudget || 0) : (project.externalBudget || 0)).toLocaleString()})</span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-400 border-t border-purple-100 pt-3 italic">
                                                         <span>สถานะ</span>

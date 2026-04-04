@@ -228,6 +228,8 @@ export async function updateProject(id: string, data: FormData | Partial<{
     kpi: string;
     targetPax: number;
     actualPax: number;
+    actualBudget?: number;
+    actualBudgetExternal?: number;
     isUnplanned?: boolean;
     completedMonths?: number[];
 }>) {
@@ -271,6 +273,25 @@ export async function createTransaction(data: FormData | {
 export async function deleteTransaction(id: string) {
     return apiFetch<any>(`/finance/${id}`, {
         method: "DELETE",
+    });
+}
+
+export async function updateTransaction(id: string, data: FormData | Partial<{
+    date: string;
+    title: string;
+    type: string;
+    amount: number;
+    category?: string;
+    docRef?: string;
+    months?: number[];
+    departmentId: string;
+    projectId?: string;
+    note?: string;
+    thaiYear?: number;
+}>) {
+    return apiFetch<any>(`/finance/${id}`, {
+        method: "PATCH",
+        body: data instanceof FormData ? data : JSON.stringify(data),
     });
 }
 

@@ -43,6 +43,10 @@ export default function CompletedProjectsPage() {
                         summaryImages: p.summaryImages || [],
                         actualDate: p.actualDate,
                         actualBudget: p.actualBudget,
+                        actualBudgetExternal: p.actualBudgetExternal,
+                        targetPax: p.targetPax,
+                        actualPax: p.actualPax,
+                        kpi: p.kpi,
                         subDepartment: p.subDepartment || "",
                         thaiYear: plans.find((pl: any) => pl.id === p.annualPlanId)?.thaiYear
                     } as unknown as AnnualProject));
@@ -189,7 +193,7 @@ export default function CompletedProjectsPage() {
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">งบประมาณที่ใช้</p>
                                         <div className="flex items-center justify-end gap-1.5 text-[10px] font-black text-purple-700">
                                             <Banknote className="w-3 h-3" />
-                                            ฿{(project.actualBudget || project.budgetUsed || 0).toLocaleString()}
+                                            ฿{((project.actualBudget || project.budgetUsed || 0) + (project.actualBudgetExternal || 0)).toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
@@ -257,10 +261,37 @@ export default function CompletedProjectsPage() {
                                         <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl">
                                             <Banknote className="w-4 h-4 text-blue-600" />
                                             <div>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">งบประมาณที่ใช้จริง</p>
-                                                <p className="text-xs font-black text-slate-700">฿{(selectedProject.actualBudget || selectedProject.budgetUsed || 0).toLocaleString()}</p>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">งบประมาณที่ใช้รวม</p>
+                                                <p className="text-xs font-black text-slate-700">
+                                                    ฿{((selectedProject.actualBudget || selectedProject.budgetUsed || 0) + (selectedProject.actualBudgetExternal || 0)).toLocaleString()}
+                                                    {selectedProject.actualBudgetExternal ? (
+                                                        <span className="text-[9px] text-blue-400 block font-bold">
+                                                            (งบภายใน: ฿{(selectedProject.actualBudget || selectedProject.budgetUsed || 0).toLocaleString()} + งบสมทบ: ฿{selectedProject.actualBudgetExternal.toLocaleString()})
+                                                        </span>
+                                                    ) : null}
+                                                </p>
                                             </div>
                                         </div>
+                                        {(selectedProject.targetPax || selectedProject.actualPax) && (
+                                            <div className="flex items-center gap-3 p-4 bg-emerald-50/50 rounded-2xl">
+                                                <Users className="w-4 h-4 text-emerald-600" />
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">จำนวนผู้เข้าร่วม (จริง/เป้าหมาย)</p>
+                                                    <p className="text-xs font-bold text-slate-700">
+                                                        {selectedProject.actualPax || 0} / {selectedProject.targetPax || 0} คน
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {selectedProject.kpi && (
+                                            <div className="flex items-center gap-3 p-4 bg-amber-50/50 rounded-2xl">
+                                                <Target className="w-4 h-4 text-amber-600" />
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ตัวชี้วัดความสำเร็จ (KPI)</p>
+                                                    <p className="text-xs font-bold text-slate-700">{selectedProject.kpi}</p>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl">
                                             <Users className="w-4 h-4 text-slate-400" />
                                             <div>
