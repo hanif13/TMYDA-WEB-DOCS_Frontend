@@ -934,9 +934,12 @@ export default function IncomeExpensePage() {
                                             <select value={form.docRef} onChange={e => setForm(p => ({ ...p, docRef: e.target.value }))}
                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                                 <option value="">ไม่มีเอกสารอ้างอิง</option>
-                                                {documents.map(d => (
-                                                    <option key={d.id} value={d.docNo}>{d.docNo} — {d.name}</option>
-                                                ))}
+                                                {documents
+                                                    .filter(d => d.type === "ประเภทเอกสารภายใน")
+                                                    .map(d => (
+                                                        <option key={d.id} value={d.id}>{d.docNo} — {d.name}</option>
+                                                    ))
+                                                }
                                             </select>
                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
