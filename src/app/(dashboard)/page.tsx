@@ -301,44 +301,42 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Tier 3: Recent Documents (Moved to bottom) */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <FileText className="w-5 h-5 text-amber-500" />
-              เอกสารล่าสุดในระบบ
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">รายการเอกสารที่มีการอัปโหลดเข้าสู่ระบบล่าสุด</p>
-          </div>
-          <Link href="/documents" className="h-10 px-4 bg-slate-50 hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-xl transition-all border border-slate-100 flex items-center justify-center">
-            ดูเอกสารทั้งหมด
-          </Link>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {documents.slice(0, 6).map(doc => (
-            <div key={doc.id} className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-slate-200 hover:bg-white transition-all group group cursor-default">
-              <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm group-hover:bg-blue-50 transition-colors">
-                <FileText className="w-5 h-5 text-slate-400 group-hover:text-blue-500" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 line-clamp-1 leading-tight mb-1 group-hover:text-blue-600 transition-colors">{doc.name}</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-slate-400 font-medium">{doc.uploadedAt}</span>
-                  <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                  <span className="text-[9px] text-blue-500 font-black uppercase tracking-tighter">{doc.type}</span>
+        {/* Right Sidebar: Recent Documents (Moved back to side) */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm h-full">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">เอกสารล่าสุดในระบบ</h3>
+              <FileText className="w-4 h-4 text-slate-300" />
+            </div>
+            
+            <div className="space-y-5">
+              {documents.slice(0, 8).map(doc => (
+                <div key={doc.id} className="flex items-start gap-3 group cursor-default">
+                  <div className="h-8 w-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 transition-colors shadow-sm">
+                    <FileText className="w-4 h-4 text-slate-400 group-hover:text-blue-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 leading-snug mb-1 group-hover:text-blue-600 transition-colors">{doc.name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-slate-400 font-medium">{doc.uploadedAt}</span>
+                      <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                      <span className="text-[9px] text-blue-500 font-black uppercase tracking-tighter">{doc.type}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
+              {documents.length === 0 && (
+                <div className="py-12 text-center">
+                  <p className="text-slate-400 text-xs italic">ไม่มีรายการเอกสาร</p>
+                </div>
+              )}
             </div>
-          ))}
-          {documents.length === 0 && (
-            <div className="col-span-full py-12 text-center">
-              <p className="text-slate-400 text-xs italic">ไม่มีรายการเอกสารในขณะนี้</p>
-            </div>
-          )}
+            
+            <Link href="/documents" className="mt-8 shadow-sm block text-center py-3 bg-slate-50 hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-xl transition-all border border-slate-100 active:scale-95">
+              ดูเอกสารทั้งหมด
+            </Link>
+          </div>
         </div>
       </div>
     </div>
