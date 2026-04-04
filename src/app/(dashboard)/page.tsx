@@ -2,24 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import {
-  FileText, FolderKanban, TrendingDown, Users, ArrowUpRight,
-  ArrowDownRight, CheckCircle2, Clock, AlertCircle, Plus,
-  MoreHorizontal, CalendarDays, ChevronRight, CircleDot, Loader, Wallet
+import { 
+  FileText, TrendingDown, Users, ArrowUpRight,
+  CheckCircle2, Plus, CalendarDays, ChevronRight, 
+  Loader, Wallet, Target, Zap, BarChart3, 
+  LayoutDashboard, CircleDot, ArrowRight, Banknote
 } from "lucide-react";
 import Link from "next/link";
-import { fetchAnnualPlans, fetchTransactions, fetchDocuments, fetchUsers } from "@/lib/api";
-import { Project, StoredDocument, BudgetTransaction } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { fetchAnnualPlans, fetchTransactions, fetchDocuments, fetchCommitteeMembers, fetchDepartments } from "@/lib/api";
+import { Project, StoredDocument, BudgetTransaction, CommitteeMember, Department } from "@/lib/types";
 import { useYear } from "@/context/YearContext";
 import { getDeptStyle } from "@/lib/dept-styles";
-
-const statusConfig: Record<string, { label: string, className: string }> = {
-  planning: { label: "Planning", className: "badge-draft" },
-  approval: { label: "รออนุมัติ", className: "badge-pending" },
-  execution: { label: "ดำเนินการ", className: "badge-approved" },
-  evaluation: { label: "ประเมินผล", className: "badge-done" },
-  done: { label: "เสร็จสิ้น", className: "bg-slate-100 text-slate-500" },
-};
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -30,7 +24,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [transactions, setTransactions] = useState<BudgetTransaction[]>([]);
-  const [usersCount, setUsersCount] = useState(0);
+  const [committees, setCommittees] = useState<CommitteeMember[]>([]);
+  const [depts, setDepts] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,8 +36,9 @@ export default function DashboardPage() {
       fetchAnnualPlans(selectedYear).catch(() => []),
       fetchDocuments(selectedYear).catch(() => []),
       fetchTransactions(selectedYear).catch(() => []),
-      fetchUsers().catch(() => [])
-    ]).then(([plansData, docsData, txData, usersData]) => {
+      fetchCommitteeMembers(selectedYear).catch(() => []),
+      fetchDepartments(selectedYear, 'committee').catch(() => [])
+    ]).then(([plansData, docsData, txData, committeeData, deptsData]) => {
       // Filter projects by the selected year's plan
       const targetPlan = plansData.find((p: any) => p.thaiYear === selectedYear);
       const allProjects: Project[] = (targetPlan?.projects || []).map((proj: any) => ({
@@ -54,12 +50,15 @@ export default function DashboardPage() {
         status: proj.status || "planning",
         startDate: proj.startDate || "-",
         endDate: proj.endDate || "-",
-        step: proj.step || "planning",
+        step: proj.status as any,
         lead: proj.lead || "-",
         description: proj.description || "-",
-        months: proj.months || 0,
+        months: proj.months || [],
         completedMonths: proj.completedMonths || [],
-        documents: []
+        documents: [],
+        isUnplanned: proj.isUnplanned,
+        actualDate: proj.actualDate,
+        actualBudgetExternal: proj.actualBudgetExternal || 0
       }));
       setProjects(allProjects);
 
@@ -77,7 +76,7 @@ export default function DashboardPage() {
 
       const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
         id: t.id,
-        date: new Date(t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
+        date: new Date(t.date || t.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
         type: t.type === "income" ? "รายรับ" : t.type === "expense" ? "รายจ่าย" : "คืนเงิน",
         description: t.title,
         department: t.department?.name || "",
@@ -88,49 +87,56 @@ export default function DashboardPage() {
         subType: t.category || "general",
       }));
       setTransactions(mappedTx);
-      setUsersCount(usersData?.length || 0);
+      setCommittees(committeeData || []);
+      setDepts(deptsData || []);
     }).finally(() => setLoading(false));
   }, [selectedYear]);
 
-  const totalIncome = transactions.filter(t => t.type === "รายรับ").reduce((acc, t) => acc + t.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === "รายจ่าย").reduce((acc, t) => acc + t.amount, 0);
+  // --- PROJECT STATS ---
+  const totalPlanned = projects.filter(p => !p.isUnplanned).length;
+  const totalUnplanned = projects.filter(p => p.isUnplanned).length;
+  const totalCompleted = projects.filter(p => p.step === "completed").length;
+  const latest3Completed = projects
+    .filter(p => p.step === "completed")
+    .sort((a,b) => (b.actualDate || "0").localeCompare(a.actualDate || "0"))
+    .slice(0, 3);
+
+  // --- FINANCIAL STATS ---
+  const totalProjectExpense = transactions.filter(t => t.type === "รายจ่าย" && t.subType === "project").reduce((acc, t) => acc + t.amount, 0);
   const totalReturn = transactions.filter(t => t.type === "คืนเงิน").reduce((acc, t) => acc + t.amount, 0);
-  
-  const totalBudget = totalIncome;
-  const totalUsed = totalExpense - totalReturn;
-  const remainingBudget = totalIncome - totalUsed;
-  const budgetUsedPct = totalBudget > 0 ? Math.round((totalUsed / totalBudget) * 100) : 0;
+  const totalExternalBudget = projects.reduce((acc, p) => acc + (p.actualBudgetExternal || 0), 0);
+  const totalActualSpent = (totalProjectExpense - totalReturn) + totalExternalBudget;
+
+  // --- COMMITTEE STATS ---
+  const committeeByDept = depts.slice(0, 4).map(d => ({
+    id: d.id,
+    name: d.name,
+    count: committees.filter(c => c.departmentId === d.id).length,
+    style: getDeptStyle(d.name)
+  }));
 
   const stats = [
     {
-      name: "โครงการทั้งหมด", value: projects.length.toString(), icon: FolderKanban,
-      change: "+0", changeType: "up", detail: "โครงการในระบบ",
-      color: "from-blue-500 to-blue-600", bg: "bg-blue-50", text: "text-blue-600"
+      name: "โครงการตามแผนงาน", value: totalPlanned.toString(), icon: Target,
+      change: `เสร็จแล้ว ${totalCompleted}`, changeType: "success", detail: "โครงการหลักประจำปี",
+      bg: "bg-blue-50", text: "text-blue-600"
+    },
+    {
+      name: "โครงการนอกแผนงาน", value: totalUnplanned.toString(), icon: Zap,
+      change: "เพิ่มเติม", changeType: "warn", detail: "โครงการเสริมพิเศษ",
+      bg: "bg-amber-50", text: "text-amber-600"
+    },
+    {
+      name: "งบประมาณใช้จริงรวม", value: totalActualSpent.toLocaleString(), icon: Banknote,
+      change: "฿", changeType: "success", detail: "รวมงบสมทบภายนอก",
+      bg: "bg-emerald-50", text: "text-emerald-700"
     },
     {
       name: "เอกสารทั้งหมด", value: documents.length.toString(), icon: FileText,
-      change: "+0", changeType: "up", detail: "เอกสารในระบบ",
-      color: "from-amber-500 to-orange-500", bg: "bg-amber-50", text: "text-amber-600"
-    },
-    {
-      name: "ผู้ใช้งานระบบ", value: usersCount.toString(), icon: Users,
-      change: "+0", changeType: "up", detail: "ผู้ใช้งานที่ลงทะเบียน",
-      color: "from-violet-500 to-purple-600", bg: "bg-violet-50", text: "text-violet-600"
-    },
-    {
-      name: "งบใช้ไปแล้ว (บาท)", value: totalUsed.toLocaleString(), icon: TrendingDown,
-      change: `${budgetUsedPct}%`, changeType: "warn", detail: "ของงบทั้งหมด",
-      color: "from-rose-500 to-red-500", bg: "bg-rose-50", text: "text-rose-600"
-    },
-    {
-      name: "งบประมาณคงเหลือ", value: remainingBudget.toLocaleString(), icon: Wallet,
-      change: `${100 - budgetUsedPct}%`, changeType: "up", detail: "ของงบทั้งหมด",
-      color: "from-emerald-500 to-green-500", bg: "bg-emerald-50", text: "text-emerald-600"
+      change: "รายการ", changeType: "neutral", detail: "ในฐานข้อมูลระบบ",
+      bg: "bg-slate-50", text: "text-slate-600"
     },
   ];
-
-  const recentProjects = projects.slice(-5).reverse();
-  const recentDocs = documents.slice(0, 5);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
@@ -141,138 +147,217 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">ภาพรวมองค์กร</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{new Date().toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="w-6 h-6 text-blue-600" />
+            ภาพรวมองค์กร
+          </h1>
+          <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" />
+            {new Date().toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
         </div>
         {!isViewer && (
-          <Link href="/documents">
-            <button className="flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
-              <Plus className="w-4 h-4" />
-              สร้างเอกสาร
-            </button>
+          <Link href="/projects" className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95">
+            <Plus className="w-4 h-4" />
+            จัดการโครงการ
           </Link>
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {stats.map((stat, i) => (
-          <div
-            key={stat.name}
-            className="bg-white rounded-2xl border border-slate-100 p-5 card-hover"
-            style={{ animationDelay: `${i * 75}ms` }}
-          >
-            <div className="flex items-start justify-between">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${stat.bg}`}>
-                <stat.icon className={`h-5 w-5 ${stat.text}`} />
+      {/* Tier 1: Core Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, idx) => (
+          <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 p-6 relative overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500">
+            <div className={cn("absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-[0.03] transition-transform duration-700 group-hover:scale-125", stat.bg)} />
+            
+            <div className="relative z-10">
+              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center mb-4 shadow-sm", stat.bg)}>
+                <stat.icon className={cn("w-6 h-6", stat.text)} />
+              </div>
+              
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">{stat.name}</p>
+                <div className="flex items-baseline gap-2">
+                  <h2 className="text-2xl font-black text-slate-900 leading-none">{stat.value}</h2>
+                  <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter", stat.bg, stat.text)}>
+                    {stat.change}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
+                  <CircleDot className="w-2.5 h-2.5 opacity-50" />
+                  {stat.detail}
+                </p>
               </div>
             </div>
-            <div className="mt-3">
-              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{stat.name}</p>
-            </div>
-            <div className="mt-3 pt-3 border-t border-slate-50">
-              <p className="text-[11px] text-slate-400">{stat.detail}</p>
+
+            <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+              <ArrowRight className={cn("w-5 h-5", stat.text)} />
             </div>
           </div>
         ))}
       </div>
 
-      {/* Budget Usage Bar */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800">การใช้งบประมาณรวม</h3>
-            <p className="text-xs text-slate-400">งบรวม ฿{totalBudget.toLocaleString()} · ใช้ไปแล้ว ฿{totalUsed.toLocaleString()} · <span className="text-emerald-600 font-medium">คงเหลือ ฿{remainingBudget.toLocaleString()}</span></p>
-          </div>
-          <Link href="/budget" className="text-xs text-blue-600 font-medium flex items-center gap-1 hover:text-blue-700">
-            รายละเอียด <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-1000 relative"
-            style={{ width: `${Math.min(budgetUsedPct, 100)}%` }}
-          >
-            <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
-          </div>
-        </div>
-        <div className="flex justify-between text-[11px] text-slate-400 mt-1.5">
-          <span>0 บาท</span>
-          <span className="text-amber-600 font-medium">ใช้ไปแล้ว {budgetUsedPct}%</span>
-          <span>{totalBudget.toLocaleString()} บาท</span>
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tier 2: Project Insights & Latest Completed */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Project Analytics Card */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">วิเคราะห์สถานะโครงการ</h3>
+                <p className="text-xs text-slate-400 mt-1">สัดส่วนโครงการของปีงบประมาณ {selectedYear}</p>
+              </div>
+              <div className="h-10 w-10 bg-blue-50 rounded-2xl flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Projects Table */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-            <h3 className="text-sm font-semibold text-slate-800">โครงการล่าสุด</h3>
-            <Link href="/projects" className="text-xs text-blue-600 font-medium flex items-center gap-1 hover:text-blue-700">
-              ดูทั้งหมด <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <ul className="divide-y divide-slate-50">
-            {recentProjects.length === 0 ? (
-              <li className="px-5 py-8 text-center text-sm text-slate-500">ยังไม่มีโครงการ</li>
-            ) : recentProjects.map((project) => {
-              const status = statusConfig[project.step] || statusConfig.planning;
-              const deptStyle = getDeptStyle(project.department);
-              const deptColor = `${deptStyle.bg} ${deptStyle.text}`;
-              return (
-                <li key={project.id} className="px-5 py-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{project.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${deptColor}`}>
-                          {project.department}
-                        </span>
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <CalendarDays className="w-3 h-3" /> {project.startDate}
-                        </span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">โครงการตามแผนงาน</span>
+                    <span className="text-lg font-black text-blue-600">{totalPlanned}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${projects.length > 0 ? (totalPlanned / projects.length) * 100 : 0}%` }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">โครงการนอกแผนงาน</span>
+                    <span className="text-lg font-black text-amber-600">{totalUnplanned}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${projects.length > 0 ? (totalUnplanned / projects.length) * 100 : 0}%` }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">ดำเนินการเสร็จสิ้น</span>
+                    <span className="text-lg font-black text-emerald-600">{totalCompleted}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${projects.length > 0 ? (totalCompleted / projects.length) * 100 : 0}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 bg-slate-50/50 rounded-[2rem] p-6 border border-slate-100 flex flex-col justify-center">
+                <h4 className="text-xs font-black text-slate-700 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  โครงการที่เสร็จสิ้นล่าสุด
+                </h4>
+                <div className="space-y-3">
+                  {latest3Completed.length > 0 ? latest3Completed.map(proj => (
+                    <div key={proj.id} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-white shadow-sm hover:border-slate-200 transition-all cursor-default group">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0", getDeptStyle(proj.department).bg)}>
+                          <span className={cn("text-[10px] font-black", getDeptStyle(proj.department).text)}>
+                            {proj.department.substring(0, 2)}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors leading-none mb-1">{proj.name}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">เสร็จเมื่อ: {proj.actualDate || proj.endDate}</p>
+                        </div>
                       </div>
+                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-1" />
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-xs font-semibold text-slate-600">฿{project.budget.toLocaleString()}</span>
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${status.className}`}>
-                        {status.label}
-                      </span>
+                  )) : (
+                    <div className="text-center py-8 text-slate-400 text-xs italic">ยังไม่มีโครงการที่บันทึกว่าเสร็จสิ้น</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Committee Breakdown Section */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">บุคลากรแยกตามหน่วยงาน</h3>
+                <p className="text-xs text-slate-400 mt-1">สัดส่วนคณะกรรมการใน 4 หน่วยงานหลัก</p>
+              </div>
+              <div className="h-10 w-10 bg-violet-50 rounded-2xl flex items-center justify-center">
+                <Users className="w-5 h-5 text-violet-600" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {committeeByDept.map((dept) => (
+                <div key={dept.id} className={cn("p-6 rounded-[2rem] border text-center space-y-2 group transition-all duration-300", dept.style.bg.replace('bg-', 'bg-opacity-10 bg-'), dept.style.border || "border-slate-100")}>
+                  <p className={cn("text-3xl font-black leading-none", dept.style.text)}>{dept.count}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 line-clamp-1">{dept.name}</p>
+                  <div className="w-8 h-1 mx-auto bg-current opacity-20 rounded-full group-hover:w-12 transition-all duration-300" />
+                </div>
+              ))}
+              {committeeByDept.length === 0 && (
+                <div className="col-span-full py-8 text-center text-slate-400 text-xs italic">ไม่พบข้อมูลหน่วยงานคณะกรรมการ</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar: Quick Actions & Docs Info */}
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-200">
+            <h3 className="text-lg font-black mb-2 flex items-center gap-2">
+              <LayoutDashboard className="w-5 h-5" />
+              เมนูด่วน
+            </h3>
+            <p className="text-blue-100 text-[10px] mb-6 tracking-wide font-medium uppercase">การจัดการระบบที่สำคัญ</p>
+            
+            <div className="space-y-3">
+              {[
+                { label: "บันทึกงบประมาณ", icon: Wallet, href: "/budget" },
+                { label: "โครงการทั้งหมด", icon: FolderKanban, href: "/projects" },
+                { label: "คลังเอกสาร", icon: FileText, href: "/documents" },
+                { label: "ทำเนียบคณะกรรมการ", icon: Users, href: "/committee" },
+              ].map(link => (
+                <Link key={link.label} href={link.href} className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-[1.5rem] transition-all group active:scale-95">
+                  <div className="flex items-center gap-3">
+                    <link.icon className="w-5 h-5" />
+                    <span className="text-sm font-bold">{link.label}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">เอกสารล่าสุด</h3>
+              <FileText className="w-4 h-4 text-slate-300" />
+            </div>
+            <div className="space-y-4">
+              {documents.slice(0, 5).map(doc => (
+                <div key={doc.id} className="flex items-start gap-3 group cursor-default">
+                  <div className="h-8 w-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 transition-colors">
+                    <FileText className="w-4 h-4 text-slate-400 group-hover:text-blue-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 line-clamp-1 leading-tight mb-1">{doc.name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-slate-400 font-medium">{doc.uploadedAt}</span>
+                      <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                      <span className="text-[9px] text-blue-500 font-black uppercase tracking-tighter">{doc.type}</span>
                     </div>
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* Activity Feed / Documents */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-            <h3 className="text-sm font-semibold text-slate-800">เอกสารล่าสุด</h3>
-            <Link href="/registry" className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-              <MoreHorizontal className="w-4 h-4 text-slate-400" />
+                </div>
+              ))}
+              {documents.length === 0 && (
+                <p className="text-center py-8 text-slate-400 text-[10px] italic">ไม่มีรายการเอกสาร</p>
+              )}
+            </div>
+            <Link href="/documents" className="mt-8 block text-center py-3 bg-slate-50 hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-xl transition-all border border-slate-100">
+              ดูเอกสารทั้งหมด
             </Link>
           </div>
-          <ul className="divide-y divide-slate-50">
-            {recentDocs.length === 0 ? (
-              <li className="px-5 py-8 text-center text-sm text-slate-500">ยังไม่มีเอกสาร</li>
-            ) : recentDocs.map((doc, i) => (
-              <li key={doc.id} className="px-5 py-3.5 flex items-start gap-3">
-                <div className="flex-shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-blue-500 bg-blue-50">
-                  <FileText className="w-3.5 h-3.5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-700 leading-snug truncate">{doc.docNo} — {doc.name}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">ผู้อัปโหลด: {doc.uploadedBy}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
     </div>
