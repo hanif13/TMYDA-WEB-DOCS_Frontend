@@ -260,8 +260,8 @@ export default function DashboardPage() {
                             {proj.department.substring(0, 2)}
                           </span>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors leading-none mb-1">{proj.name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors leading-snug mb-1">{proj.name}</p>
                           <p className="text-[10px] text-slate-400 font-medium">เสร็จเมื่อ: {proj.actualDate || proj.endDate}</p>
                         </div>
                       </div>
@@ -301,63 +301,44 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Right Sidebar: Quick Actions & Docs Info */}
-        <div className="space-y-6">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-200">
-            <h3 className="text-lg font-black mb-2 flex items-center gap-2">
-              <LayoutDashboard className="w-5 h-5" />
-              เมนูด่วน
+      {/* Tier 3: Recent Documents (Moved to bottom) */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <FileText className="w-5 h-5 text-amber-500" />
+              เอกสารล่าสุดในระบบ
             </h3>
-            <p className="text-blue-100 text-[10px] mb-6 tracking-wide font-medium uppercase">การจัดการระบบที่สำคัญ</p>
-            
-            <div className="space-y-3">
-              {[
-                { label: "บันทึกงบประมาณ", icon: Wallet, href: "/budget" },
-                { label: "โครงการทั้งหมด", icon: FolderKanban, href: "/projects" },
-                { label: "คลังเอกสาร", icon: FileText, href: "/documents" },
-                { label: "ทำเนียบคณะกรรมการ", icon: Users, href: "/committee" },
-              ].map(link => (
-                <Link key={link.label} href={link.href} className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-[1.5rem] transition-all group active:scale-95">
-                  <div className="flex items-center gap-3">
-                    <link.icon className="w-5 h-5" />
-                    <span className="text-sm font-bold">{link.label}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-                </Link>
-              ))}
-            </div>
+            <p className="text-xs text-slate-400 mt-1">รายการเอกสารที่มีการอัปโหลดเข้าสู่ระบบล่าสุด</p>
           </div>
-
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">เอกสารล่าสุด</h3>
-              <FileText className="w-4 h-4 text-slate-300" />
-            </div>
-            <div className="space-y-4">
-              {documents.slice(0, 5).map(doc => (
-                <div key={doc.id} className="flex items-start gap-3 group cursor-default">
-                  <div className="h-8 w-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 transition-colors">
-                    <FileText className="w-4 h-4 text-slate-400 group-hover:text-blue-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-800 line-clamp-1 leading-tight mb-1">{doc.name}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-slate-400 font-medium">{doc.uploadedAt}</span>
-                      <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                      <span className="text-[9px] text-blue-500 font-black uppercase tracking-tighter">{doc.type}</span>
-                    </div>
-                  </div>
+          <Link href="/documents" className="h-10 px-4 bg-slate-50 hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-xl transition-all border border-slate-100 flex items-center justify-center">
+            ดูเอกสารทั้งหมด
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {documents.slice(0, 6).map(doc => (
+            <div key={doc.id} className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-slate-200 hover:bg-white transition-all group group cursor-default">
+              <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm group-hover:bg-blue-50 transition-colors">
+                <FileText className="w-5 h-5 text-slate-400 group-hover:text-blue-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-800 line-clamp-1 leading-tight mb-1 group-hover:text-blue-600 transition-colors">{doc.name}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-slate-400 font-medium">{doc.uploadedAt}</span>
+                  <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                  <span className="text-[9px] text-blue-500 font-black uppercase tracking-tighter">{doc.type}</span>
                 </div>
-              ))}
-              {documents.length === 0 && (
-                <p className="text-center py-8 text-slate-400 text-[10px] italic">ไม่มีรายการเอกสาร</p>
-              )}
+              </div>
             </div>
-            <Link href="/documents" className="mt-8 block text-center py-3 bg-slate-50 hover:bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-xl transition-all border border-slate-100">
-              ดูเอกสารทั้งหมด
-            </Link>
-          </div>
+          ))}
+          {documents.length === 0 && (
+            <div className="col-span-full py-12 text-center">
+              <p className="text-slate-400 text-xs italic">ไม่มีรายการเอกสารในขณะนี้</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
