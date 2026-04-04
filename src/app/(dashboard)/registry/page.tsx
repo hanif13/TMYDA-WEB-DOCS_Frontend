@@ -136,7 +136,7 @@ export default function RegistryPage() {
             const matchType = filterType === "all" || d.type === filterType;
             const matchDept = filterDept === "all" || d.department === filterDept;
             return matchSearch && matchType && matchDept;
-        }).sort((a, b) => b.docNo.localeCompare(a.docNo));
+        }).sort((a, b) => a.docNo.localeCompare(b.docNo));
     }, [docs, search, filterType, filterDept]);
 
     // Grouping logic
