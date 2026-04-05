@@ -170,8 +170,8 @@ export default function DashboardPage() {
       {/* Tier 1: Core Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 p-6 relative overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500">
-            <div className={cn("absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-[0.03] transition-transform duration-700 group-hover:scale-125", stat.bg)} />
+          <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 p-6 relative overflow-hidden group transition-all duration-500">
+            <div className={cn("absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-[0.03] transition-transform duration-700", stat.bg)} />
             
             <div className="relative z-10">
               <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center mb-4 shadow-sm", stat.bg)}>
@@ -191,10 +191,6 @@ export default function DashboardPage() {
                   {stat.detail}
                 </p>
               </div>
-            </div>
-
-            <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-              <ArrowRight className={cn("w-5 h-5", stat.text)} />
             </div>
           </div>
         ))}
