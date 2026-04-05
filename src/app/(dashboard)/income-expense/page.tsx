@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect, useRef } from "react";
+import Papa from "papaparse";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -64,6 +65,7 @@ export default function IncomeExpensePage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     useEffect(() => {
         if (selectedYear) {
@@ -256,6 +258,7 @@ export default function IncomeExpensePage() {
             formData.append("departmentId", form.departmentId);
             if (form.projectId) formData.append("projectId", form.projectId);
             if (form.note) formData.append("note", form.note);
+            if (form.claimedBy) formData.append("claimedBy", form.claimedBy);
             if (selectedYear) formData.append("thaiYear", selectedYear.toString());
             if (selectedFile) formData.append("file", selectedFile);
 
@@ -350,10 +353,16 @@ export default function IncomeExpensePage() {
                     <p className="text-sm text-slate-500 mt-0.5">บันทึกและติดตามรายรับ-รายจ่าย เบิกจ่ายตามโครงการ พร้อมอ้างอิงเอกสาร</p>
                 </div>
                 {!isViewer && (
-                    <button onClick={() => setTab("add")}
-                        className="flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-colors">
-                        <Plus className="w-4 h-4" /> เพิ่มรายการ
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setShowImportModal(true)}
+                            className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                            <UploadCloud className="w-4 h-4" /> นำเข้า CSV
+                        </button>
+                        <button onClick={() => setTab("add")}
+                            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-colors">
+                            <Plus className="w-4 h-4" /> เพิ่มรายการ
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -993,7 +1002,6 @@ export default function IncomeExpensePage() {
                                     </div>
                                 )}
 
-
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">เลขที่เอกสารอ้างอิง</label>
@@ -1023,45 +1031,56 @@ export default function IncomeExpensePage() {
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" />
                                     </div>
                                 </div>
-                            </div>
+                                </div>
 
-                            <div className="flex gap-4 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={() => setTab("transactions")}
-                                    className="flex-1 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-2xl transition-all">
-                                    ยกเลิก
-                                </button>
-                                <button type="submit" disabled={isSubmitting}
-                                    className="flex-[2] py-4 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                                    {isSubmitting ? <Loader className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="flex gap-4 pt-4 border-t border-slate-100">
+                                    <button type="button" onClick={() => setTab("transactions")}
+                                        className="flex-1 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-2xl transition-all">
+                                        ยกเลิก
+                                    </button>
+                                    <button type="submit" disabled={isSubmitting}
+                                        className="flex-[2] py-4 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                                        {isSubmitting ? <Loader className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                                        บันทึกรายการ
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ─── CSV IMPORT MODAL ─── */}
+            {showImportModal && (
+                <ImportModal 
+                    onClose={() => setShowImportModal(false)} 
+                    dbDepartments={dbDepartments} 
+                    refreshData={refreshData}
+                    selectedYear={selectedYear}
+                />
+            )}
+
+            {/* ─── TRANSACTION DETAIL MODAL ─── */}
+            {showDetailTx && (
+                <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowDetailTx(null)}>
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                        <DetailModal 
+                            tx={showDetailTx} 
+                            onClose={() => setShowDetailTx(null)} 
+                            findDoc={findDoc} 
+                            onDelete={() => handleDelete(showDetailTx.id)} 
+                            isViewer={isViewer}
+                            projects={projects}
+                            dbDepartments={dbDepartments}
+                            documents={documents}
+                            refreshData={refreshData}
+                            selectedYear={selectedYear}
+                        />
                     </div>
                 </div>
             )}
-        </div>
-
-        {/* ─── TRANSACTION DETAIL MODAL ─── */}
-        {showDetailTx && (
-            <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowDetailTx(null)}>
-                <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                    <DetailModal 
-                        tx={showDetailTx} 
-                        onClose={() => setShowDetailTx(null)} 
-                        findDoc={findDoc} 
-                        onDelete={() => handleDelete(showDetailTx.id)} 
-                        isViewer={isViewer}
-                        projects={projects}
-                        dbDepartments={dbDepartments}
-                        documents={documents}
-                        refreshData={refreshData}
-                        selectedYear={selectedYear}
-                    />
-                </div>
-            </div>
-        )}
-    </>
-);
+        </>
+    );
 }
 
 /* ─── Transaction Row Component ─── */
@@ -1126,18 +1145,17 @@ function DetailModal({
     const [isEditing, setIsEditing] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Form state initialized from tx
     const [editForm, setEditForm] = useState({
         title: tx.description,
         amount: tx.amount.toString(),
         departmentId: dbDepartments.find(d => d.name === tx.department)?.id || "",
         projectId: tx.projectId || "",
         date: tx.originalDate ? new Date(tx.originalDate).toISOString().split('T')[0] : "",
-        type: tx.type === "รายรับ" ? "income" : tx.type === "รายจ่าย" ? "expense" : "refund",
+        type: tx.type, // "รายรับ" | "รายจ่าย" | "คืนเงิน"
         note: tx.note || "",
         docRef: tx.docRef || "",
         claimedBy: tx.claimedBy || "",
-        subType: tx.subType || "general",
+        subType: tx.subType || "general" as "central" | "project" | "refund" | "general",
     });
 
     const [editFile, setEditFile] = useState<File | null>(null);
@@ -1151,20 +1169,27 @@ function DetailModal({
             formData.append("title", editForm.title);
             formData.append("amount", editForm.amount);
             formData.append("date", editForm.date);
-            formData.append("type", editForm.type);
+            
+            // Map Thai types back to internal keys
+            const internalType = editForm.subType === "refund" ? "refund" 
+                : editForm.type === "รายรับ" ? "income" 
+                : "expense";
+            formData.append("type", internalType);
+            
             formData.append("departmentId", editForm.departmentId);
             formData.append("projectId", editForm.projectId || "");
             formData.append("note", editForm.note);
             formData.append("docRef", editForm.docRef);
+            formData.append("claimedBy", editForm.claimedBy);
             formData.append("category", editForm.subType);
             if (editFile) formData.append("evidence", editFile);
             if (selectedYear) formData.append("thaiYear", selectedYear.toString());
 
             await updateTransaction(tx.id, formData);
-            toast.success("อัปเดตรายการสำเร็จ");
+            toast.success("อัปเดตรายการสำเร็จ", { icon: "✅" });
             setIsEditing(false);
             refreshData();
-            onClose(); // Close modal after edit
+            onClose(); 
         } catch (error) {
             console.error("Update error:", error);
             toast.error("ไม่สามารถอัปเดตรายการได้");
@@ -1180,89 +1205,177 @@ function DetailModal({
     if (isEditing) {
         return (
             <div className="flex flex-col h-full max-h-[90vh]">
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
                     <div>
-                        <h3 className="text-lg font-black text-slate-800">แก้ไขรายการ</h3>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">ID: {tx.id.substring(0, 8)}...</p>
+                        <h3 className="text-xl font-black text-slate-800">แก้ไขรายการ</h3>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">ID: {tx.id.substring(0, 8)}...</p>
                     </div>
-                    <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-white rounded-xl transition-all">
-                        <X className="w-5 h-5 text-slate-400" />
+                    <button onClick={() => setIsEditing(false)} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all text-slate-400">
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSaveEdit} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <form onSubmit={handleSaveEdit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar bg-slate-50/50">
                     <div className="space-y-4">
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">ประเภทรายการ</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { id: "รายรับ", label: "รายรับ", color: "green" },
+                                        { id: "รายจ่าย", label: "รายจ่าย", color: "red" }
+                                    ].map(opt => (
+                                        <button key={opt.id} type="button" 
+                                            onClick={() => setEditForm(p => ({ 
+                                                ...p, 
+                                                type: opt.id as any, 
+                                                subType: opt.id === "รายรับ" ? "central" : "project" 
+                                            }))}
+                                            className={cn("py-2.5 rounded-xl text-xs font-black border-2 transition-all",
+                                                editForm.type === opt.id 
+                                                    ? opt.id === "รายรับ" ? "bg-green-50 border-green-500 text-green-700" : "bg-red-50 border-red-500 text-red-700"
+                                                    : "bg-transparent border-slate-100 text-slate-400"
+                                            )}>
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                                    {editForm.type === "รายรับ" ? "แหล่งที่มา" : "ลักษณะการใช้จ่าย"}
+                                </label>
+                                <div className="flex gap-2">
+                                    {(editForm.type === "รายรับ" ? [
+                                        { id: "central", label: "บัญชีกลาง" },
+                                        { id: "refund", label: "เงินคืนโครงการ" }
+                                    ] : [
+                                        { id: "project", label: "โครงการ" },
+                                        { id: "general", label: "ทั่วไป" }
+                                    ]).map(opt => (
+                                        <button key={opt.id} type="button" 
+                                            onClick={() => setEditForm(p => ({ ...p, subType: opt.id as any }))}
+                                            className={cn("flex-1 py-2.5 rounded-xl text-xs font-black border-2 transition-all",
+                                                editForm.subType === opt.id 
+                                                    ? editForm.type === "รายรับ" ? "bg-green-50 border-green-500 text-green-700" : "bg-red-50 border-red-500 text-red-700"
+                                                    : "bg-transparent border-slate-100 text-slate-400"
+                                            )}>
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">รายละเอียดรายการ *</label>
                             <input required value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" />
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm" />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">จำนวนเงิน (บาท) *</label>
-                                <input type="number" step="any" required value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-black text-blue-600 outline-none focus:border-blue-500 focus:bg-white transition-all" />
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">฿</span>
+                                    <input type="number" step="any" required value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))}
+                                        className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-3.5 text-sm font-black text-blue-600 outline-none focus:border-blue-500 transition-all shadow-sm" />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">วันที่ *</label>
                                 <input type="date" required value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" />
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หน่วยงานที่รับผิดชอบ *</label>
+                                <div className="relative">
+                                    <select required value={editForm.departmentId} onChange={e => setEditForm(p => ({ ...p, departmentId: e.target.value }))}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                        {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {(editForm.subType === "project" || editForm.subType === "refund") && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block text-blue-600">เชื่อมโยงกับโครงการ</label>
+                                    <div className="relative">
+                                        <select value={editForm.projectId} onChange={e => setEditForm(p => ({ ...p, projectId: e.target.value }))}
+                                            className="w-full bg-blue-50/30 border border-blue-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                            <option value="">ไม่ระบุโครงการ</option>
+                                            {projects
+                                                .filter(proj => !editForm.departmentId || proj.departmentId === editForm.departmentId)
+                                                .map(proj => <option key={proj.id} value={proj.id}>{proj.name}</option>)}
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">เอกสารอ้างอิง</label>
+                                <div className="relative">
+                                    <select value={editForm.docRef} onChange={e => setEditForm(p => ({ ...p, docRef: e.target.value }))}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                        <option value="">ไม่มีเอกสารอ้างอิง</option>
+                                        {documents
+                                            .filter(d => {
+                                                if (editForm.projectId) return d.projectId === editForm.projectId;
+                                                return true;
+                                            })
+                                            .map(d => (
+                                                <option key={d.id} value={d.id}>{d.docNo} — {d.name}</option>
+                                            ))
+                                        }
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">ผู้เบิก / ผู้รับเงิน</label>
+                                <input value={editForm.claimedBy} onChange={e => setEditForm(p => ({ ...p, claimedBy: e.target.value }))}
+                                    placeholder="ชื่อจริง-นามสกุล"
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หมายเหตุ</label>
+                                <input value={editForm.note} onChange={e => setEditForm(p => ({ ...p, note: e.target.value }))}
+                                    placeholder="ระบุเพิ่มเติม..."
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm" />
                             </div>
                         </div>
 
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หน่วยงาน *</label>
-                            <div className="relative">
-                                <select required value={editForm.departmentId} onChange={e => setEditForm(p => ({ ...p, departmentId: e.target.value }))}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
-                                    {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">โครงการ (ถ้ามี)</label>
-                            <div className="relative">
-                                <select value={editForm.projectId} onChange={e => setEditForm(p => ({ ...p, projectId: e.target.value }))}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
-                                    <option value="">ไม่เชื่อมกับโครงการ</option>
-                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">เปลี่ยนสลิป (ถ้ามี)</label>
-                            <div 
-                                onClick={() => fileInputRef.current?.click()}
-                                className={cn("bg-slate-50 rounded-xl p-4 border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
-                                    editFile ? "border-blue-400 bg-blue-50/50" : "border-slate-200 hover:border-blue-300"
-                                )}
-                            >
-                                <UploadCloud className={cn("w-5 h-5", editFile ? "text-blue-500" : "text-slate-400")} />
-                                <span className="text-[11px] font-bold text-slate-500">{editFile ? editFile.name : "คลิกเพื่ออัปโหลดไฟล์ใหม่"}</span>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หลักฐานการโอน / สลิป</label>
+                            <div onClick={() => fileInputRef.current?.click()}
+                                className={cn("bg-white rounded-2xl p-5 border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-1 shadow-sm",
+                                    editFile ? "border-blue-500 bg-blue-50/30" : "border-slate-200 hover:border-blue-400"
+                                )}>
+                                <UploadCloud className={cn("w-6 h-6", editFile ? "text-blue-500" : "text-slate-400")} />
+                                <span className="text-xs font-black text-slate-600">{editFile ? editFile.name : tx.slipUrl ? "มีสลิปแนบอยู่แล้ว (คลิกเพื่อเปลี่ยน)" : "คลิกเพื่ออัปโหลดไฟล์ใหม่"}</span>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*,application/pdf" onChange={e => e.target.files?.[0] && setEditFile(e.target.files[0])} />
                             </div>
                         </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หมายเหตุ</label>
-                            <textarea value={editForm.note} onChange={e => setEditForm(p => ({ ...p, note: e.target.value }))}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all min-h-[80px] resize-none" />
-                        </div>
                     </div>
 
-                    <div className="flex gap-3 pt-4">
+                    <div className="flex gap-4 pt-6 sticky bottom-0 bg-slate-50/80 backdrop-blur-md mt-6">
                         <button type="button" onClick={() => setIsEditing(false)}
-                            className="flex-1 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-all">
+                            className="flex-1 py-4 text-sm font-black text-slate-500 hover:bg-white rounded-2xl transition-all border border-transparent hover:border-slate-200">
                             ยกเลิก
                         </button>
                         <button type="submit" disabled={isSubmitting}
-                            className="flex-[2] py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-100 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                            {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : "บันทึกการแก้ไข"}
+                            className="flex-[2] py-4 bg-blue-600 text-white text-sm font-black rounded-2xl hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                            {isSubmitting ? <Loader className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5 rotate-45" />} 
+                            บันทึกการแก้ไข
                         </button>
                     </div>
                 </form>
@@ -1397,6 +1510,227 @@ function DetailModal({
                         </a>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+/* ─── Import CSV Modal Component ─── */
+function ImportModal({ 
+    onClose, 
+    dbDepartments, 
+    refreshData,
+    selectedYear 
+}: { 
+    onClose: () => void; 
+    dbDepartments: any[]; 
+    refreshData: () => void;
+    selectedYear: number | null;
+}) {
+    const [file, setFile] = useState<File | null>(null);
+    const [isParsing, setIsParsing] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+    const [previewData, setPreviewData] = useState<any[]>([]);
+    const [defaultDeptId, setDefaultDeptId] = useState("");
+    const [progress, setProgress] = useState({ current: 0, total: 0 });
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selected = e.target.files?.[0];
+        if (selected) {
+            setFile(selected);
+            parseFile(selected);
+        }
+    };
+
+    const parseFile = (file: File) => {
+        setIsParsing(true);
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                setPreviewData(results.data);
+                setIsParsing(false);
+            },
+            error: (err) => {
+                toast.error("ไม่สามารถอ่านไฟล์ได้: " + err.message);
+                setIsParsing(false);
+            }
+        });
+    };
+
+    const parseThaiDate = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return new Date();
+        let day = parseInt(parts[0]);
+        let month = parseInt(parts[1]) - 1;
+        let year = parseInt(parts[2]);
+        if (year > 2400) year -= 543; // Convert B.E. to A.D.
+        return new Date(year, month, day);
+    };
+
+    const handleImport = async () => {
+        if (!defaultDeptId) return toast.error("กรุณาเลือกหน่วยงานเริ่มต้น");
+        if (previewData.length === 0) return toast.error("ไม่พบข้อมูลในไฟล์");
+
+        setIsImporting(true);
+        setProgress({ current: 0, total: previewData.length });
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < previewData.length; i++) {
+            const row = previewData[i];
+            try {
+                // Determine transaction type and amount from columns
+                // Headers: วัน/เดือน/ปี, รายการ, รายรับจากบัญชีกลาง, รายรับจากเงินคืนโครงการ, รายจ่ายเบิกตามโครงการ, รายจ่ายเบิกตามทั่วไป, หมายเหตุ
+                const title = row["รายการ"] || "ไม่มีชื่อรายการ";
+                const date = parseThaiDate(row["วัน/เดือน/ปี"]).toISOString();
+                const note = row["หมายเหตุ"] || "";
+                
+                const amounts = [
+                    { val: row["รายรับจากบัญชีกลาง"], type: "income", cat: "central" },
+                    { val: row["รายรับจากเงินคืนโครงการ"], type: "income", cat: "refund" },
+                    { val: row["รายจ่ายเบิกตามโครงการ"], type: "expense", cat: "project" },
+                    { val: row["รายจ่ายเบิกตามทั่วไป"], type: "expense", cat: "general" }
+                ];
+
+                // Filter for columns with actual numbers
+                const validAmounts = amounts.filter(a => {
+                    const numString = String(a.val || "").replace(/,/g, '').trim();
+                    const num = parseFloat(numString);
+                    return !isNaN(num) && num > 0;
+                });
+
+                if (validAmounts.length === 0) {
+                    failCount++;
+                    continue;
+                }
+
+                // If multiple amounts in one row, create multiple transactions? 
+                // Using the first one for now as per prompt implication
+                const target = validAmounts[0];
+                const amount = parseFloat(String(target.val).replace(/,/g, ''));
+
+                const formData = new FormData();
+                formData.append("date", date);
+                formData.append("title", title);
+                formData.append("type", target.type);
+                formData.append("amount", amount.toString());
+                formData.append("category", target.cat);
+                formData.append("departmentId", defaultDeptId);
+                if (note) formData.append("note", note);
+                if (selectedYear) formData.append("thaiYear", selectedYear.toString());
+
+                await createTransaction(formData);
+                successCount++;
+            } catch (err) {
+                console.error("Import row error:", err);
+                failCount++;
+            }
+            setProgress(p => ({ ...p, current: i + 1 }));
+        }
+
+        toast.success(`นำเข้าสำเร็จ ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว ${failCount} รายการ` : ""}`);
+        refreshData();
+        onClose();
+        setIsImporting(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
+            <div className="bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                <div className="p-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-800 tracking-tight">นำเข้าข้อมูลจาก CSV</h2>
+                            <p className="text-xs text-slate-400 mt-1 font-bold uppercase tracking-widest">Bulk Import Tool</p>
+                        </div>
+                        <button onClick={onClose} className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all text-slate-400">
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* File Selector */}
+                        <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer group relative">
+                            <input type="file" accept=".csv" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                            <div className="flex flex-col items-center">
+                                <div className="h-16 w-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <UploadCloud className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <p className="text-sm font-black text-slate-700">{file ? file.name : "คลิกเพื่อเลือกไฟล์ CSV"}</p>
+                                <p className="text-xs text-slate-400 mt-1">ไฟล์ควรมีหัวตารางตามลำดับที่กำหนด</p>
+                            </div>
+                        </div>
+
+                        {/* Column Info Helper */}
+                        <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100/50">
+                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <FileText className="w-3.5 h-3.5" /> หัวคอลัมน์ที่รองรับ
+                            </p>
+                            <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+                                วัน/เดือน/ปี, รายการ, รายรับจากบัญชีกลาง, รายรับจากเงินคืนโครงการ, รายจ่ายเบิกตามโครงการ, รายจ่ายเบิกตามทั่วไป, หมายเหตุ
+                            </p>
+                        </div>
+
+                        {/* Department Selector */}
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">หน่วยงานเริ่มต้นสำหรับรายการทั้งหมด</label>
+                            <div className="relative">
+                                <select 
+                                    value={defaultDeptId} 
+                                    onChange={e => setDefaultDeptId(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                                >
+                                    <option value="" disabled>เลือกหน่วยงาน...</option>
+                                    {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Preview Stats */}
+                        {previewData.length > 0 && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 text-center">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">พบข้อมูลทั้งหมด</p>
+                                    <p className="text-2xl font-black text-emerald-700">{previewData.length} รายการ</p>
+                                </div>
+                                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 text-center">
+                                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">ปีการทำงาน</p>
+                                    <p className="text-2xl font-black text-amber-700">{selectedYear || "—"}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Import Progress or Buttons */}
+                        <div className="pt-4">
+                            {isImporting ? (
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
+                                        <span>กำลังนำเข้าข้อมูล...</span>
+                                        <span>{Math.round((progress.current / progress.total) * 100)}%</span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+                                        <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">
+                                        {progress.current} / {progress.total} รายการ
+                                    </p>
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={handleImport}
+                                    disabled={!file || !defaultDeptId || isParsing}
+                                    className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] text-sm font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
+                                >
+                                    ยืนยันการนำเข้าข้อมูล
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
