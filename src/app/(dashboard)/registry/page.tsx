@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, FileText, ChevronRight, Hash, Plus, X, Loader, Edit3, UploadCloud, FileCheck, ChevronDown, Trash2, Edit } from "lucide-react";
+import { Search, Filter, FileText, ChevronRight, Hash, Plus, X, Loader, Edit3, UploadCloud, FileCheck, ChevronDown, Trash2, Edit, Download, Eye, Calendar, User, Clock, Building, Share2, ArrowUpDown, Layers, Building2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DOC_TYPES, CURRENT_THAI_YEAR, MASTER_CATEGORIES, CATEGORY_MAP, getNextDocNo } from "@/lib/constants";
 import { StoredDocument } from "@/lib/types";
-import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL, fetchDepartments, fetchCategories, getMediaUrl } from "@/lib/api";
+import { fetchDocuments, createDocument, updateDocument, deleteDocument, API_BASE_URL, fetchDepartments, fetchCategories, getMediaUrl, fetchUsers } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useYear } from "@/context/YearContext";
 import { useSession } from "next-auth/react";
@@ -49,8 +49,11 @@ export default function RegistryPage() {
     const [filterType, setFilterType] = useState("all");
     const [filterDept, setFilterDept] = useState("all");
     const [view, setView] = useState<View>("dept");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+    const [sortBy, setSortBy] = useState<"date" | "no">("date");
     const [dbDepartments, setDbDepartments] = useState<any[]>([]);
     const [dbCategories, setDbCategories] = useState<any[]>([]);
+    const [dbUsers, setDbUsers] = useState<any[]>([]);
 
     // Fetch documents and metadata from API
     useEffect(() => {
@@ -62,12 +65,17 @@ export default function RegistryPage() {
 
     const loadMetadata = async () => {
         try {
-            const [depts, cats] = await Promise.all([
+            const [depts, cats, users] = await Promise.all([
                 fetchDepartments('all'),
-                fetchCategories()
+                fetchCategories(),
+                fetchUsers().catch(err => {
+                    console.error("Failed to fetch users, falling back to empty list:", err);
+                    return [];
+                })
             ]);
             setDbDepartments(depts);
             setDbCategories(cats);
+            setDbUsers(users);
 
             // Set default selections if not already set
             setFormData(prev => ({
@@ -92,6 +100,7 @@ export default function RegistryPage() {
                     department: d.department?.name || "",
                     uploadedBy: d.uploadedBy?.name || "",
                     uploadedAt: new Date(d.createdAt).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }),
+                    createdAt: d.createdAt, // Store raw ISO for sorting
                     fileUrl: d.filePath || undefined,
                 }));
                 setDocs(mapped);
@@ -107,7 +116,8 @@ export default function RegistryPage() {
         type: "", // Will be set to category UUID
         department: "", // Will be set to department UUID
         name: "",
-        uploadedBy: "ผู้ดูแลระบบ"
+        uploadedBy: (session?.user as any)?.name || "กำลังโหลด...",
+        uploadedById: (session?.user as any)?.id || ""
     });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -116,9 +126,43 @@ export default function RegistryPage() {
 
     const isGlobalType = formData.type === "ประเภทเอกสารโครงการ" || formData.type === "ประเภทเอกสารรายงานผลการดำเนินโครงการ";
 
-    // Auto-generate Document Number
+    // Auto-populate uploader name when session is ready or modal opens
     useEffect(() => {
-        if (showAddModal && dbDepartments.length > 0 && dbCategories.length > 0) {
+        if (showAddModal && session?.user && !isEditing) {
+            const userName = (session.user as any).name || "";
+            const userId = (session.user as any).id || (session.user as any).userId || "";
+            if (userId && formData.uploadedById !== userId) {
+                setFormData(prev => ({ ...prev, uploadedBy: userName, uploadedById: userId }));
+            }
+        }
+    }, [session, isEditing, showAddModal, formData.uploadedById]);
+
+    const filtered = useMemo(() => {
+        const result = docs.filter(d => {
+            const matchesSearch = d.name.toLowerCase().includes(search.toLowerCase()) || 
+                                 d.docNo.toLowerCase().includes(search.toLowerCase());
+            const matchesType = filterType === "all" || d.type === filterType;
+            const matchesDept = filterDept === "all" || d.department === filterDept;
+            return matchesSearch && matchesType && matchesDept;
+        });
+
+        return result.sort((a, b) => {
+            let comp = 0;
+            if (sortBy === "date") {
+                // Use raw createdAt for reliable sorting
+                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                comp = timeA - timeB;
+            } else {
+                comp = a.docNo.localeCompare(b.docNo);
+            }
+            return sortOrder === "asc" ? comp : -comp;
+        });
+    }, [docs, search, filterType, filterDept, sortBy, sortOrder]);
+
+    // Auto-generate Document Number (Only for new documents)
+    useEffect(() => {
+        if (showAddModal && !isEditing && dbDepartments.length > 0 && dbCategories.length > 0) {
             const currentDept = dbDepartments.find(d => d.id === formData.department);
             const currentCat = dbCategories.find(c => c.id === formData.type);
             
@@ -128,16 +172,7 @@ export default function RegistryPage() {
             const nextNo = getNextDocNo(docs, deptNameForSearch, catNameForSearch, selectedYear || undefined);
             setFormData(prev => ({ ...prev, docNo: nextNo }));
         }
-    }, [showAddModal, formData.type, formData.department, docs, selectedYear, isGlobalType, dbDepartments, dbCategories]);
-
-    const filtered = useMemo(() => {
-        return docs.filter(d => {
-            const matchSearch = (d.name + d.docNo + d.uploadedBy).toLowerCase().includes(search.toLowerCase());
-            const matchType = filterType === "all" || d.type === filterType;
-            const matchDept = filterDept === "all" || d.department === filterDept;
-            return matchSearch && matchType && matchDept;
-        }).sort((a, b) => a.docNo.localeCompare(b.docNo));
-    }, [docs, search, filterType, filterDept]);
+    }, [showAddModal, isEditing, formData.type, formData.department, docs, selectedYear, isGlobalType, dbDepartments, dbCategories]);
 
     // Grouping logic
     const byDept = useMemo(() => {
@@ -198,7 +233,7 @@ export default function RegistryPage() {
             formDataToSubmit.append("name", formData.name);
             formDataToSubmit.append("departmentId", isGlobalType ? "ส่วนกลาง" : formData.department);
             formDataToSubmit.append("categoryId", formData.type);
-            formDataToSubmit.append("uploadedById", (session?.user as any)?.userId || "user_id_placeholder");
+            formDataToSubmit.append("uploadedById", formData.uploadedById || (session?.user as any)?.id || "user_id_placeholder");
             if (selectedYear) {
                 formDataToSubmit.append("thaiYear", selectedYear.toString());
             }
@@ -250,12 +285,17 @@ export default function RegistryPage() {
     };
 
     const handleEdit = (doc: StoredDocument) => {
+        const docDept = dbDepartments.find(d => d.name === doc.department);
+        const docCat = dbCategories.find(c => c.name === doc.type);
+        const docUser = dbUsers.find(u => u.name === doc.uploadedBy);
+
         setFormData({
             docNo: doc.docNo,
-            type: doc.type,
-            department: doc.department === "ส่วนกลาง" ? (dbDepartments.length > 0 ? dbDepartments[0].name : "ส่วนกลาง") : doc.department,
+            type: docCat?.id || "",
+            department: docDept?.id || "",
             name: doc.name,
-            uploadedBy: doc.uploadedBy
+            uploadedBy: doc.uploadedBy,
+            uploadedById: docUser?.id || ""
         });
         setIsEditing(true);
         setEditingDocId(doc.id);
@@ -321,21 +361,82 @@ export default function RegistryPage() {
                 })}
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 flex-1 max-w-xs min-w-0">
-                    <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            <div className="flex flex-col md:flex-row items-center gap-3 mb-6">
+                <div className="flex-1 w-full flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                    <Search className="w-5 h-5 text-slate-400" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="ค้นหาเลขที่เอกสาร / ชื่อเรื่อง..."
                         className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none flex-1 min-w-0" />
-                </div>
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl ml-auto">
-                    {(["dept", "type", "all"] as View[]).map(v => (
-                        <button key={v} onClick={() => setView(v)}
-                            className={cn("px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
-                                view === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                            {v === "dept" ? "แยกตามหน่วยงาน" : v === "type" ? "แยกตามประเภท" : "ทั้งหมด"}
+                    {search && (
+                        <button onClick={() => setSearch("")} className="p-1 hover:bg-slate-100 rounded-full text-slate-400">
+                            <X className="w-4 h-4" />
                         </button>
-                    ))}
+                    )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    {/* Filter Dept */}
+                    <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                        </div>
+                        <select
+                            value={filterDept}
+                            onChange={e => { setFilterDept(e.target.value); setView("all"); }}
+                            className="pl-9 pr-8 py-2.5 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-700 outline-none cursor-pointer appearance-none shadow-sm hover:border-indigo-200 transition-all min-w-[140px]"
+                        >
+                            <option value="all">หน่วยงาน (ทั้งหมด)</option>
+                            {dbDepartments.map(d => (
+                                <option key={d.id} value={d.name}>{d.name}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <Filter className="w-3 h-3 text-slate-300" />
+                        </div>
+                    </div>
+
+                    {/* Filter Category */}
+                    <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <Layers className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                        </div>
+                        <select
+                            value={filterType}
+                            onChange={e => { setFilterType(e.target.value); setView("all"); }}
+                            className="pl-9 pr-8 py-2.5 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-700 outline-none cursor-pointer appearance-none shadow-sm hover:border-indigo-200 transition-all min-w-[140px]"
+                        >
+                            <option value="all">ประเภท (ทั้งหมด)</option>
+                            {dbCategories.map(c => (
+                                <option key={c.id} value={c.name}>{c.name}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <Filter className="w-3 h-3 text-slate-300" />
+                        </div>
+                    </div>
+
+                    {/* Sort Order */}
+                    <button 
+                        onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-100 rounded-xl text-xs font-bold transition-all shadow-sm",
+                            sortOrder === "asc" ? "text-indigo-600 border-indigo-100 bg-indigo-50/30" : "text-slate-700 hover:border-slate-200"
+                        )}
+                    >
+                        <ArrowUpDown className="w-3.5 h-3.5" />
+                        <span>{sortOrder === "asc" ? "เก่า-ใหม่" : "ใหม่-เก่า"}</span>
+                    </button>
+                    
+                    {/* View Switcher */}
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                        {(["dept", "type", "all"] as View[]).map(v => (
+                            <button key={v} onClick={() => setView(v)}
+                                className={cn("px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                                    view === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
+                                {v === "dept" ? "หน่วยงาน" : v === "type" ? "ประเภท" : "ทั้งหมด"}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -492,7 +593,19 @@ export default function RegistryPage() {
                                                 <Edit3 className="w-3 h-3 text-indigo-500" />
                                                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">นายทะเบียน</label>
                                             </div>
-                                            <p className="text-xs font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors">{formData.uploadedBy}</p>
+                                            <select
+                                                value={formData.uploadedById}
+                                                onChange={e => {
+                                                    const userId = e.target.value;
+                                                    const u = dbUsers.find(x => x.id === userId);
+                                                    setFormData({ ...formData, uploadedById: userId, uploadedBy: u?.name || "" });
+                                                }}
+                                                className="w-full bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer appearance-none group-hover:text-indigo-600 transition-colors"
+                                            >
+                                                {dbUsers.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </div>
                                 </div>

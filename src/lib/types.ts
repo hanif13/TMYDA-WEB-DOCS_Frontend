@@ -14,6 +14,7 @@ export interface StoredDocument {
     department: string;
     uploadedBy: string;
     uploadedAt: string;
+    createdAt?: string; // Raw timestamp for sorting
     fileUrl?: string;
     projectId?: string;
 }
