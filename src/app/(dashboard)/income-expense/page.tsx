@@ -90,7 +90,7 @@ export default function IncomeExpensePage() {
                 projectId: t.projectId || undefined,
                 projectName: t.project?.name || undefined,
                 amount: t.amount,
-                recordedBy: "ทีมงบประมาณ",
+                recordedBy: t.recordedBy || "ทีมงบประมาณ",
                 docRef: t.docRef || undefined,
                 slipUrl: t.slipUrl || undefined,
                 note: t.note || undefined,
@@ -261,6 +261,7 @@ export default function IncomeExpensePage() {
             if (form.claimedBy) formData.append("claimedBy", form.claimedBy);
             if (selectedYear) formData.append("thaiYear", selectedYear.toString());
             if (selectedFile) formData.append("file", selectedFile);
+            if (session?.user?.name) formData.append("recordedBy", session.user.name);
 
             const res = await createTransaction(formData);
 
@@ -273,7 +274,7 @@ export default function IncomeExpensePage() {
                 projectId: res.projectId || undefined,
                 projectName: res.project?.name,
                 amount: res.amount,
-                recordedBy: "ทีมงบประมาณ",
+                recordedBy: res.recordedBy || session?.user?.name || "ทีมงบประมาณ",
                 note: res.note || undefined,
                 docRef: res.docRef || undefined,
                 slipUrl: res.slipUrl || undefined,
