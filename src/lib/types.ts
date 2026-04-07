@@ -87,6 +87,7 @@ export interface Project {
     targetPax?: number;
     actualPax?: number;
     kpi?: string;
+    summaryImages?: string[];
 }
 
 // ─── BUDGET TRANSACTIONS ──────────────────────────────────

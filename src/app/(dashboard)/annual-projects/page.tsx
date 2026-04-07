@@ -7,7 +7,8 @@ import { toast } from "react-hot-toast";
 import {
     CalendarDays, Users, Banknote, Target, ChevronRight, ChevronDown,
     CheckCircle2, Clock, Circle, XCircle, Eye, X, TrendingUp,
-    BarChart3, Layers, Filter, Plus, Loader, Edit, Trash2, AlertCircle, UploadCloud
+    BarChart3, Layers, Filter, Plus, Loader, Edit, Trash2, AlertCircle, UploadCloud,
+    ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { annualPlanStatusLabels, annualPlanStatusStyles } from "@/lib/constants";
@@ -492,12 +493,14 @@ export default function AnnualProjectsPage() {
         if (!currentPlan) return { total: 0, completed: 0, inProgress: 0, planned: 0, unplannedCount: 0, plannedProjectsCount: 0, usedPercent: 0 };
         const total = currentPlan.projects.length;
         const completed = currentPlan.projects.filter(p => p.status === "completed").length;
+        const waitingSummary = currentPlan.projects.filter(p => p.status === "waiting_summary").length;
         const inProgress = currentPlan.projects.filter(p => p.status === "in_progress").length;
         const plannedInPlanCount = currentPlan.projects.filter(p => !p.isUnplanned && p.status === "planned").length;
         const unplannedCount = currentPlan.projects.filter(p => p.isUnplanned).length;
         const plannedProjectsCount = total - unplannedCount;
+        const plannedBudgetSum = currentPlan.projects.filter(p => !p.isUnplanned).reduce((sum, p) => sum + (p.budget || 0), 0);
         const usedPercent = currentPlan.totalBudget > 0 ? Math.round((currentPlan.totalUsed / currentPlan.totalBudget) * 100) : 0;
-        return { total, completed, inProgress, planned: plannedInPlanCount, unplannedCount, plannedProjectsCount, usedPercent };
+        return { total, completed, waitingSummary, inProgress, planned: plannedInPlanCount, unplannedCount, plannedProjectsCount, usedPercent, plannedBudgetSum };
     }, [plans, selectedPlanId]);
 
     const deptStats = useMemo(() => {
@@ -664,6 +667,7 @@ export default function AnnualProjectsPage() {
                                 { label: "โครงการตามแผนงาน", value: stats.plannedProjectsCount, icon: Target, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100/50" },
                                 { label: "โครงการนอกแผนงาน", value: stats.unplannedCount, icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100/50" },
                                 { label: "กำลังดำเนินการ", value: stats.inProgress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100/50" },
+                                { label: "รอสรุปผลดำเนินงาน", value: stats.waitingSummary, icon: ClipboardList, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100/50" },
                                 { label: "เสร็จสิ้น", value: stats.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100/50" },
                                 { label: "แผนงานใหม่", value: stats.planned, icon: Circle, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100/50" },
                             ].map((s, idx) => (
@@ -710,7 +714,7 @@ export default function AnnualProjectsPage() {
                                     <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">งบประมาณที่ต้องการตามแผนงาน</p>
                                 </div>
-                                <p className="text-sm font-extrabold text-slate-700 mt-1">฿{(Number(plan?.totalBudget || 0) - Number(plan?.totalUsed || 0)).toLocaleString()}</p>
+                                <p className="text-sm font-extrabold text-slate-700 mt-1">฿{(stats.plannedBudgetSum || 0).toLocaleString()}</p>
                             </div>
                         </div>
                     </div>

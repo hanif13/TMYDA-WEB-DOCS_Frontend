@@ -71,6 +71,25 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     const role = user?.role || 'VIEWER';
     const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.VIEWER;
 
+    const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+
+    useEffect(() => {
+        const checkProfile = async () => {
+            if (session?.user) {
+                try {
+                    const { getMyProfile } = await import('@/lib/api');
+                    const profile = await getMyProfile();
+                    if (!profile.email || !profile.phoneNumber || !profile.facebook || !profile.subDepartment) {
+                        setIsProfileIncomplete(true);
+                    }
+                } catch (err) {
+                    // Fail silently
+                }
+            }
+        };
+        checkProfile();
+    }, [session]);
+
     // 1. Close dropdowns when navigating to a new page
     useEffect(() => {
         setYearSwitcherOpen(false);
@@ -226,8 +245,11 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                             onClick={() => setProfileOpen(!profileOpen)}
                             className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group"
                         >
-                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-lg">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-lg relative">
                                 {user?.name?.charAt(0) || <Users className="w-4 h-4" />}
+                                {isProfileIncomplete && (
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 border-2 border-[#0f172a] rounded-full animate-pulse" />
+                                )}
                             </div>
                             <div className="flex-1 min-w-0 text-left">
                                 <p className="text-sm font-semibold text-slate-200 truncate">{user?.name || 'ผู้ใช้งาน'}</p>
@@ -248,7 +270,12 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                                     >
                                         <UserCircle className="w-4 h-4 text-slate-500" />
-                                        <span className="font-medium">ดูโปรไฟล์</span>
+                                        <div className="flex-1 flex items-center justify-between">
+                                            <span className="font-medium">ดูโปรไฟล์</span>
+                                            {isProfileIncomplete && (
+                                                <span className="text-[9px] font-black bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">ไม่ครบถ้วน</span>
+                                            )}
+                                        </div>
                                     </button>
                                     <div className="h-px bg-white/5 my-1" />
                                     <button

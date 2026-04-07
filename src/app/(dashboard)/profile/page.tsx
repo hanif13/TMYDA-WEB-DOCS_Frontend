@@ -63,6 +63,11 @@ export default function ProfilePage() {
                     subDepartment: fullProfile.subDepartment || ""
                 });
                 setDbDepartments(depts);
+
+                // Auto-trigger edit if profile looks new/incomplete (missing email, phone, or subDept)
+                if (!fullProfile.email || !fullProfile.phoneNumber || !fullProfile.facebook || !fullProfile.subDepartment) {
+                    setIsEditing(true);
+                }
             } catch (error) {
                 console.error("Failed to load profile data:", error);
                 toast.error("ไม่สามารถโหลดข้อมูลโปรไฟล์ได้");
@@ -138,6 +143,12 @@ export default function ProfilePage() {
                             <div className="min-w-0">
                                 <h2 className="text-2xl font-black text-white tracking-tight leading-tight mb-1">{profileData.name || user?.name || "ผู้ใช้งาน"}</h2>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">@{user?.username || "user"}</p>
+                                {(!profileData.email || !profileData.phoneNumber || !profileData.facebook) && (
+                                    <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/20 w-fit animate-pulse">
+                                        <AlertCircle className="w-3 h-3" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">กรุณากรอกข้อมูลให้ครบถ้วน</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         

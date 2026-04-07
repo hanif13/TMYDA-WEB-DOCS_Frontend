@@ -8,7 +8,7 @@ import {
     CheckCircle2, Clock, UploadCloud, Archive, FileEdit, ChevronRight,
     CalendarDays, Users, Banknote, AlertCircle, Loader, Plus, FileText,
     Download, Eye, X, ChevronDown, Trash2, CalendarHeart, ClipboardList,
-    ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw, Calendar, Save
+    ExternalLink, MapPin, Target, LayoutDashboard, RefreshCcw, Calendar, Save, Edit3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DOC_TYPES } from "@/lib/constants";
@@ -131,7 +131,7 @@ export default function ProjectsPage() {
                     months: proj.months || [],
                     completedMonths: proj.completedMonths || [],
                     isStarted: proj.isStarted || false,
-                    externalBudget: proj.actualBudgetExternal || 0,
+                    actualBudgetExternal: proj.actualBudgetExternal || 0,
                     documents: proj.documents || [],
                 })),
             }));
@@ -150,7 +150,7 @@ export default function ProjectsPage() {
                         step: proj.status as ProjectStep,
                         budget: proj.budget,
                         budgetUsed: proj.budgetUsed,
-                        externalBudget: proj.actualBudgetExternal || 0,
+                        actualBudgetExternal: proj.actualBudgetExternal || 0,
                         lead: proj.lead,
                         startDate: proj.startDate,
                         endDate: proj.endDate,
@@ -270,7 +270,7 @@ export default function ProjectsPage() {
                                 <span className="text-[10px] font-bold text-slate-400">{p.department}</span>
                                 {p.subDepartment && <span className="text-[9px] font-bold text-slate-300 italic">({p.subDepartment})</span>}
                                 <span className="text-slate-200">·</span>
-                                <span className="text-[10px] font-bold text-blue-600">฿{p.budget.toLocaleString()}</span>
+                                <span className="text-[10px] font-black text-blue-600">฿{((p.budgetUsed || 0) + (p.actualBudgetExternal || 0)).toLocaleString()}</span>
                             </div>
                             <div className="flex items-center gap-2 mt-1.5">
                                 <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
@@ -660,7 +660,8 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                     actualDate: found.actualDate,
                     actualBudget: found.actualBudget,
                     budgetUsed: found.budgetUsed || 0,
-                    actualBudgetExternal: found.actualBudgetExternal || 0
+                    actualBudgetExternal: found.actualBudgetExternal || 0,
+                    summaryImages: found.summaryImages || []
                 });
                 setActualDateText(found.actualDate || "");
                 // Populate edit form
@@ -887,8 +888,15 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                             {/* Left: Info & Month Control */}
                             <div className="space-y-8">
                                 <section>
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
-                                        <Target className="w-3.5 h-3.5" /> ข้อมูลทั่วไป
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Target className="w-3.5 h-3.5" /> ข้อมูลทั่วไป
+                                        </div>
+                                        {!isViewer && !isEditing && (
+                                            <button onClick={() => setIsEditing(true)} className="p-1.5 hover:bg-slate-200 rounded-lg text-blue-500 transition-colors" title="แก้ไขข้อมูลพื้นฐาน">
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
                                     </h4>
                                     <div className="bg-slate-50 rounded-3xl p-6 space-y-4">
                                         <div className="flex items-start gap-3">
@@ -1061,18 +1069,16 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                                 </button>
                                                             </div>
                                                         ))}
-                                                        {selectedImages.length < 12 && (
-                                                            <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
-                                                                <Plus className="w-4 h-4 text-slate-400" />
-                                                                <input type="file" multiple accept="image/*" className="hidden" 
-                                                                    onChange={e => {
-                                                                        if (e.target.files) {
-                                                                            setSelectedImages(prev => [...prev, ...Array.from(e.target.files!)]);
-                                                                        }
-                                                                    }} 
-                                                                />
-                                                            </label>
-                                                        )}
+                                                        <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
+                                                            <Plus className="w-4 h-4 text-slate-400" />
+                                                            <input type="file" multiple accept="image/*" className="hidden" 
+                                                                onChange={e => {
+                                                                    if (e.target.files) {
+                                                                        setSelectedImages(prev => [...prev, ...Array.from(e.target.files!)]);
+                                                                    }
+                                                                }} 
+                                                            />
+                                                        </label>
                                                     </div>
                                                 </div>
 
@@ -1081,11 +1087,11 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     <>
                                                         <button 
                                                             onClick={() => handleUpdateStatus("completed")} 
-                                                            disabled={isUpdating || selectedImages.length < 6}
+                                                            disabled={isUpdating}
                                                             className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                                         >
                                                             {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                                            {selectedImages.length < 6 ? `แนบรูปให้ครบ 6 รูป (เหลือ ${6 - selectedImages.length})` : "แนบรายงานและปิดโครงการ"}
+                                                            แนบรายงานและปิดโครงการ
                                                         </button>
                                                         <button onClick={() => handleUpdateStatus("in_progress")} className="mt-4 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">ย้อนกลับไปสถานะดำเนินการ</button>
                                                     </>
@@ -1119,6 +1125,90 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     </div>
                                                 </div>
                                             </>
+                                        )}
+
+                                        {/* Project Gallery - Unified for both states */}
+                                        {(project.summaryImages && project.summaryImages.length > 0 || !isViewer) && (
+                                            <div className="w-full mt-8 border-t border-slate-100 pt-8 text-left">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                                        📸 ภาพบรรยากาศโครงการ {project.summaryImages && `(${project.summaryImages.length})`}
+                                                    </h5>
+                                                    
+                                                    {project.step === "completed" && !isViewer && (
+                                                        <label className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1.5 active:scale-95 shadow-sm">
+                                                            <Plus className="w-3 h-3" /> เพิ่มรูปภาพ
+                                                            <input 
+                                                                type="file" 
+                                                                multiple 
+                                                                accept="image/*" 
+                                                                className="hidden"
+                                                                onChange={async (e) => {
+                                                                    if (e.target.files && e.target.files.length > 0) {
+                                                                        setIsUpdating(true);
+                                                                        const formData = new FormData();
+                                                                        Array.from(e.target.files).forEach(file => {
+                                                                            formData.append("images", file);
+                                                                        });
+                                                                        try {
+                                                                            await updateProject(id, formData);
+                                                                            toast.success("อัปโหลดรูปภาพเพิ่มเติมสำเร็จ!");
+                                                                            fetchProject();
+                                                                        } catch (err) {
+                                                                            toast.error("ไม่สามารถอัปโหลดได้");
+                                                                        } finally {
+                                                                            setIsUpdating(false);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    )}
+                                                </div>
+
+                                                {project.summaryImages && project.summaryImages.length > 0 ? (
+                                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+                                                        {project.summaryImages.map((url, idx) => (
+                                                            <div key={idx} className="aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group relative">
+                                                                <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={`project-${idx}`} />
+                                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
+                                                                    <a href={url} target="_blank" rel="noreferrer" className="p-2 bg-white/20 hover:bg-white/40 rounded-xl text-white transition-colors" title="ดูรูปเต็ม">
+                                                                        <Eye className="w-5 h-5" />
+                                                                    </a>
+                                                                    {!isViewer && (
+                                                                        <button 
+                                                                            onClick={async () => {
+                                                                                if (confirm("ยืนยันการลบรูปภาพนี้?")) {
+                                                                                    setIsUpdating(true);
+                                                                                    try {
+                                                                                        const newImages = project.summaryImages!.filter(img => img !== url);
+                                                                                        await updateProject(id, { summaryImages: newImages } as any);
+                                                                                        toast.success("ลบรูปภาพแล้ว");
+                                                                                        fetchProject();
+                                                                                    } catch (err) {
+                                                                                        toast.error("ไม่สามารถลบได้");
+                                                                                    } finally {
+                                                                                        setIsUpdating(false);
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                            className="p-2 bg-rose-500/80 hover:bg-rose-600 rounded-xl text-white transition-colors"
+                                                                            title="ลบรูป"
+                                                                        >
+                                                                            <Trash2 className="w-5 h-5" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="py-10 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center text-slate-300">
+                                                        <UploadCloud className="w-8 h-8 opacity-20 mb-2" />
+                                                        <p className="text-[10px] font-bold italic">ยังไม่มีรูปภาพบรรยากาศ</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </section>
