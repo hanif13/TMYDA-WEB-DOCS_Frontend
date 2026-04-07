@@ -3,6 +3,7 @@
 // ============================================================
 
 import { getSession } from "next-auth/react";
+import imageCompression from 'browser-image-compression';
 
 // Build API base URL - ensure it always has /api path
 const getAPIBase = () => {
@@ -457,7 +458,31 @@ export async function uploadUsersCsv(file: File) {
 // ─── UPLOADS ──────────────────────────────────────────────
 export async function uploadImages(files: File[]) {
     const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
+    
+    // Compression options
+    const options = {
+      maxSizeMB: 0.5, // 500KB Max
+      maxWidthOrHeight: 1920,
+      useWebWorker: true
+    };
+
+    for (const file of files) {
+        try {
+            // Only compress if it's an image
+            if (file.type.startsWith('image/')) {
+                const compressedFile = await imageCompression(file, options);
+                // Keep the original name and type
+                const finalFile = new File([compressedFile], file.name, { type: file.type });
+                formData.append('files', finalFile);
+            } else {
+                formData.append('files', file);
+            }
+        } catch (error) {
+            console.error('Error compressing image:', error);
+            // Fallback to original file
+            formData.append('files', file);
+        }
+    }
     
     return apiFetch<{ urls: string[] }>("/upload", {
         method: "POST",

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { fetchAnnualYears } from "@/lib/api";
 import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 
 interface YearContextType {
     selectedYear: number | null;
@@ -84,8 +85,22 @@ export function YearProvider({ children }: { children: ReactNode }) {
     };
 
     const setSelectedYear = (year: number) => {
-        setSelectedYearState(year);
-        localStorage.setItem("workingYear", year.toString());
+        if (year !== selectedYear) {
+            setSelectedYearState(year);
+            localStorage.setItem("workingYear", year.toString());
+            
+            // Show toaster notification
+            toast.success(`สลับข้อมูลเป็นปี พ.ศ. ${year} แล้ว`, {
+                icon: '🗓️',
+                duration: 2000,
+                style: {
+                    borderRadius: '10px',
+                    background: '#2563eb',
+                    color: '#fff',
+                },
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Visual jump to top
+        }
     };
 
     return (
