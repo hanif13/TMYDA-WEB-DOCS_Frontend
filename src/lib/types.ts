@@ -25,14 +25,33 @@ export interface DocRequest {
     requestType: string;
     department: string;
     requestedBy: string;
+    requestedById?: string;
     requestedAt: string;
     status: "รอดำเนินการ" | "กำลังดำเนินการ" | "เสร็จสิ้น";
     fields: Record<string, string>;
     pdfPath?: string;
+    resultDocId?: string;
+    resultDoc?: any;
     note?: string;
 }
 
 // ─── PROJECTS ─────────────────────────────────────────────
+export interface User {
+    id: string;
+    username: string;
+    name: string;
+    role: string;
+    departmentId?: string;
+    subDepartment?: string;
+    email?: string;
+    phoneNumber?: string;
+    facebook?: string;
+    createdAt: string;
+    department?: {
+        name: string;
+    };
+}
+
 export interface ProjectDocument {
     id: string;
     docNo: string;

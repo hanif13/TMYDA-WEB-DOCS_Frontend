@@ -51,6 +51,7 @@ export default function UsersPage() {
         email: "",
         phoneNumber: "",
         facebook: "",
+        subDepartment: "",
         permissions: [] as string[]
     });
 
@@ -108,6 +109,7 @@ export default function UsersPage() {
                 email: user.email || "",
                 phoneNumber: user.phoneNumber || "",
                 facebook: user.facebook || "",
+                subDepartment: user.subDepartment || "",
                 permissions: user.permissions || []
             });
         } else {
@@ -121,6 +123,7 @@ export default function UsersPage() {
                 email: "",
                 phoneNumber: "",
                 facebook: "",
+                subDepartment: "",
                 permissions: ["ACCESS_DASHBOARD"]
             });
         }
@@ -179,10 +182,10 @@ export default function UsersPage() {
     };
 
     const downloadTemplate = () => {
-        const headers = ["username", "password", "name", "department", "role"];
+        const headers = ["username", "password", "name", "department", "subdepartment", "role"];
         const rows = [
-            ["user01", "123456", "สมชาย ใจดี", "สมาคมฯ", "ผู้ใช้งาน"],
-            ["user02", "password123", "สมหญิง รักเรียน", "กอฮา", "ผู้ใช้ทั่วไป"]
+            ["user01", "123456", "สมชาย ใจดี", "สมาคมฯ", "งานบุคคล", "ผู้ใช้งาน"],
+            ["user02", "password123", "สมหญิง รักเรียน", "กอฮา", "งานโครงการ", "ผู้ใช้ทั่วไป"]
         ];
 
         const csvContent = "\ufeff" + // UTF-8 BOM for Excel
@@ -351,9 +354,14 @@ export default function UsersPage() {
                                             </span>
                                         </td>
                                         <td className="px-5 py-5">
-                                            <div className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase">
-                                                <Building2 className="w-3.5 h-3.5 text-slate-300" />
-                                                {user.department?.name || "ไม่ระบุ"}
+                                            <div className="flex flex-col gap-1 text-xs font-bold text-slate-600 uppercase">
+                                                <div className="flex items-center gap-2">
+                                                    <Building2 className="w-3.5 h-3.5 text-slate-300" />
+                                                    {user.department?.name || "ไม่ระบุ"}
+                                                </div>
+                                                {user.subDepartment && (
+                                                    <span className="text-[10px] text-slate-400 pl-5.5">({user.subDepartment})</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-5 py-5">
@@ -447,16 +455,28 @@ export default function UsersPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">อีเมล</label>
-                                    <input type="email" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="example@email.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">สังกัด</label>
+                                    <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.subDepartment} onChange={e => setFormData({ ...formData, subDepartment: e.target.value })}>
+                                        <option value="">เลือกสังกัด...</option>
+                                        {dbDepartments.find(d => d.id === formData.departmentId)?.subDepts?.map((sd: string) => (
+                                            <option key={sd} value={sd}>{sd}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">อีเมล</label>
+                                    <input type="email" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="example@email.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                </div>
+                                <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">เบอร์โทรศัพท์</label>
                                     <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="08x-xxx-xxxx" value={formData.phoneNumber} onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })} />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Facebook (ชื่อโปรไฟล์)</label>
                                     <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="ชื่อ Facebook..." value={formData.facebook} onChange={e => setFormData({ ...formData, facebook: e.target.value })} />

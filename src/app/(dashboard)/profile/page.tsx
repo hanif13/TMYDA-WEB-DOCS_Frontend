@@ -39,7 +39,8 @@ export default function ProfilePage() {
         email: "",
         phoneNumber: "",
         facebook: "",
-        departmentId: ""
+        departmentId: "",
+        subDepartment: ""
     });
     const [dbDepartments, setDbDepartments] = useState<any[]>([]);
     const [loadingProfile, setLoadingProfile] = useState(true);
@@ -58,7 +59,8 @@ export default function ProfilePage() {
                     email: fullProfile.email || "",
                     phoneNumber: fullProfile.phoneNumber || "",
                     facebook: fullProfile.facebook || "",
-                    departmentId: fullProfile.departmentId || ""
+                    departmentId: fullProfile.departmentId || "",
+                    subDepartment: fullProfile.subDepartment || ""
                 });
                 setDbDepartments(depts);
             } catch (error) {
@@ -191,6 +193,24 @@ export default function ProfilePage() {
                                         </select>
                                     </div>
                                 </div>
+                                
+                                {/* Sub-Department */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">สังกัด</label>
+                                    <div className="relative">
+                                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <select 
+                                            value={profileData.subDepartment}
+                                            onChange={e => setProfileData({...profileData, subDepartment: e.target.value})}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-blue-500/50 appearance-none"
+                                        >
+                                            <option value="">ไม่ระบุ</option>
+                                            {dbDepartments.find(d => d.id === profileData.departmentId)?.subDepts?.map((sd: string) => (
+                                                <option key={sd} value={sd}>{sd}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
                                 {/* Email */}
                                 <div className="space-y-1.5">
@@ -263,6 +283,9 @@ export default function ProfilePage() {
                                     </p>
                                     <p className="text-sm font-extrabold text-slate-800 leading-relaxed">
                                         {dbDepartments.find(d => d.id === profileData.departmentId)?.name || user?.department || "ไม่ระบุ"}
+                                        {profileData.subDepartment && (
+                                            <span className="block text-xs text-slate-500 mt-1">({profileData.subDepartment})</span>
+                                        )}
                                     </p>
                                 </div>
                                 <div className="space-y-2 lg:col-span-1">

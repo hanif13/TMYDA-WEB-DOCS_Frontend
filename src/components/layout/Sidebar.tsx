@@ -1,12 +1,13 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     LayoutDashboard, FileText, FolderKanban, Settings,
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
-    KeyRound, UserCircle, Shield, Wallet, ChevronRight
+    KeyRound, UserCircle, Shield, Wallet, ChevronRight,
+    Inbox
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -26,7 +27,8 @@ const navGroups = [
     {
         label: 'การดำเนินงาน',
         items: [
-            { name: 'เอกสาร', href: '/documents', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'เอกสาร', href: '/documents?tab=request', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'คำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
@@ -52,6 +54,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: strin
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const router = useRouter();
     const { data: session } = useSession();
     const { selectedYear, setSelectedYear, availableYears } = useYear();
@@ -180,8 +183,10 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                             </p>
                             <div className="space-y-0.5">
                                 {group.items.map((item) => {
-                                    const isActive = pathname === item.href ||
-                                        (pathname.startsWith(item.href) && item.href !== '/');
+                                    const fullCurrentPath = pathname + (searchParams.toString() ? ('?' + searchParams.toString()) : '');
+                                    const isActive = item.href.includes('?') 
+                                        ? fullCurrentPath === item.href 
+                                        : pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/');
                                     return (
                                         <Link
                                             key={item.href}

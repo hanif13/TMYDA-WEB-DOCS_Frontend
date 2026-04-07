@@ -117,6 +117,7 @@ export async function linkDocumentToProject(documentId: string, projectId: strin
     });
 }
 
+
 // ─── DOCUMENT REQUESTS (Form submissions) ──────────────────
 export async function fetchDocumentRequests(year?: number) {
     const query = year ? `?year=${year}` : "";
@@ -142,6 +143,7 @@ export async function updateDocumentRequest(id: string, data: Partial<{
     requestedBy: string;
     fields: any;
     status: string;
+    resultDocId: string;
 }>) {
     return apiFetch<any>(`/document-requests/${id}`, {
         method: "PATCH",
@@ -428,7 +430,8 @@ export async function updateMyProfile(data: {
     email?: string; 
     phoneNumber?: string; 
     facebook?: string; 
-    departmentId?: string 
+    departmentId?: string;
+    subDepartment?: string;
 }) {
     return apiFetch<any>(`/users/me`, {
         method: "PUT",
@@ -448,5 +451,16 @@ export async function uploadUsersCsv(file: File) {
         headers: {
             'Accept': 'application/json',
         }
+    });
+}
+
+// ─── UPLOADS ──────────────────────────────────────────────
+export async function uploadImages(files: File[]) {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    
+    return apiFetch<{ urls: string[] }>("/upload", {
+        method: "POST",
+        body: formData,
     });
 }
