@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fityatulhaq",
+  title: "TMYDA",
   description: "Web สำหรับบริหารจัดการเอกสารและโครงการ",
 };
 
