@@ -684,10 +684,10 @@ function DocumentsPageContent() {
 
     useEffect(() => {
         fetchDepartments().then(setDbDepartments).catch(() => []);
-        if (isManager) {
-            fetchDocuments().then(setAllDocs).catch(() => []);
+        if (isManager && selectedYear) {
+            fetchDocuments(selectedYear).then(setAllDocs).catch(() => []);
         }
-    }, [isManager]);
+    }, [isManager, selectedYear]);
 
     const handleUpdateStatus = async (id: string, status: "รอดำเนินการ" | "กำลังดำเนินการ" | "เสร็จสิ้น") => {
         try {

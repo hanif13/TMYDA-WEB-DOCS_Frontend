@@ -51,14 +51,16 @@ import { useYear } from '@/context/YearContext';
 
 // --- UI Shared Components ---
 
-function MemberCard({ member, isDragging, onEdit, onDelete, canEdit, isEditMode, attributes, listeners, isOverlay }: any) {
+function MemberCard({ member, isDragging, onEdit, onDelete, onClick, canEdit, isEditMode, attributes, listeners, isOverlay }: any) {
     return (
         <div 
+            onClick={() => !isEditMode && !isDragging && onClick && onClick(member)}
             className={cn(
-                "group bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all duration-200 relative",
+                "group bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all duration-200 relative truncate",
                 isDragging ? "opacity-0" : "opacity-100",
-                !isOverlay && "hover:shadow-md hover:border-blue-100",
-                isOverlay && "shadow-2xl border-blue-200 ring-4 ring-blue-50/50 scale-105"
+                !isOverlay && "hover:shadow-xl hover:border-blue-100 hover:-translate-y-1 cursor-pointer",
+                isOverlay && "shadow-2xl border-blue-200 ring-4 ring-blue-50/50 scale-105",
+                isEditMode && "cursor-default hover:translate-y-0"
             )}
         >
             {canEdit && (
@@ -173,7 +175,7 @@ function DepartmentHeader({ dept, canEdit, isEditMode, onEditDept, onDeleteDept,
 
 // --- Sortable Item Components ---
 
-function SortableMember({ member, canEdit, isEditMode, handleEdit, handleDelete }: any) {
+function SortableMember({ member, canEdit, isEditMode, handleEdit, handleDelete, handleView }: any) {
     const {
         attributes,
         listeners,
@@ -196,6 +198,7 @@ function SortableMember({ member, canEdit, isEditMode, handleEdit, handleDelete 
                 isEditMode={isEditMode} 
                 onEdit={handleEdit} 
                 onDelete={handleDelete}
+                onClick={handleView}
                 attributes={attributes}
                 listeners={listeners}
                 isDragging={isDragging}
@@ -204,7 +207,7 @@ function SortableMember({ member, canEdit, isEditMode, handleEdit, handleDelete 
     );
 }
 
-function SortableDepartment({ dept, members, canEdit, isEditMode, handleEdit, handleDelete, handleEditDept, handleDeleteDept, getDeptStyles, setIsModalOpen, setFormData }: any) {
+function SortableDepartment({ dept, members, canEdit, isEditMode, handleEdit, handleDelete, handleEditDept, handleDeleteDept, handleView, getDeptStyles, setIsModalOpen, setFormData }: any) {
     const {
         attributes,
         listeners,
@@ -248,6 +251,7 @@ function SortableDepartment({ dept, members, canEdit, isEditMode, handleEdit, ha
                                 isEditMode={isEditMode}
                                 handleEdit={handleEdit}
                                 handleDelete={handleDelete}
+                                handleView={handleView}
                             />
                         ))}
                     </div>
@@ -285,6 +289,10 @@ export default function CommitteePage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
+    
+    // Detail View State
+    const [selectedMember, setSelectedMember] = useState<CommitteeMember | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     
     // Department Management State
     const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -350,7 +358,7 @@ export default function CommitteePage() {
 
     // Body Scroll Lock
     useEffect(() => {
-        if (isModalOpen || isDeptModalOpen) {
+        if (isModalOpen || isDeptModalOpen || isDetailModalOpen) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
@@ -801,6 +809,10 @@ export default function CommitteePage() {
                                 getDeptStyles={getDeptStyles}
                                 setIsModalOpen={setIsModalOpen}
                                 setFormData={setFormData}
+                                handleView={(m: CommitteeMember) => {
+                                    setSelectedMember(m);
+                                    setIsDetailModalOpen(true);
+                                }}
                             />
                         ))}
                     </div>
@@ -975,6 +987,138 @@ export default function CommitteePage() {
                     </div>
                 </div>
             )}
+            {/* Member Detail Modal */}
+            {isDetailModalOpen && selectedMember && (() => {
+                const dept = dbDepartments.find(d => d.id === selectedMember.departmentId);
+                const deptName = dept?.name || "";
+                
+                // Dynamic theme based on department
+                const getTheme = () => {
+                    if (deptName.includes('สำนักอำนวยการ')) return { gradient: 'from-blue-600 to-indigo-700', iconBg: 'bg-blue-50', iconText: 'text-blue-600', badge: 'bg-blue-50 text-blue-600' };
+                    if (deptName.includes('ครอบครัวฟิตยะตุลฮัก')) return { gradient: 'from-emerald-500 to-teal-700', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-600' };
+                    if (deptName.includes('สมาคมพัฒนาเยาวชนมุสลิมไทย')) return { gradient: 'from-sky-500 to-blue-700', iconBg: 'bg-sky-50', iconText: 'text-sky-600', badge: 'bg-sky-50 text-sky-600' };
+                    if (deptName.includes('สำนักกิจการสตรี')) return { gradient: 'from-pink-500 to-rose-600', iconBg: 'bg-pink-50', iconText: 'text-pink-600', badge: 'bg-pink-50 text-pink-600' };
+                    return { gradient: 'from-slate-800 to-slate-900', iconBg: 'bg-slate-100', iconText: 'text-slate-600', badge: 'bg-slate-100 text-slate-600' };
+                };
+                
+                const theme = getTheme();
+
+                return (
+                    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-6 sm:py-12">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsDetailModalOpen(false)} />
+                        <div className="relative bg-white rounded-t-[2.5rem] sm:rounded-[3rem] w-full max-w-lg shadow-2xl overflow-hidden sm:max-h-[85vh] overflow-y-auto animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-500 pointer-events-auto custom-scrollbar">
+                            {/* Header Image Area */}
+                            <div className={cn("h-40 sm:h-48 bg-gradient-to-br relative transition-all duration-700", theme.gradient)}>
+                                {/* Abstract pattern overlay */}
+                                <div className="absolute inset-0 opacity-10 pointer-events-none">
+                                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                                        <defs>
+                                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                                                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
+                                            </pattern>
+                                        </defs>
+                                        <rect width="100%" height="100%" fill="url(#grid)" />
+                                    </svg>
+                                </div>
+
+                                <button 
+                                    onClick={() => setIsDetailModalOpen(false)}
+                                    className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-all z-20 shadow-lg"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                                
+                                <div className="absolute -bottom-14 left-8 sm:left-10">
+                                    <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-[2rem] bg-white p-2 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] ring-4 ring-white/10">
+                                        <div className="h-full w-full rounded-[1.6rem] bg-slate-50 overflow-hidden flex items-center justify-center">
+                                            {selectedMember.photoUrl ? (
+                                                <img 
+                                                    src={getMediaUrl(selectedMember.photoUrl)} 
+                                                    alt={selectedMember.name} 
+                                                    className="w-full h-full object-cover" 
+                                                />
+                                            ) : (
+                                                <Users className="w-12 h-12 text-slate-300" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content Area */}
+                            <div className="pt-16 pb-8 sm:pb-10 px-8 sm:px-10">
+                                <div className="mb-8">
+                                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">{selectedMember.name}</h2>
+                                    <div className={cn("inline-flex px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-sm", theme.badge)}>
+                                        {selectedMember.position}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {/* Info Cards Grid */}
+                                    <div className="grid grid-cols-1 gap-3.5">
+                                        {selectedMember.phoneNumber && (
+                                            <div className="bg-slate-50/80 p-4 rounded-3xl flex items-center gap-4 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all border border-slate-100/50 hover:border-slate-200">
+                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner", theme.iconBg, theme.iconText)}>
+                                                    <Phone className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">เบอร์โทรศัพท์</p>
+                                                    <p className="text-base font-bold text-slate-800 tabular-nums tracking-tight">{selectedMember.phoneNumber}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedMember.email && (
+                                            <div className="bg-slate-50/80 p-4 rounded-3xl flex items-center gap-4 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all border border-slate-100/50 hover:border-slate-200">
+                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner", theme.iconBg, theme.iconText)}>
+                                                    <Mail className="w-5 h-5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">อีเมล</p>
+                                                    <p className="text-base font-bold text-slate-800 truncate">{selectedMember.email}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="bg-slate-50/80 p-4 rounded-3xl flex items-center gap-4 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all border border-slate-100/50 hover:border-slate-200">
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+                                                <Briefcase className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">อาชีพปัจจุบัน</p>
+                                                <p className="text-base font-bold text-slate-800">{selectedMember.occupation || "—"}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-50/80 p-4 rounded-3xl flex items-center gap-4 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all border border-slate-100/50 hover:border-slate-200">
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center shadow-inner">
+                                                <Users className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">หน่วยงานสังกัด</p>
+                                                <p className="text-base font-bold text-slate-800">
+                                                    {deptName || "—"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-8 sm:px-10 py-6 sm:py-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-center">
+                                <button 
+                                    onClick={() => setIsDetailModalOpen(false)}
+                                    className="w-full py-4 bg-white border border-slate-200 rounded-3xl text-sm font-black text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition-all shadow-sm flex items-center justify-center gap-2"
+                                >
+                                    ปิดหน้าต่าง
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }
