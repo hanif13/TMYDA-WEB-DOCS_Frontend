@@ -148,7 +148,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <LayoutDashboard className="w-6 h-6 text-blue-600" />
@@ -160,7 +160,7 @@ export default function DashboardPage() {
           </p>
         </div>
         {!isViewer && (
-          <Link href="/projects" className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95">
+          <Link href="/projects" className="flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95 w-full sm:w-fit">
             <Plus className="w-4 h-4" />
             จัดการโครงการ
           </Link>
@@ -168,27 +168,27 @@ export default function DashboardPage() {
       </div>
 
       {/* Tier 1: Core Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 p-6 relative overflow-hidden group transition-all duration-500">
+          <div key={idx} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 p-4 sm:p-6 relative overflow-hidden group transition-all duration-500">
             <div className={cn("absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-[0.03] transition-transform duration-700", stat.bg)} />
             
             <div className="relative z-10">
-              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center mb-4 shadow-sm", stat.bg)}>
-                <stat.icon className={cn("w-6 h-6", stat.text)} />
+              <div className={cn("h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-sm", stat.bg)}>
+                <stat.icon className={cn("w-5 h-5 sm:w-6 sm:h-6", stat.text)} />
               </div>
               
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">{stat.name}</p>
-                <div className="flex items-baseline gap-2">
-                  <h2 className="text-2xl font-black text-slate-900 leading-none">{stat.value}</h2>
-                  <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter", stat.bg, stat.text)}>
+                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5 line-clamp-1">{stat.name}</p>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-none truncate max-w-full">{stat.value}</h2>
+                  <span className={cn("text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded-md uppercase tracking-tighter flex-shrink-0", stat.bg, stat.text)}>
                     {stat.change}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
-                  <CircleDot className="w-2.5 h-2.5 opacity-50" />
-                  {stat.detail}
+                <p className="text-[9px] sm:text-[10px] text-slate-400 flex items-center gap-1 mt-1 truncate">
+                  <CircleDot className="w-2 h-2 sm:w-2.5 sm:h-2.5 opacity-50 flex-shrink-0" />
+                  <span className="truncate">{stat.detail}</span>
                 </p>
               </div>
             </div>

@@ -1167,38 +1167,48 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                 </div>
 
                                                 {project.summaryImages && project.summaryImages.length > 0 ? (
-                                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+                                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 pt-2 px-1">
                                                         {project.summaryImages.map((url, idx) => (
-                                                            <div key={idx} className="aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group relative">
-                                                                <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={`project-${idx}`} />
-                                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
-                                                                    <a href={url} target="_blank" rel="noreferrer" className="p-2 bg-white/20 hover:bg-white/40 rounded-xl text-white transition-colors" title="ดูรูปเต็ม">
-                                                                        <Eye className="w-5 h-5" />
-                                                                    </a>
-                                                                    {!isViewer && (
-                                                                        <button 
-                                                                            onClick={async () => {
-                                                                                if (confirm("ยืนยันการลบรูปภาพนี้?")) {
-                                                                                    setIsUpdating(true);
-                                                                                    try {
-                                                                                        const newImages = project.summaryImages!.filter(img => img !== url);
-                                                                                        await updateProject(id, { summaryImages: newImages } as any);
-                                                                                        toast.success("ลบรูปภาพแล้ว");
-                                                                                        fetchProject();
-                                                                                    } catch (err) {
-                                                                                        toast.error("ไม่สามารถลบได้");
-                                                                                    } finally {
-                                                                                        setIsUpdating(false);
-                                                                                    }
+                                                            <div key={idx} className="aspect-square rounded-2xl overflow-visible border border-slate-200 bg-slate-100 group relative">
+                                                                <img src={url} className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105" alt={`project-${idx}`} />
+                                                                
+                                                                {/* View overlay on hover (always available) */}
+                                                                <a 
+                                                                    href={url} 
+                                                                    target="_blank" 
+                                                                    rel="noreferrer" 
+                                                                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center rounded-2xl"
+                                                                    title="ดูรูปเต็ม"
+                                                                    onClick={e => e.stopPropagation()}
+                                                                >
+                                                                    <Eye className="w-5 h-5 text-white drop-shadow" />
+                                                                </a>
+
+                                                                {/* Delete X — only visible when isEditing */}
+                                                                {isEditing && !isViewer && (
+                                                                    <button 
+                                                                        onClick={async (e) => {
+                                                                            e.stopPropagation();
+                                                                            if (confirm("ยืนยันการลบรูปภาพนี้?")) {
+                                                                                setIsUpdating(true);
+                                                                                try {
+                                                                                    const newImages = project.summaryImages!.filter(img => img !== url);
+                                                                                    await updateProject(id, { summaryImages: newImages } as any);
+                                                                                    toast.success("ลบรูปภาพแล้ว");
+                                                                                    fetchProject();
+                                                                                } catch (err) {
+                                                                                    toast.error("ไม่สามารถลบได้");
+                                                                                } finally {
+                                                                                    setIsUpdating(false);
                                                                                 }
-                                                                            }}
-                                                                            className="p-2 bg-rose-500/80 hover:bg-rose-600 rounded-xl text-white transition-colors"
-                                                                            title="ลบรูป"
-                                                                        >
-                                                                            <Trash2 className="w-5 h-5" />
-                                                                        </button>
-                                                                    )}
-                                                                </div>
+                                                                            }
+                                                                        }}
+                                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 z-10 border-2 border-white"
+                                                                        title="ลบรูป"
+                                                                    >
+                                                                        <X className="w-3 h-3 stroke-[3]" />
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>

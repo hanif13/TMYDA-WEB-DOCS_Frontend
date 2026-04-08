@@ -706,22 +706,22 @@ export default function CommitteePage() {
                 </div>
 
                 {canEdit && (
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         {/* Edit Mode Toggle */}
                         <button 
                             onClick={() => setIsEditMode(!isEditMode)}
                             className={cn(
-                                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg text-[11px] sm:text-sm",
+                                "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold transition-all text-xs",
                                 isEditMode 
-                                    ? "bg-slate-800 text-white shadow-slate-200" 
+                                    ? "bg-slate-800 text-white shadow-sm" 
                                     : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-sm"
                             )}
                         >
-                            <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            {isEditMode ? "เสร็จสิ้น" : "แก้ไขข้อมูล"}
+                            <Pencil className="w-3.5 h-3.5" />
+                            {isEditMode ? "เสร็จสิ้น" : "แก้ไข"}
                         </button>
 
-                        <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
+                        <div className="h-6 w-px bg-slate-200" />
 
                         <input 
                             type="file" 
@@ -732,9 +732,9 @@ export default function CommitteePage() {
                         />
                         <button 
                             onClick={() => csvInputRef.current?.click()}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-200 text-[11px] sm:text-sm"
+                            className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-bold transition-all shadow-sm text-xs"
                         >
-                            <UploadCloud className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <UploadCloud className="w-3.5 h-3.5" />
                             CSV
                         </button>
                         <button 
@@ -747,9 +747,9 @@ export default function CommitteePage() {
                                 setPhotoPreview(null);
                                 setIsModalOpen(true);
                             }}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 text-[11px] sm:text-sm"
+                            className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl font-bold transition-all shadow-sm text-xs"
                         >
-                            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <Plus className="w-3.5 h-3.5" />
                             เพิ่มรายชื่อ
                         </button>
                         
@@ -760,10 +760,10 @@ export default function CommitteePage() {
                                     setDeptFormData({ name: '', theme: '' });
                                     setIsDeptModalOpen(true);
                                 }}
-                                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold transition-all"
+                                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold transition-all text-xs"
                             >
-                                <LayoutGrid className="w-5 h-5" />
-                                เพิ่มหน่วยงาน
+                                <LayoutGrid className="w-3.5 h-3.5" />
+                                หน่วยงาน
                             </button>
                         )}
                     </div>

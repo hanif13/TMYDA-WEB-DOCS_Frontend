@@ -955,20 +955,20 @@ function DocumentsPageContent() {
                 {tab === "request" && (
                     <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8">
                         {/* Stepper Header */}
-                        <div className="flex items-center justify-between mb-8 max-w-2xl mx-auto">
-                            <div className={cn("text-xs font-semibold flex flex-col items-center gap-2", step >= 1 ? "text-blue-600" : "text-slate-400")}>
-                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm", step >= 1 ? "bg-blue-600 text-white" : "bg-slate-100")}>1</div>
-                                <span>ข้อมูลผู้ขอ</span>
+                        <div className="flex items-start mb-8 max-w-2xl mx-auto">
+                            <div className={cn("flex-1 flex flex-col items-center gap-2", step >= 1 ? "text-blue-600" : "text-slate-400")}>
+                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", step >= 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400")}>1</div>
+                                <span className="text-xs font-semibold text-center">ข้อมูลผู้ขอ</span>
                             </div>
-                            <div className={cn("h-0.5 w-16 md:w-24 mt-[-1rem]", step >= 2 ? "bg-blue-600" : "bg-slate-100")} />
-                            <div className={cn("text-xs font-semibold flex flex-col items-center gap-2", step >= 2 ? "text-blue-600" : "text-slate-400")}>
-                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm", step >= 2 ? "bg-blue-600 text-white" : "bg-slate-100")}>2</div>
-                                <span>เลือกประเภท</span>
+                            <div className={cn("h-0.5 flex-1 mt-4", step >= 2 ? "bg-blue-600" : "bg-slate-200")} />
+                            <div className={cn("flex-1 flex flex-col items-center gap-2", step >= 2 ? "text-blue-600" : "text-slate-400")}>
+                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", step >= 2 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400")}>2</div>
+                                <span className="text-xs font-semibold text-center">เลือกประเภท</span>
                             </div>
-                            <div className={cn("h-0.5 w-16 md:w-24 mt-[-1rem]", step >= 3 ? "bg-blue-600" : "bg-slate-100")} />
-                            <div className={cn("text-xs font-semibold flex flex-col items-center gap-2", step >= 3 ? "text-blue-600" : "text-slate-400")}>
-                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm", step >= 3 ? "bg-blue-600 text-white" : "bg-slate-100")}>3</div>
-                                <span>กรอกรายละเอียด</span>
+                            <div className={cn("h-0.5 flex-1 mt-4", step >= 3 ? "bg-blue-600" : "bg-slate-200")} />
+                            <div className={cn("flex-1 flex flex-col items-center gap-2", step >= 3 ? "text-blue-600" : "text-slate-400")}>
+                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", step >= 3 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400")}>3</div>
+                                <span className="text-xs font-semibold text-center">กรอกรายละเอียด</span>
                             </div>
                         </div>
 

@@ -160,19 +160,13 @@ export default function RegistryPage() {
         });
     }, [docs, search, filterType, filterDept, sortBy, sortOrder]);
 
-    // Auto-generate Document Number (Only for new documents)
+    // Remove front-end docNo auto-generation to prevent race conditions.
+    // The backend will generate a safe, unique docNo inside a transaction.
     useEffect(() => {
-        if (showAddModal && !isEditing && dbDepartments.length > 0 && dbCategories.length > 0) {
-            const currentDept = dbDepartments.find(d => d.id === formData.department);
-            const currentCat = dbCategories.find(c => c.id === formData.type);
-            
-            const deptNameForSearch = isGlobalType ? "ส่วนกลาง" : (currentDept?.name || "");
-            const catNameForSearch = currentCat?.name || "";
-            
-            const nextNo = getNextDocNo(docs, deptNameForSearch, catNameForSearch, selectedYear || undefined);
-            setFormData(prev => ({ ...prev, docNo: nextNo }));
+        if (showAddModal && !isEditing) {
+            setFormData(prev => ({ ...prev, docNo: "(ออกเลขอัตโนมัติ)" }));
         }
-    }, [showAddModal, isEditing, formData.type, formData.department, docs, selectedYear, isGlobalType, dbDepartments, dbCategories]);
+    }, [showAddModal, isEditing]);
 
     // Grouping logic
     const byDept = useMemo(() => {
@@ -586,7 +580,7 @@ export default function RegistryPage() {
                                                 <Hash className="w-3 h-3 text-blue-500" />
                                                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">เลขที่ (Gen)</label>
                                             </div>
-                                            <p className="text-base font-black text-slate-900 font-mono tracking-tight group-hover:text-blue-600 transition-colors uppercase">{formData.docNo}</p>
+                                            <p className="text-sm font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors uppercase truncate">{formData.docNo}</p>
                                         </div>
                                         <div className="bg-slate-50/80 border border-slate-100 rounded-[1.5rem] p-4 transition-all hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 group">
                                             <div className="flex items-center gap-1.5 mb-1.5">
@@ -839,77 +833,55 @@ function DocRow({ doc, seq, showDept = false, onClick, onEdit, onDelete, canEdit
     return (
         <div 
             onClick={onClick}
-            className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-5 sm:py-4 hover:bg-blue-50/20 transition-all group cursor-pointer border-l-4 border-transparent hover:border-blue-500 relative"
+            className="flex items-center gap-3 px-4 sm:px-5 py-3.5 sm:py-4 hover:bg-blue-50/20 transition-all group cursor-pointer border-l-4 border-transparent hover:border-blue-500 relative"
         >
-            <div className="flex items-center justify-between sm:justify-start gap-4 mb-2 sm:mb-0">
-                <div className="flex items-center gap-3">
-                    <span className="text-[10px] sm:text-xs font-mono text-slate-300 w-4 text-left flex-shrink-0">{seq}</span>
-                    <span className="font-mono text-[10px] sm:text-xs font-black text-blue-700 bg-blue-50/80 backdrop-blur-sm border border-blue-100 px-3 py-1.5 rounded-xl flex-shrink-0 shadow-sm">
-                        {doc.docNo}
-                    </span>
-                </div>
-                {/* Mobile Actions */}
-                <div className="flex sm:hidden items-center gap-1">
-                    {canEdit && (
-                        <>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onEdit?.(e); }}
-                                className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-white bg-slate-50 transition-all border border-slate-100"
-                            >
-                                <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDelete?.(e); }}
-                                className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 bg-slate-50 transition-all border border-slate-100"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        </>
-                    )}
-                </div>
+            {/* Seq + DocNo */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <span className="text-[10px] font-mono text-slate-300 w-4 text-right leading-none hidden sm:block">{seq}</span>
+                <span className="font-mono text-[9px] sm:text-xs font-black text-blue-700 bg-blue-50/80 border border-blue-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl flex-shrink-0 shadow-sm whitespace-nowrap">
+                    {doc.docNo}
+                </span>
             </div>
 
+            {/* Name + meta */}
             <div className="flex-1 min-w-0">
-                <div className="flex flex-col">
-                    <p className="text-sm font-black text-slate-800 leading-snug group-hover:text-blue-700 transition-colors">{doc.name}</p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                        {showDept && (
-                            <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-lg border", cfg.badge)}>{doc.department}</span>
-                        )}
-                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400">
-                             <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[7px] text-slate-500 font-black">
-                                {doc.uploadedBy.substring(0, 1)}
-                             </div>
-                             {doc.uploadedBy} · {doc.uploadedAt}
-                        </div>
+                <p className="text-xs sm:text-sm font-black text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-1">{doc.name}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {showDept && (
+                        <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md border", cfg.badge)}>{doc.department}</span>
+                    )}
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                         <div className="w-3.5 h-3.5 rounded-full bg-slate-100 flex items-center justify-center text-[7px] text-slate-500 font-black flex-shrink-0">
+                            {doc.uploadedBy.substring(0, 1)}
+                         </div>
+                         <span className="truncate max-w-[100px] sm:max-w-none">{doc.uploadedBy}</span>
+                         <span>·</span>
+                         <span className="whitespace-nowrap">{doc.uploadedAt}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Actions - always visible on mobile, hover on desktop */}
+            <div className="flex items-center gap-1 flex-shrink-0">
                 {canEdit && (
                     <>
                         <button
                             onClick={(e) => { e.stopPropagation(); onEdit?.(e); }}
-                            className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
                             title="แก้ไข"
                         >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete?.(e); }}
-                            className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
                             title="ลบ"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                         </button>
                     </>
                 )}
-                <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-blue-500 transition-colors flex-shrink-0" />
-            </div>
-            {/* Mobile Chevron */}
-            <div className="sm:hidden absolute right-4 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-blue-500 transition-colors" />
             </div>
         </div>
     );

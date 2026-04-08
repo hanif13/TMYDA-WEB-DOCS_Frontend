@@ -376,13 +376,13 @@ export default function IncomeExpensePage() {
                         { label: "รายจ่ายทั้งหมด", value: totalExpense, icon: TrendingDown, sign: "-", color: "text-rose-600", bg: "bg-rose-50", iconColor: "text-rose-500" },
                         { label: "คงเหลือสุทธิ", value: balance, icon: Wallet, sign: "", color: balance >= 0 ? "text-emerald-700" : "text-red-700", bg: balance >= 0 ? "bg-emerald-50" : "bg-red-50", iconColor: balance >= 0 ? "text-emerald-500" : "text-red-500" },
                     ].map(c => (
-                        <div key={c.label} className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm shadow-slate-100/50 flex items-center gap-6 group hover:border-slate-200 transition-all duration-500 card-hover">
-                             <div className={cn("h-16 w-16 rounded-[1.75rem] flex items-center justify-center flex-shrink-0 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3", c.bg, c.iconColor)}>
-                                <c.icon className="h-8 w-8" />
+                        <div key={c.label} className="bg-white rounded-[2.5rem] border border-slate-100 p-5 sm:p-8 shadow-sm shadow-slate-100/50 flex items-center gap-4 sm:gap-6 group hover:border-slate-200 transition-all duration-500 card-hover overflow-hidden">
+                             <div className={cn("h-12 w-12 sm:h-16 sm:w-16 rounded-[1.25rem] sm:rounded-[1.75rem] flex items-center justify-center flex-shrink-0 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3", c.bg, c.iconColor)}>
+                                <c.icon className="h-6 w-6 sm:h-8 sm:w-8" />
                              </div>
-                             <div>
+                             <div className="min-w-0 flex-1">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">{c.label}</p>
-                                <p className={cn("text-3xl font-black tracking-tighter", c.color)}>
+                                <p className={cn("text-xl sm:text-3xl font-black tracking-tighter truncate", c.color)}>
                                     {c.sign === "-" ? "-" : ""}฿{c.value.toLocaleString()}
                                 </p>
                              </div>
@@ -391,21 +391,21 @@ export default function IncomeExpensePage() {
                 </div>
 
                 {/* Detail Cards - 4 Breakdown Metrics */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {[
                         { label: "ยอดคืนเงิน", value: totalReturn, icon: RefreshCw, sign: "+", color: "text-blue-600", bg: "bg-blue-50", iconColor: "text-blue-500" },
                         { label: "งบประมาณภายนอก", value: totalExternalBudget, icon: Target, sign: "+", color: "text-purple-600", bg: "bg-purple-50", iconColor: "text-purple-500" },
                         { label: "ยอดใช้จ่ายจริง (โครงการ)", value: totalActualSpent, icon: CheckCircle2, sign: "", color: "text-orange-700", bg: "bg-orange-50", iconColor: "text-orange-500" },
                         { label: "งบประมาณเบิกทั่วไป", value: totalGeneralExpense, icon: FileText, sign: "-", color: "text-pink-600", bg: "bg-pink-50", iconColor: "text-pink-500" },
                     ].map(c => (
-                        <div key={c.label} className="bg-white/70 backdrop-blur-md rounded-[2rem] border border-slate-100 p-5 shadow-sm shadow-slate-100/50 group hover:border-slate-200 transition-all duration-300">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className={cn("h-9 w-9 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", c.bg, c.iconColor)}>
+                        <div key={c.label} className="bg-white/70 backdrop-blur-md rounded-[2rem] border border-slate-100 p-4 sm:p-5 shadow-sm shadow-slate-100/50 group hover:border-slate-200 transition-all duration-300 overflow-hidden">
+                            <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                                <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110", c.bg, c.iconColor)}>
                                     <c.icon className="h-4 w-4" />
                                 </div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{c.label}</p>
+                                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none line-clamp-2">{c.label}</p>
                             </div>
-                            <p className={cn("text-xl font-black tracking-tight", c.color)}>
+                            <p className={cn("text-base sm:text-xl font-black tracking-tight truncate", c.color)}>
                                 {c.sign === "-" ? "-" : ""}฿{c.value.toLocaleString()}
                             </p>
                         </div>
