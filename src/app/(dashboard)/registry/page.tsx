@@ -124,7 +124,10 @@ export default function RegistryPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [editingDocId, setEditingDocId] = useState<string | null>(null);
 
-    const isGlobalType = formData.type === "ประเภทเอกสารโครงการ" || formData.type === "ประเภทเอกสารรายงานผลการดำเนินโครงการ";
+    const isGlobalType = useMemo(() => {
+        const cat = dbCategories.find(c => c.id === formData.type);
+        return cat?.name === "ประเภทเอกสารโครงการ" || cat?.name === "ประเภทเอกสารรายงานผลการดำเนินโครงการ";
+    }, [formData.type, dbCategories]);
 
     // Auto-populate uploader name when session is ready or modal opens
     useEffect(() => {
@@ -165,8 +168,46 @@ export default function RegistryPage() {
     useEffect(() => {
         if (showAddModal && !isEditing) {
             setFormData(prev => ({ ...prev, docNo: "(ออกเลขอัตโนมัติ)" }));
+            
+            // Set default department for global types to Admin Office
+            if (isGlobalType) {
+                const adminDept = dbDepartments.find(d => d.name === "สำนักอำนวยการ");
+                if (adminDept) {
+                    setFormData(prev => ({ ...prev, department: adminDept.id }));
+                }
+            }
         }
-    }, [showAddModal, isEditing]);
+    }, [showAddModal, isEditing, isGlobalType]);
+
+    // Handle re-generation of docNo when category or department changes in EDIT mode
+    useEffect(() => {
+        if (showAddModal && isEditing && editingDocId) {
+            // Find existing doc to see if something changed
+            const currentDoc = docs.find(d => d.id === editingDocId);
+            if (!currentDoc) return;
+            
+            const selectedCat = dbCategories.find(c => c.id === formData.type);
+            const selectedDept = dbDepartments.find(d => d.id === formData.department);
+            
+            const catChanged = selectedCat && selectedCat.name !== currentDoc.type;
+            const deptChanged = !isGlobalType && selectedDept && selectedDept.name !== currentDoc.department;
+            
+            if (catChanged || deptChanged) {
+                if (formData.docNo !== "(ออกเลขอัตโนมัติ)") {
+                    setFormData(prev => ({ ...prev, docNo: "(ออกเลขอัตโนมัติ)" }));
+                    toast("หมวดหมู่หรือหน่วยงานเปลี่ยนไป ระบบจะรันเลขที่เอกสารใหม่ให้โดยอัตโนมัติ", {
+                        icon: 'ℹ️',
+                        id: 'doc-no-reset'
+                    });
+                }
+            } else {
+                // If it's the original category/dept, restore original docNo
+                if (formData.docNo === "(ออกเลขอัตโนมัติ)") {
+                    setFormData(prev => ({ ...prev, docNo: currentDoc.docNo }));
+                }
+            }
+        }
+    }, [formData.type, formData.department, isEditing, showAddModal, editingDocId, docs, dbCategories, dbDepartments, isGlobalType]);
 
     // Grouping logic
     const byDept = useMemo(() => {
@@ -225,7 +266,7 @@ export default function RegistryPage() {
             const formDataToSubmit = new FormData();
             formDataToSubmit.append("docNo", formData.docNo);
             formDataToSubmit.append("name", formData.name);
-            formDataToSubmit.append("departmentId", isGlobalType ? "ส่วนกลาง" : formData.department);
+            formDataToSubmit.append("departmentId", formData.department || "");
             formDataToSubmit.append("categoryId", formData.type);
             formDataToSubmit.append("uploadedById", formData.uploadedById || (session?.user as any)?.id || "user_id_placeholder");
             if (selectedYear) {
@@ -646,30 +687,21 @@ export default function RegistryPage() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className={cn("block text-[10px] font-black uppercase tracking-widest ml-1.5 transition-colors", isGlobalType ? "text-slate-300" : "text-slate-500")}>หน่วยงานผู้รันเลข</label>
-                                                <div className="relative">
+                                                <label className="block text-[10px] font-black uppercase tracking-widest ml-1.5 text-slate-500">หน่วยงานผู้รันเลข</label>
+                                                <div className="relative group">
                                                     <select
-                                                        disabled={isGlobalType}
-                                                        value={isGlobalType ? "" : formData.department}
+                                                        value={formData.department}
                                                         onChange={e => setFormData({ ...formData, department: e.target.value })}
-                                                        className={cn("w-full text-[13px] font-bold border-2 rounded-[1.25rem] px-4 py-3 outline-none transition-all appearance-none cursor-pointer shadow-sm",
-                                                            isGlobalType 
-                                                                ? "bg-slate-50 border-slate-100 text-slate-200 cursor-not-allowed" 
-                                                                : "border-slate-100 bg-white focus:border-blue-500/50 text-slate-700")}
+                                                        className={cn("w-full text-[13px] font-bold border-2 rounded-[1.25rem] px-4 py-3 outline-none transition-all appearance-none cursor-pointer shadow-sm border-slate-100 bg-white focus:border-blue-500/50 text-slate-700",
+                                                            isGlobalType && !formData.department && "bg-blue-50/30 border-blue-100")}
                                                     >
-                                                        {isGlobalType ? (
-                                                            <option value="">(ส่วนกลาง)</option>
-                                                        ) : (
-                                                            dbDepartments.map(d => (
-                                                                <option key={d.id} value={d.id}>{d.name}</option>
-                                                            ))
-                                                        )}
+                                                        {dbDepartments.map(d => (
+                                                            <option key={d.id} value={d.id}>{d.name}</option>
+                                                        ))}
                                                     </select>
-                                                    {!isGlobalType && (
-                                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                                            <ChevronDown className="w-4 h-4" />
-                                                        </div>
-                                                    )}
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-blue-500 transition-colors">
+                                                        <ChevronDown className="w-4 h-4" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

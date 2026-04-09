@@ -59,6 +59,7 @@ export default function IncomeExpensePage() {
     const [filterType, setFilterType] = useState("all");
     const [filterProject, setFilterProject] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
+    const [projectSearchTerm, setProjectSearchTerm] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDetailTx, setShowDetailTx] = useState<BudgetTransaction | null>(null);
     const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function IncomeExpensePage() {
 
     useEffect(() => {
         if (selectedYear) {
+            setProjectSearchTerm("");
             refreshData();
         }
     }, [selectedYear]);
@@ -241,8 +243,8 @@ export default function IncomeExpensePage() {
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.departmentId) return toast.error("กรุณาเลือกหน่วยงาน");
-        if ((form.subType === "project" || form.subType === "refund") && !form.projectId) {
-            return toast.error("กรุณาเลือกโครงการ");
+        if (form.subType === "refund" && !form.projectId) {
+            return toast.error("กรุณาเลือกโครงการสำหรับเงินคืน");
         }
 
         setIsSubmitting(true);
@@ -299,6 +301,7 @@ export default function IncomeExpensePage() {
                 note: "",
                 docRef: "",
             });
+            setProjectSearchTerm("");
             setSelectedFile(null);
             setTab("transactions");
             
@@ -901,20 +904,36 @@ export default function IncomeExpensePage() {
 
                                 {(form.subType === "project" || form.subType === "refund") && (
                                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">เลือกโครงการ *</label>
-                                        <div className="relative">
-                                            <select required value={form.projectId} onChange={e => {
-                                                const p = projects.find(proj => proj.id === e.target.value);
-                                                setForm(prev => ({ ...prev, projectId: e.target.value, departmentId: p?.departmentId || prev.departmentId }));
-                                            }}
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
-                                                <option value="" disabled>เลือกโครงการที่เกี่ยวข้อง...</option>
-                                                {projects
-                                                    .filter(p => !form.departmentId || p.departmentId === form.departmentId)
-                                                    .map(p => <option key={p.id} value={p.id}>{p.name} (วงเงิน: ฿{p.budget.toLocaleString()})</option>)
-                                                }
-                                            </select>
-                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">เลือกโครงการที่เกี่ยวข้อง</label>
+                                        <div className="space-y-2">
+                                            <div className="relative group">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                                <input 
+                                                    type="text"
+                                                    placeholder="ค้นหาชื่อโครงการ..."
+                                                    value={projectSearchTerm}
+                                                    onChange={(e) => setProjectSearchTerm(e.target.value)}
+                                                    className="w-full pl-9 pr-4 py-2 text-xs font-bold bg-slate-50 border border-slate-100 rounded-xl outline-none focus:bg-white focus:border-blue-400 transition-all"
+                                                />
+                                            </div>
+                                            <div className="relative">
+                                                <select value={form.projectId} onChange={e => {
+                                                    const p = projects.find(proj => proj.id === e.target.value);
+                                                    setForm(prev => ({ ...prev, projectId: e.target.value, departmentId: p?.departmentId || prev.departmentId }));
+                                                }}
+                                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                                    <option value="">เลือกโครงการที่เกี่ยวข้อง...</option>
+                                                    {projects
+                                                        .filter(p => {
+                                                            const matchesSearch = p.name.toLowerCase().includes(projectSearchTerm.toLowerCase());
+                                                            const matchesDept = !form.departmentId || p.departmentId === form.departmentId;
+                                                            return matchesSearch && matchesDept;
+                                                        })
+                                                        .map(p => <option key={p.id} value={p.id}>{p.name} (วงเงิน: ฿{p.budget.toLocaleString()})</option>)
+                                                    }
+                                                </select>
+                                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                            </div>
                                         </div>
                                         {form.projectId && (
                                             <div className="mt-3 bg-blue-50/50 rounded-xl p-3 border border-blue-100/50 flex justify-between items-center">
@@ -1145,6 +1164,7 @@ function DetailModal({
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [projectSearch, setProjectSearch] = useState("");
     
     const [editForm, setEditForm] = useState({
         title: tx.description,
@@ -1305,16 +1325,32 @@ function DetailModal({
 
                             {(editForm.subType === "project" || editForm.subType === "refund") && (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block text-blue-600">เชื่อมโยงกับโครงการ</label>
-                                    <div className="relative">
-                                        <select value={editForm.projectId} onChange={e => setEditForm(p => ({ ...p, projectId: e.target.value }))}
-                                            className="w-full bg-blue-50/30 border border-blue-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
-                                            <option value="">ไม่ระบุโครงการ</option>
-                                            {projects
-                                                .filter(proj => !editForm.departmentId || proj.departmentId === editForm.departmentId)
-                                                .map(proj => <option key={proj.id} value={proj.id}>{proj.name}</option>)}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block text-blue-600">เชื่อมโยงกับโครงการ (ถ้ามี)</label>
+                                    <div className="space-y-2">
+                                        <div className="relative group">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                            <input 
+                                                type="text"
+                                                placeholder="ค้นหาชื่อโครงการ..."
+                                                value={projectSearch}
+                                                onChange={(e) => setProjectSearch(e.target.value)}
+                                                className="w-full pl-9 pr-4 py-2 text-xs font-bold bg-slate-50 border border-slate-100 rounded-xl outline-none focus:bg-white focus:border-blue-400 transition-all"
+                                            />
+                                        </div>
+                                        <div className="relative">
+                                            <select value={editForm.projectId} onChange={e => setEditForm(p => ({ ...p, projectId: e.target.value }))}
+                                                className="w-full bg-blue-50/30 border border-blue-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
+                                                <option value="">ไม่ระบุโครงการ</option>
+                                                {projects
+                                                    .filter(proj => {
+                                                        const matchesSearch = proj.name.toLowerCase().includes(projectSearch.toLowerCase());
+                                                        const matchesDept = !editForm.departmentId || proj.departmentId === editForm.departmentId;
+                                                        return matchesSearch && matchesDept;
+                                                    })
+                                                    .map(proj => <option key={proj.id} value={proj.id}>{proj.name}</option>)}
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                 </div>
                             )}
