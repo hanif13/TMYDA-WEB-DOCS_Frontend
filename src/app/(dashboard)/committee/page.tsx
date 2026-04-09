@@ -37,6 +37,7 @@ const DEPT_STYLES: Record<string, { color: string, text: string }> = {
     'family': { color: 'bg-emerald-600', text: 'text-emerald-600' },
     'tmyda': { color: 'bg-indigo-600', text: 'text-indigo-600' },
     'women': { color: 'bg-pink-600', text: 'text-pink-600' },
+    'shura': { color: 'bg-violet-600', text: 'text-violet-600' },
 };
 
 const getDeptStyles = (name: string) => {
@@ -44,6 +45,7 @@ const getDeptStyles = (name: string) => {
     if (name.includes('ครอบครัวฟิตยะตุลฮัก')) return DEPT_STYLES.family;
     if (name.includes('สมาคมพัฒนาเยาวชนมุสลิมไทย')) return DEPT_STYLES.tmyda;
     if (name.includes('สำนักกิจการสตรี')) return DEPT_STYLES.women;
+    if (name.includes('ชูรอ') || name.includes('ที่ปรึกษา')) return DEPT_STYLES.shura;
     return DEPT_STYLES.admin; // Fallback
 };
 import { useSession } from 'next-auth/react';
@@ -998,6 +1000,7 @@ export default function CommitteePage() {
                     if (deptName.includes('ครอบครัวฟิตยะตุลฮัก')) return { gradient: 'from-emerald-500 to-teal-700', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-600' };
                     if (deptName.includes('สมาคมพัฒนาเยาวชนมุสลิมไทย')) return { gradient: 'from-sky-500 to-blue-700', iconBg: 'bg-sky-50', iconText: 'text-sky-600', badge: 'bg-sky-50 text-sky-600' };
                     if (deptName.includes('สำนักกิจการสตรี')) return { gradient: 'from-pink-500 to-rose-600', iconBg: 'bg-pink-50', iconText: 'text-pink-600', badge: 'bg-pink-50 text-pink-600' };
+                    if (deptName.includes('ชูรอ') || deptName.includes('ที่ปรึกษา')) return { gradient: 'from-violet-500 to-purple-700', iconBg: 'bg-violet-50', iconText: 'text-violet-600', badge: 'bg-violet-50 text-violet-600' };
                     return { gradient: 'from-slate-800 to-slate-900', iconBg: 'bg-slate-100', iconText: 'text-slate-600', badge: 'bg-slate-100 text-slate-600' };
                 };
                 

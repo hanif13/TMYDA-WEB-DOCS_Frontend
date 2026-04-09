@@ -459,7 +459,7 @@ export default function IncomeExpensePage() {
                     {/* Dept breakdown cards */}
                     <div className="bg-white rounded-2xl border border-slate-100 p-5">
                         <h3 className="text-sm font-bold text-slate-800 mb-4">สรุปแยกตามหน่วยงาน</h3>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                             {deptBreakdown.map(d => {
                                 const deptCfg = dbDepartments.find(db => db.id === d.id);
                                 const dotColor = deptCfg?.color ? (deptCfg.color.startsWith('bg-') ? deptCfg.color : `bg-${deptCfg.color}-500`) : "bg-slate-400";

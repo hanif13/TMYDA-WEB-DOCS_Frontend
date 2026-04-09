@@ -48,6 +48,13 @@ export const DEPT_UI_CONFIG: Record<string, {
     text: "text-emerald-800", 
     dot: "bg-emerald-400",
     icon: Home
+  },
+  "กรรมการที่ปรึกษา(ชูรอ)": { 
+    color: "violet", 
+    bg: "bg-violet-100", 
+    text: "text-violet-800", 
+    dot: "bg-violet-400",
+    icon: ShieldCheck
   }
 };
 

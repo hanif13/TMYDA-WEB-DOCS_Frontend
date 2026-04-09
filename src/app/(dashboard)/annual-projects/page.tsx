@@ -731,7 +731,7 @@ export default function AnnualProjectsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                             {departments.map(dept => {
                                 const dStat = deptStats[dept.name] || { count: 0, budget: 0, used: 0 };
                                 const percent = dStat.budget > 0 ? Math.round((dStat.used / dStat.budget) * 100) : 0;

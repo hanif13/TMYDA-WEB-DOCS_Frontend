@@ -15,6 +15,7 @@ const deptConfig: Record<string, { color: string; dot: string; badge: string }> 
     "สมาคมพัฒนาเยาวชนมุสลิมไทย": { color: "border-blue-300 bg-blue-50", dot: "bg-blue-400", badge: "bg-blue-100 text-blue-800" },
     "สำนักกิจการสตรี สมาคมฯ": { color: "border-pink-300 bg-pink-50", dot: "bg-pink-400", badge: "bg-pink-100 text-pink-800" },
     "ครอบครัวฟิตยะตุลฮัก": { color: "border-emerald-300 bg-emerald-50", dot: "bg-emerald-400", badge: "bg-emerald-100 text-emerald-800" },
+    "กรรมการที่ปรึกษา(ชูรอ)": { color: "border-violet-300 bg-violet-50", dot: "bg-violet-400", badge: "bg-violet-100 text-violet-800" },
 };
 
 const typeIcons: Record<string, string> = {
@@ -378,7 +379,7 @@ export default function RegistryPage() {
                 )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {dbDepartments.map(dept => {
                     const count = docs.filter(d => d.department === dept.name).length;
                     const cfg = deptConfig[dept.name] || { color: "bg-slate-50", dot: "bg-slate-300", badge: "bg-slate-100" };
