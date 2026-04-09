@@ -217,7 +217,8 @@ export default function IncomeExpensePage() {
             
             // Refresh projects to update budget
             fetchAnnualPlans().then(plansData => {
-                 const allProjects = plansData.flatMap((p: any) => p.projects || [])
+                 const filteredPlans = (plansData as any[]).filter(p => !selectedYear || p.thaiYear === selectedYear);
+                 const allProjects = filteredPlans.flatMap((p: any) => p.projects || [])
                     .filter((proj: any) => proj.isStarted)
                     .map((proj: any) => ({
                     id: proj.id,

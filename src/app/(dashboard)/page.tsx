@@ -108,7 +108,7 @@ export default function DashboardPage() {
   const totalActualSpent = (totalProjectExpense - totalReturn) + totalExternalBudget;
 
   // --- COMMITTEE STATS ---
-  const committeeByDept = depts.slice(0, 4).map(d => ({
+  const committeeByDept = depts.map(d => ({
     id: d.id,
     name: d.name,
     count: committees.filter(c => c.departmentId === d.id).length,
@@ -285,14 +285,14 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="text-lg font-black text-slate-900 tracking-tight">บุคลากรแยกตามหน่วยงาน</h3>
-                <p className="text-xs text-slate-400 mt-1">สัดส่วนคณะกรรมการใน 4 หน่วยงานหลัก</p>
+                <p className="text-xs text-slate-400 mt-1">สัดส่วนคณะกรรมการใน {depts.length} หน่วยงานหลัก</p>
               </div>
               <div className="h-10 w-10 bg-violet-50 rounded-2xl flex items-center justify-center">
                 <Users className="w-5 h-5 text-violet-600" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
               {committeeByDept.map((dept) => (
                 <div key={dept.id} className={cn("p-6 rounded-[2rem] border text-center space-y-2 group transition-all duration-300", dept.style.bg.replace('bg-', 'bg-opacity-10 bg-'), "border-slate-100")}>
                   <p className={cn("text-3xl font-black leading-none", dept.style.text)}>{dept.count}</p>
