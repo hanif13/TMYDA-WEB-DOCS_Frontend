@@ -1204,7 +1204,7 @@ function DetailModal({
             formData.append("docRef", editForm.docRef);
             formData.append("claimedBy", editForm.claimedBy);
             formData.append("category", editForm.subType);
-            if (editFile) formData.append("evidence", editFile);
+            if (editFile) formData.append("file", editFile);
             if (selectedYear) formData.append("thaiYear", selectedYear.toString());
 
             await updateTransaction(tx.id, formData);
