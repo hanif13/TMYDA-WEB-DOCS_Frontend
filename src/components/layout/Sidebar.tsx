@@ -136,7 +136,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
             {/* Sidebar drawer */}
             <div className={cn(
-                "fixed inset-y-0 left-0 w-64 bg-[#0f172a] h-screen flex flex-col z-50 transition-transform duration-300 md:relative md:translate-x-0",
+                "fixed inset-y-0 left-0 w-64 bg-[#0f172a] h-full h-[100dvh] md:h-screen flex flex-col z-50 transition-transform duration-300 md:relative md:translate-x-0",
                 isOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 {/* Logo */}
@@ -232,7 +232,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 </nav>
 
                 {/* User Profile */}
-                <div className="p-3 border-t border-white/5">
+                <div className="p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] border-t border-white/5">
                     {/* Role Badge */}
                     <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2", roleConfig.bgColor)}>
                         <Shield className={cn("w-3.5 h-3.5", roleConfig.color)} />
