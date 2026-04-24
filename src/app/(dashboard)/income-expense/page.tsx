@@ -138,6 +138,7 @@ export default function IncomeExpensePage() {
     const [form, setForm] = useState({
         type: "รายจ่าย" as TxType,
         subType: "project" as "central" | "project" | "refund" | "general",
+        date: new Date().toISOString().split("T")[0],
         description: "",
         departmentId: "",
         projectId: "",
@@ -251,7 +252,7 @@ export default function IncomeExpensePage() {
         setIsSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append("date", new Date().toISOString());
+            formData.append("date", new Date(form.date).toISOString());
             formData.append("title", form.description);
             formData.append("type", form.subType === "refund" ? "refund" : form.type === "รายรับ" ? "income" : "expense");
             formData.append("amount", form.amount);
@@ -292,6 +293,7 @@ export default function IncomeExpensePage() {
             setForm({
                 type: "รายจ่าย",
                 subType: "project",
+                date: new Date().toISOString().split("T")[0],
                 description: "",
                 departmentId: "",
                 projectId: "",
@@ -889,6 +891,18 @@ export default function IncomeExpensePage() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* วันที่ทำรายการ */}
+                            <div>
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">วันที่ทำรายการ *</label>
+                                <input 
+                                    type="date" 
+                                    required 
+                                    value={form.date} 
+                                    onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
+                                />
+                            </div>
 
                             <div className="space-y-4 pt-2">
                                 <div>
