@@ -1793,6 +1793,50 @@ function DocumentsPageContent() {
                                                                         </tbody>
                                                                     </table>
                                                                 </div>
+                                                            ) : fieldDef?.type === "dynamic-appointee-list" ? (
+                                                                <div className="space-y-3">
+                                                                    {isArray && (v as any[]).map((item, idx) => (
+                                                                        <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                                            <p className="text-sm font-bold text-slate-800">{item.name}</p>
+                                                                            <div className="flex gap-2 mt-1">
+                                                                                {item.oldPosition && (
+                                                                                    <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">เดิม: {item.oldPosition}</span>
+                                                                                )}
+                                                                                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">แต่งตั้ง: {item.newPosition}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : fieldDef?.type === "flexible-content" ? (
+                                                                <div className="space-y-4">
+                                                                    {isArray && (v as any[]).map((block, idx) => (
+                                                                        <div key={idx} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm">
+                                                                            {block.type === 'text' && (
+                                                                                <p className="text-sm text-slate-700 whitespace-pre-wrap">{block.value}</p>
+                                                                            )}
+                                                                            {block.type === 'list' && (
+                                                                                <ul className="space-y-1.5">
+                                                                                    {block.items?.map((li: string, liIdx: number) => (
+                                                                                        <li key={liIdx} className="flex gap-2 text-sm text-slate-600">
+                                                                                            <span className="text-slate-300 font-bold">•</span>
+                                                                                            <span>{li}</span>
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            )}
+                                                                            {block.type === 'budget' && (
+                                                                                <div className="space-y-1.5">
+                                                                                    {block.items?.map((bi: any, biIdx: number) => (
+                                                                                        <div key={biIdx} className="flex justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                                                                                            <span className="text-slate-500">{bi.item}</span>
+                                                                                            <span className="font-bold text-indigo-600">{Number(bi.amount).toLocaleString()}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             ) : (
                                                                 <div className="space-y-2">
                                                                     {isArray ? (v as any[]).map((item, idx) => (
