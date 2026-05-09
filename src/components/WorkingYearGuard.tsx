@@ -3,14 +3,23 @@
 import { useYear } from "@/context/YearContext";
 import { YearSelection } from "@/components/YearSelection";
 import { useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader } from "lucide-react";
+import { useEffect } from "react";
 
 export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
     const { selectedYear, isLoading } = useYear();
     const { data: session, status } = useSession();
+    const router = useRouter();
 
     const pathname = usePathname();
+
+    // Force redirect to login if unauthenticated
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.push("/login");
+        }
+    }, [status, router]);
 
     if (status === "loading" || isLoading) {
         return (

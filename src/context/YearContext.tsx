@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { fetchAnnualYears } from "@/lib/api";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import toast from "react-hot-toast";
 
 interface YearContextType {
@@ -44,8 +44,12 @@ export function YearProvider({ children }: { children: ReactNode }) {
             } else {
                 setSelectedYearState(null);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch available years:", error);
+            // If the error is 401 Unauthorized, it means the session has expired
+            if (error.message?.includes("401")) {
+                signOut({ callbackUrl: "/login" });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -79,8 +83,11 @@ export function YearProvider({ children }: { children: ReactNode }) {
                 }
                 return prev;
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to refresh years:", error);
+            if (error.message?.includes("401")) {
+                signOut({ callbackUrl: "/login" });
+            }
         }
     };
 
