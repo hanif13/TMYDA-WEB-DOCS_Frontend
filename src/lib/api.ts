@@ -489,3 +489,69 @@ export async function uploadImages(files: File[]) {
         body: formData,
     });
 }
+
+
+// ─── TRANSLITERATION (คำทับศัพท์) ──────────────────────────
+export async function fetchTransliterations(params?: { search?: string; category?: string }) {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.category) query.append('category', params.category);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiFetch<any[]>(`/transliteration${qs}`);
+}
+
+export async function fetchTransliterationCategories() {
+    return apiFetch<string[]>('/transliteration/categories');
+}
+
+export async function createTransliteration(data: {
+    foreign: string;
+    arabic?: string;
+    thai: string;
+    category?: string;
+    note?: string;
+}) {
+    return apiFetch<any>('/transliteration', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function bulkCreateTransliterations(items: Array<{
+    foreign: string;
+    arabic?: string;
+    thai: string;
+    category?: string;
+    note?: string;
+}>) {
+    return apiFetch<any>('/transliteration/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+    });
+}
+
+export async function updateTransliteration(id: string, data: {
+    foreign?: string;
+    arabic?: string;
+    thai?: string;
+    category?: string;
+    note?: string;
+}) {
+    return apiFetch<any>(`/transliteration/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteTransliteration(id: string) {
+    return apiFetch<any>(`/transliteration/${id}`, {
+        method: 'DELETE',
+    });
+}
+
+export async function bulkDeleteTransliterations(ids: string[]) {
+    return apiFetch<any>('/transliteration/bulk', {
+        method: 'DELETE',
+        body: JSON.stringify({ ids }),
+    });
+}

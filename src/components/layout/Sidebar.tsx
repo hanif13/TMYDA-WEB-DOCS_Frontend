@@ -7,7 +7,7 @@ import {
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
     KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox
+    Inbox, Languages
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -33,6 +33,7 @@ const navGroups = [
             { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'คำทับศัพท์', href: '/transliteration', icon: Languages, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
         ],
     },
     {
