@@ -729,6 +729,7 @@ function DocumentsPageContent() {
         }
 
         setRequesterName(req.requestedBy);
+        setIsAutoFilled(true);
 
         // Find internal ID for requestType
         const typeMatch = ALL_REQUEST_TYPES.find(t => t.label === req.requestType);
@@ -756,29 +757,35 @@ function DocumentsPageContent() {
     const [requesterOrg, setRequesterOrg] = useState("");
     const [requesterSubDept, setRequesterSubDept] = useState("");
     const [requesterName, setRequesterName] = useState("");
+    const [isAutoFilled, setIsAutoFilled] = useState(false);
 
     // Auto-fill from session
     useEffect(() => {
-        if (session?.user && !editingRequestId) {
-            // Fill name if empty
-            if (session.user.name && !requesterName) {
+        if (!session?.user) {
+            setIsAutoFilled(false);
+            return;
+        }
+        if (!editingRequestId && !isAutoFilled && dbDepartments.length > 0) {
+            if (session.user.name) {
                 setRequesterName(session.user.name);
             }
 
             // Fill Org if empty and departments are loaded
             const userDept = (session.user as any).department;
-            if (userDept && !requesterOrg && dbDepartments.length > 0) {
+            if (userDept) {
                 const match = dbDepartments.find(d => d.name === userDept);
                 if (match) setRequesterOrg(match.name);
             }
 
             // Fill Sub-dept if empty
             const userSubDept = (session.user as any).subDepartment;
-            if (userSubDept && !requesterSubDept) {
+            if (userSubDept) {
                 setRequesterSubDept(userSubDept);
             }
+            
+            setIsAutoFilled(true);
         }
-    }, [session, dbDepartments, editingRequestId, requesterName, requesterOrg, requesterSubDept]);
+    }, [session, dbDepartments, editingRequestId, isAutoFilled]);
 
     // Selected Doc Type (Step 2)
     const [selectedRequestType, setSelectedRequestType] = useState<string | null>(null);
@@ -827,6 +834,7 @@ function DocumentsPageContent() {
         setSelectedRequestType(null);
         setRequestFields({});
         setEditingRequestId(null);
+        setIsAutoFilled(true);
     }
 
     const handleNextStep1 = () => {
