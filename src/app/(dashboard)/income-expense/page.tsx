@@ -81,7 +81,7 @@ export default function IncomeExpensePage() {
             fetchTransactions(selectedYear || undefined).catch(() => []),
             fetchAnnualPlans().catch(() => []),
             fetchDocuments(selectedYear || undefined).catch(() => []),
-            fetchDepartments().catch(() => []),
+            fetchDepartments(selectedYear || undefined).catch(() => []),
         ]).then(([txData, plansData, docsData, deptsData]) => {
             const mappedTx: BudgetTransaction[] = txData.map((t: any) => ({
                 id: t.id,
@@ -908,7 +908,19 @@ export default function IncomeExpensePage() {
                                 <div>
                                     <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">หน่วยงานที่รับผิดชอบ *</label>
                                     <div className="relative">
-                                        <select required value={form.departmentId} onChange={e => setForm(p => ({ ...p, departmentId: e.target.value }))}
+                                        <select required value={form.departmentId} onChange={e => {
+                                            const nextDeptId = e.target.value;
+                                            const nextDept = dbDepartments.find(d => d.id === nextDeptId);
+                                            setForm(p => {
+                                                const currentProj = projects.find(proj => proj.id === p.projectId);
+                                                const shouldClearProject = currentProj && currentProj.department !== nextDept?.name;
+                                                return {
+                                                    ...p,
+                                                    departmentId: nextDeptId,
+                                                    projectId: shouldClearProject ? "" : p.projectId
+                                                };
+                                            });
+                                        }}
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                             <option value="" disabled>เลือกหน่วยงาน...</option>
                                             {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -934,14 +946,20 @@ export default function IncomeExpensePage() {
                                             <div className="relative">
                                                 <select value={form.projectId} onChange={e => {
                                                     const p = projects.find(proj => proj.id === e.target.value);
-                                                    setForm(prev => ({ ...prev, projectId: e.target.value, departmentId: p?.departmentId || prev.departmentId }));
+                                                    const matchedDept = dbDepartments.find(d => d.name === p?.department);
+                                                    setForm(prev => ({ 
+                                                        ...prev, 
+                                                        projectId: e.target.value, 
+                                                        departmentId: matchedDept?.id || prev.departmentId 
+                                                    }));
                                                 }}
                                                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                                     <option value="">เลือกโครงการที่เกี่ยวข้อง...</option>
                                                     {projects
                                                         .filter(p => {
                                                             const matchesSearch = p.name.toLowerCase().includes(projectSearchTerm.toLowerCase());
-                                                            const matchesDept = !form.departmentId || p.departmentId === form.departmentId;
+                                                            const selectedDept = dbDepartments.find(d => d.id === form.departmentId);
+                                                            const matchesDept = !form.departmentId || p.department === selectedDept?.name;
                                                             return matchesSearch && matchesDept;
                                                         })
                                                         .map(p => <option key={p.id} value={p.id}>{p.name} (วงเงิน: ฿{p.budget.toLocaleString()})</option>)
@@ -1330,7 +1348,19 @@ function DetailModal({
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">หน่วยงานที่รับผิดชอบ *</label>
                                 <div className="relative">
-                                    <select required value={editForm.departmentId} onChange={e => setEditForm(p => ({ ...p, departmentId: e.target.value }))}
+                                    <select required value={editForm.departmentId} onChange={e => {
+                                        const nextDeptId = e.target.value;
+                                        const nextDept = dbDepartments.find(d => d.id === nextDeptId);
+                                        setEditForm(p => {
+                                            const currentProj = projects.find(proj => proj.id === p.projectId);
+                                            const shouldClearProject = currentProj && currentProj.department !== nextDept?.name;
+                                            return {
+                                                ...p,
+                                                departmentId: nextDeptId,
+                                                projectId: shouldClearProject ? "" : p.projectId
+                                            };
+                                        });
+                                    }}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                         {dbDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
@@ -1353,13 +1383,22 @@ function DetailModal({
                                             />
                                         </div>
                                         <div className="relative">
-                                            <select value={editForm.projectId} onChange={e => setEditForm(p => ({ ...p, projectId: e.target.value }))}
+                                            <select value={editForm.projectId} onChange={e => {
+                                                const proj = projects.find(p => p.id === e.target.value);
+                                                const matchedDept = dbDepartments.find(d => d.name === proj?.department);
+                                                setEditForm(p => ({ 
+                                                    ...p, 
+                                                    projectId: e.target.value, 
+                                                    departmentId: matchedDept?.id || p.departmentId 
+                                                }));
+                                            }}
                                                 className="w-full bg-blue-50/30 border border-blue-100 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 focus:bg-white transition-all">
                                                 <option value="">ไม่ระบุโครงการ</option>
                                                 {projects
                                                     .filter(proj => {
                                                         const matchesSearch = proj.name.toLowerCase().includes(projectSearch.toLowerCase());
-                                                        const matchesDept = !editForm.departmentId || proj.departmentId === editForm.departmentId;
+                                                        const selectedDept = dbDepartments.find(d => d.id === editForm.departmentId);
+                                                        const matchesDept = !editForm.departmentId || proj.department === selectedDept?.name;
                                                         return matchesSearch && matchesDept;
                                                     })
                                                     .map(proj => <option key={proj.id} value={proj.id}>{proj.name}</option>)}
