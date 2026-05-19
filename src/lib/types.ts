@@ -138,6 +138,8 @@ export interface AnnualProject {
     actualBudget?: number;
     actualBudgetExternal?: number;
     thaiYear?: number;
+    projectNumber?: string;
+    announcementDoc?: string;
 }
 
 export interface CommitteeMember {

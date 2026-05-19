@@ -64,6 +64,7 @@ export default function AnnualProjectsPage() {
     const [filterDept, setFilterDept] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [filterMonth, setFilterMonth] = useState<string>("all");
+    const [filterAnnouncement, setFilterAnnouncement] = useState<string>("all");
     const [sortBy, setSortBy] = useState<string>("name");
     const [selectedProject, setSelectedProject] = useState<AnnualProject | null>(null);
     const [expandedQuarters, setExpandedQuarters] = useState<number[]>([1, 2, 3, 4]);
@@ -143,37 +144,56 @@ export default function AnnualProjectsPage() {
                     setDepartments(currentDepts);
 
                     // 3. Map data with resolved IDs
+                    const filenameWithoutExtension = file.name.replace(/\.csv$/i, '');
                     const mappedData = data.map(row => {
-                        const monthsStr = String(row['เดือน'] || row['ช่วงเดือนที่จัด'] || row.months || "");
+                        // Normalize keys: trim spaces, remove quotes, strip invisible characters & BOM (\uFEFF)
+                        const cleanRow: any = {};
+                        Object.keys(row).forEach(k => {
+                            const cleanKey = k.trim().replace(/^\uFEFF/, '');
+                            cleanRow[cleanKey] = row[k];
+                        });
+
+                        const monthsStr = String(cleanRow['เดือน'] || cleanRow['ช่วงเดือนที่จัด'] || cleanRow.months || "");
                         let months = parseThaiMonths(monthsStr);
 
+                        // If no specific month found, default to October (10) as first month of fiscal year or use raw numbers
                         if (months.length === 0) {
-                            months = monthsStr.split(',').map(m => Number(m.trim())).filter(m => !isNaN(m) && m >= 1 && m <= 12);
+                            if (monthsStr) {
+                                months = monthsStr.split(',').map(m => Number(m.trim())).filter(m => !isNaN(m) && m >= 1 && m <= 12);
+                            }
+                            if (months.length === 0) {
+                                months = [10]; // Default fiscal year start month
+                            }
                         }
 
-                        const budgetStr = String(row['งบประมาณ'] || row.budget || "0").replace(/,/g, '');
+                        const budgetStr = String(cleanRow['งบประมาณ'] || cleanRow['งบประมาณที่ต้องการ'] || cleanRow.budget || "0").replace(/,/g, '');
                         let budgetNum = Number(budgetStr);
                         if (isNaN(budgetNum) || budgetStr.trim() === '-') budgetNum = 0;
 
                         const quarter = months.length > 0 ? Math.ceil(Math.min(...months) / 3) : 1;
 
-                        const deptStr = String(row['หน่วยงาน'] || row.department || "");
+                        const deptStr = String(cleanRow['หน่วยงาน'] || cleanRow['สังกัด'] || cleanRow.department || "");
                         let foundDeptId = currentDepts.length > 0 ? currentDepts[0].id : "";
                         const match = currentDepts.find(d => deptStr.includes(d.name) || d.name.includes(deptStr));
                         if (match) foundDeptId = match.id;
 
                         if (!foundDeptId) return null;
 
+                        const pNum = cleanRow['ที่'] || cleanRow['ลำดับ'] || cleanRow['ลำดับที่'] || cleanRow['เลขที่'] || cleanRow.projectNumber || "";
+                        const announcement = cleanRow['เอกสารประกาศ'] || cleanRow['ประกาศ'] || filenameWithoutExtension;
+
                         return {
-                            name: row['โครงการ'] || row['ชื่อโครงการ'] || row.name,
+                            name: cleanRow['โครงการ'] || cleanRow['ชื่อโครงการ'] || cleanRow['รายการ/โครงการ/กิจกรรม'] || cleanRow.name,
                             departmentId: foundDeptId,
-                            subDepartment: row['สังกัด'] || row['กลุ่มงาน'] || row.subDepartment || "",
-                            projectType: row['ประเภทโครงการ'] || row.projectType || PROJECT_TYPE_OPTIONS[0],
-                            lead: row['ผู้รับผิดชอบ'] || row.lead || "-",
+                            subDepartment: cleanRow['สังกัด'] || cleanRow['กลุ่มงาน'] || cleanRow.subDepartment || "",
+                            projectType: cleanRow['ประเภทโครงการ'] || cleanRow.projectType || PROJECT_TYPE_OPTIONS[0],
+                            lead: cleanRow['ผู้รับผิดชอบ'] || cleanRow.lead || "-",
                             budget: budgetNum,
                             quarter: quarter,
                             months: months,
-                            isUnplanned: (row['นอกแผน'] || row.isUnplanned)?.toString().toLowerCase() === "true" || (row['นอกแผน'] || row.isUnplanned) === "1"
+                            isUnplanned: (cleanRow['นอกแผน'] || cleanRow.isUnplanned)?.toString().toLowerCase() === "true" || (cleanRow['นอกแผน'] || cleanRow.isUnplanned) === "1",
+                            projectNumber: pNum ? String(pNum).trim() : null,
+                            announcementDoc: announcement ? String(announcement).trim() : null
                         };
                     }).filter(r => r && r.name);
 
@@ -284,7 +304,9 @@ export default function AnnualProjectsPage() {
         lead: "",
         budget: 0,
         quarter: 1,
-        months: [] as number[]
+        months: [] as number[],
+        projectNumber: "",
+        announcementDoc: ""
     });
 
     const openAddProjectModal = (defaults?: Partial<typeof addFormData>) => {
@@ -300,7 +322,9 @@ export default function AnnualProjectsPage() {
                 lead: "",
                 budget: 0,
                 quarter: 1,
-                months: [] as number[]
+                months: [] as number[],
+                projectNumber: "",
+                announcementDoc: ""
             });
         }
         setShowAddProject(true);
@@ -377,7 +401,9 @@ export default function AnnualProjectsPage() {
                     lead: addFormData.lead,
                     budget: addFormData.budget,
                     quarter: addFormData.months.length > 0 ? Math.ceil(Math.min(...addFormData.months) / 3) : 1,
-                    months: addFormData.months
+                    months: addFormData.months,
+                    projectNumber: addFormData.projectNumber || undefined,
+                    announcementDoc: addFormData.announcementDoc || undefined
                 });
                 toast.success("อัปเดตโครงการสำเร็จ");
             } else {
@@ -391,7 +417,9 @@ export default function AnnualProjectsPage() {
                     quarter: addFormData.months.length > 0 ? Math.ceil(Math.min(...addFormData.months) / 3) : 1,
                     annualPlanId: selectedPlanId,
                     thaiYear: selectedYear || 2569,
-                    months: addFormData.months
+                    months: addFormData.months,
+                    projectNumber: addFormData.projectNumber || undefined,
+                    announcementDoc: addFormData.announcementDoc || undefined
                 });
                 toast.success("บันทึกโครงการสำเร็จ");
             }
@@ -407,7 +435,9 @@ export default function AnnualProjectsPage() {
                 lead: "",
                 budget: 0,
                 quarter: 1,
-                months: []
+                months: [],
+                projectNumber: "",
+                announcementDoc: ""
             });
             refreshData();
         } catch (error) {
@@ -446,12 +476,26 @@ export default function AnnualProjectsPage() {
             lead: p.lead,
             budget: p.budget,
             quarter: p.quarter,
-            months: p.months
+            months: p.months,
+            projectNumber: p.projectNumber || "",
+            announcementDoc: p.announcementDoc || ""
         });
         setShowAddProject(true);
     };
 
     // Removed handleAddYear logic
+
+    const announcementOptions = useMemo(() => {
+        let currentPlan = plans.find(p => p.id === selectedPlanId);
+        if (!currentPlan && plans.length > 0) {
+            currentPlan = plans[0];
+        }
+        if (!currentPlan) return [];
+        const docs = currentPlan.projects
+            .map(p => p.announcementDoc)
+            .filter(Boolean) as string[];
+        return Array.from(new Set(docs)).sort();
+    }, [plans, selectedPlanId]);
 
     const filteredProjects = useMemo(() => {
         let currentPlan = plans.find(p => p.id === selectedPlanId);
@@ -460,15 +504,36 @@ export default function AnnualProjectsPage() {
         }
 
         if (!currentPlan) return [];
+
+        const activeAnnouncement = sortBy.startsWith("announcement:") ? sortBy.substring("announcement:".length) : "all";
+
         let result = currentPlan.projects.filter(p => {
             if (filterDept !== "all" && p.department !== filterDept) return false;
             if (filterStatus !== "all" && p.status !== filterStatus) return false;
             if (filterMonth !== "all" && !p.months.includes(parseInt(filterMonth))) return false;
+            if (activeAnnouncement !== "all" && p.announcementDoc !== activeAnnouncement) return false;
             return true;
         });
 
         // Sorting
         result.sort((a, b) => {
+            // When a specific CSV is selected OR 'project_number' sorting is chosen
+            if (sortBy.startsWith("announcement:") || sortBy === "project_number") {
+                const parseNum = (s: string) => {
+                    const parts = s.split('.').map(Number);
+                    return parts.every(n => !isNaN(n)) ? parts : [9999];
+                };
+                const numA = parseNum(a.projectNumber || "");
+                const numB = parseNum(b.projectNumber || "");
+                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
+                    const valA = numA[i] !== undefined ? numA[i] : -1;
+                    const valB = numB[i] !== undefined ? numB[i] : -1;
+                    if (valA !== valB) return valA - valB;
+                }
+                return (a.projectNumber || "").localeCompare(b.projectNumber || "");
+            }
+
+            // Standard Sorting options
             if (sortBy === "name") return (a.name || "").localeCompare(b.name || "");
             if (sortBy === "budget_high") return b.budget - a.budget;
             if (sortBy === "budget_low") return a.budget - b.budget;
@@ -836,13 +901,25 @@ export default function AnnualProjectsPage() {
                                         <select
                                             value={sortBy}
                                             onChange={e => setSortBy(e.target.value)}
-                                            className="appearance-none pl-10 pr-10 py-2.5 bg-[#0f172a] text-white border border-slate-800 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 shadow-xl transition-all"
+                                            className="appearance-none pl-10 pr-10 py-2.5 bg-[#0f172a] text-white border border-slate-800 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 shadow-xl transition-all cursor-pointer"
                                         >
-                                            <option value="name">เรียงตามชื่อ</option>
-                                            <option value="month">เรียงตามเดือน</option>
-                                            <option value="dept">เรียงตามหน่วยงาน</option>
-                                            <option value="budget_high">งบมากไปน้อย</option>
-                                            <option value="budget_low">งบน้อยไปมาก</option>
+                                            <optgroup label="รูปแบบการเรียงลำดับ" className="bg-[#0f172a] text-slate-400 font-bold text-[10px]">
+                                                <option value="project_number" className="bg-[#0f172a] text-white">เรียงตามลำดับโครงการ</option>
+                                                <option value="name" className="bg-[#0f172a] text-white">เรียงตามชื่อ</option>
+                                                <option value="month" className="bg-[#0f172a] text-white">เรียงตามเดือน</option>
+                                                <option value="dept" className="bg-[#0f172a] text-white">เรียงตามหน่วยงาน</option>
+                                                <option value="budget_high" className="bg-[#0f172a] text-white">งบมากไปน้อย</option>
+                                                <option value="budget_low" className="bg-[#0f172a] text-white">งบน้อยไปมาก</option>
+                                            </optgroup>
+                                            {announcementOptions.length > 0 && (
+                                                <optgroup label="ตามเอกสารอัพโหลด" className="bg-[#0f172a] text-slate-400 font-bold text-[10px]">
+                                                    {announcementOptions.map(doc => (
+                                                        <option key={doc} value={`announcement:${doc}`} className="bg-[#0f172a] text-white">
+                                                            ตามเอกสารอัพโหลด: {doc}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
                                         </select>
                                         <TrendingUp className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-400" />
                                         <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -1002,7 +1079,7 @@ export default function AnnualProjectsPage() {
                                                     return (
                                                         <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedProject(p)}>
                                                             <td className="px-4 py-4 text-center font-black text-slate-400 text-xs text-center border-r border-slate-50">
-                                                                {index + 1}
+                                                                {p.projectNumber || (index + 1)}
                                                             </td>
                                                             <td className="px-4 py-4">
                                                                 <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 text-sm leading-tight" title={p.name}>{p.name}</p>
@@ -1232,6 +1309,26 @@ export default function AnnualProjectsPage() {
                                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
                                         placeholder="ระบุชื่อโครงการ..."
                                     />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ลำดับโครงการ (ที่)</label>
+                                        <input
+                                            value={addFormData.projectNumber}
+                                            onChange={e => setAddFormData({ ...addFormData, projectNumber: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
+                                            placeholder="ระบุลำดับโครงการ (เช่น 1, 2.1)..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">เอกสารประกาศ</label>
+                                        <input
+                                            value={addFormData.announcementDoc}
+                                            onChange={e => setAddFormData({ ...addFormData, announcementDoc: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
+                                            placeholder="ระบุชื่อเอกสารประกาศ..."
+                                        />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>

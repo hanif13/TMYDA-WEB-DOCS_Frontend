@@ -201,6 +201,8 @@ export async function createProject(data: {
     isUnplanned?: boolean;
     status?: string;
     thaiYear: number;
+    projectNumber?: string;
+    announcementDoc?: string;
 }) {
     return apiFetch<any>("/projects", {
         method: "POST",
@@ -235,6 +237,8 @@ export async function updateProject(id: string, data: FormData | Partial<{
     actualBudgetExternal?: number;
     isUnplanned?: boolean;
     completedMonths?: number[];
+    projectNumber?: string;
+    announcementDoc?: string;
 }>) {
     return apiFetch<any>(`/projects/${id}`, {
         method: "PATCH",
