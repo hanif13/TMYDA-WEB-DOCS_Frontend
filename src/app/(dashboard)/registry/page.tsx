@@ -74,7 +74,8 @@ export default function RegistryPage() {
                     return [];
                 })
             ]);
-            setDbDepartments(depts);
+            const filteredDepts = depts.filter((d: any) => d.name !== "ทุกหน่วยงาน");
+            setDbDepartments(filteredDepts);
             setDbCategories(cats);
             setDbUsers(users);
 
@@ -82,7 +83,7 @@ export default function RegistryPage() {
             setFormData(prev => ({
                 ...prev,
                 type: prev.type || (cats.length > 0 ? cats[0].id : ""),
-                department: prev.department || (depts.length > 0 ? depts[0].id : "")
+                department: prev.department || (filteredDepts.length > 0 ? filteredDepts[0].id : "")
             }));
         } catch (error) {
             console.error("Error loading metadata:", error);
