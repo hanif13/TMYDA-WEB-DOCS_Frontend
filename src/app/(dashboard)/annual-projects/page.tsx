@@ -41,8 +41,9 @@ const PROJECT_TYPE_OPTIONS = [
     "ประชุม/สัมมนา",
     "โครงการต่อเนื่อง",
     "โครงการใหญ่",
+    "กิจกรรมทั่วไป",
     "รายการออนไลน์",
-    "จัดซื้อพัสดุ อุปกรณ์ เครื่องมือ",
+    "สนับสนุนการดำเนินงานและจัดซื้อวัสดุ อุปกรณ์",
     "อื่น ๆ"
 ];
 
@@ -1310,26 +1311,7 @@ export default function AnnualProjectsPage() {
                                         placeholder="ระบุชื่อโครงการ..."
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ลำดับโครงการ (ที่)</label>
-                                        <input
-                                            value={addFormData.projectNumber}
-                                            onChange={e => setAddFormData({ ...addFormData, projectNumber: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
-                                            placeholder="ระบุลำดับโครงการ (เช่น 1, 2.1)..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">เอกสารประกาศ</label>
-                                        <input
-                                            value={addFormData.announcementDoc}
-                                            onChange={e => setAddFormData({ ...addFormData, announcementDoc: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all"
-                                            placeholder="ระบุชื่อเอกสารประกาศ..."
-                                        />
-                                    </div>
-                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">หน่วยงาน</label>
