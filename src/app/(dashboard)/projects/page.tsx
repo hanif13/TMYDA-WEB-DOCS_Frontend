@@ -608,7 +608,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
     const [tab, setTab] = useState<"info" | "docs">("info");
     const [isLoading, setIsLoading] = useState(true);
     const [showLinkDoc, setShowLinkDoc] = useState(false);
-    const [selectedRegistryDocId, setSelectedRegistryDocId] = useState("");
+    const [selectedRegistryDocIds, setSelectedRegistryDocIds] = useState<string[]>([]);
     const [isUpdating, setIsUpdating] = useState(false);
     const [linkFilterDept, setLinkFilterDept] = useState("");
     const [linkFilterCategory, setLinkFilterCategory] = useState("");
@@ -704,12 +704,21 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
     };
 
     const handleLinkDoc = async () => {
-        if (!selectedRegistryDocId) return;
+        if (selectedRegistryDocIds.length === 0) return;
         setIsUpdating(true);
         try {
-            await linkDocumentToProject(selectedRegistryDocId, id);
-            toast.success("เชื่อมโยงเอกสารสำเร็จ");
+            let successCount = 0;
+            for (const docId of selectedRegistryDocIds) {
+                try {
+                    await linkDocumentToProject(docId, id);
+                    successCount++;
+                } catch (err) {
+                    console.error(`Failed to link doc ${docId}:`, err);
+                }
+            }
+            toast.success(`เชื่อมโยงเอกสารสำเร็จ ${successCount} รายการ`);
             setShowLinkDoc(false);
+            setSelectedRegistryDocIds([]);
             fetchProject();
         } catch (error) {
             toast.error("ไม่สามารถเชื่อมโยงได้");
@@ -1243,7 +1252,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                 <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 animate-in fade-in duration-300">
                                     <div className="flex items-center justify-between mb-4">
                                         <p className="text-xs font-bold text-slate-600 tracking-tight">เลือกเอกสารที่ต้องการเชื่อมโยง</p>
-                                        <button onClick={() => { setShowLinkDoc(false); setLinkFilterDept(""); setLinkFilterCategory(""); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 tracking-widest uppercase">ยกเลิก</button>
+                                        <button onClick={() => { setShowLinkDoc(false); setLinkFilterDept(""); setLinkFilterCategory(""); setSelectedRegistryDocIds([]); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 tracking-widest uppercase">ยกเลิก</button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 mb-3">
                                         <div>
@@ -1251,7 +1260,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <select
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all"
                                                 value={linkFilterDept}
-                                                onChange={e => { setLinkFilterDept(e.target.value); setSelectedRegistryDocId(""); }}
+                                                onChange={e => { setLinkFilterDept(e.target.value); }}
                                             >
                                                 <option value="">ทุกหน่วยงาน</option>
                                                 {departments.map((d: Department) => <option key={d.id} value={d.name}>{d.name}</option>)}
@@ -1262,35 +1271,65 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <select
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all"
                                                 value={linkFilterCategory}
-                                                onChange={e => { setLinkFilterCategory(e.target.value); setSelectedRegistryDocId(""); }}
+                                                onChange={e => { setLinkFilterCategory(e.target.value); }}
                                             >
                                                 <option value="">ทุกประเภท</option>
                                                 {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
-                                        <select 
-                                            className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 select-none"
-                                            value={selectedRegistryDocId}
-                                            onChange={e => setSelectedRegistryDocId(e.target.value)}
-                                        >
-                                            <option value="">เลือกเอกสาร...</option>
-                                            {allDocs
-                                                .filter(d => !d.projectId)
-                                                .filter(d => !linkFilterDept || d.department?.name === linkFilterDept)
-                                                .filter(d => !linkFilterCategory || d.category?.name === linkFilterCategory)
-                                                .map(d => (
-                                                    <option key={d.id} value={d.id}>[{d.docNo}] {d.name}</option>
-                                                ))
-                                            }
-                                        </select>
-                                        <button onClick={handleLinkDoc} disabled={!selectedRegistryDocId || isUpdating}
-                                            className="bg-blue-600 text-white px-6 rounded-2xl text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50">
-                                            {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : "เชื่อมโยง"}
-                                        </button>
-                                    </div>
-                                    <p className="text-[9px] text-slate-400 mt-3 italic">* เฉพาะเอกสารในทะเบียนที่ยังไม่ถูกเชื่อมโยงกับโครงการใด ๆ เท่านั้น</p>
+                                    {(() => {
+                                        const availableDocs = allDocs
+                                            .filter(d => !d.projectId)
+                                            .filter(d => !linkFilterDept || d.department?.name === linkFilterDept)
+                                            .filter(d => !linkFilterCategory || d.category?.name === linkFilterCategory);
+                                        return (
+                                            <>
+                                                <div className="bg-white border border-slate-200 rounded-2xl max-h-[240px] overflow-y-auto divide-y divide-slate-50">
+                                                    {availableDocs.length === 0 ? (
+                                                        <p className="text-xs text-slate-400 text-center py-6 italic">ไม่พบเอกสารที่สามารถเชื่อมโยงได้</p>
+                                                    ) : availableDocs.map(d => {
+                                                        const isChecked = selectedRegistryDocIds.includes(d.id);
+                                                        return (
+                                                            <label key={d.id}
+                                                                className={cn(
+                                                                    "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all hover:bg-blue-50/50",
+                                                                    isChecked && "bg-blue-50/80"
+                                                                )}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={() => {
+                                                                        setSelectedRegistryDocIds(prev =>
+                                                                            isChecked
+                                                                                ? prev.filter(x => x !== d.id)
+                                                                                : [...prev, d.id]
+                                                                        );
+                                                                    }}
+                                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer flex-shrink-0"
+                                                                />
+                                                                <span className={cn("text-[11px] font-bold leading-tight", isChecked ? "text-blue-700" : "text-slate-700")}>
+                                                                    <span className="text-slate-400 font-black">[{d.docNo}]</span> {d.name}
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <p className="text-[9px] text-slate-400 italic">
+                                                        {selectedRegistryDocIds.length > 0
+                                                            ? `เลือกแล้ว ${selectedRegistryDocIds.length} รายการ`
+                                                            : "* ติ๊กเลือกเอกสารที่ต้องการเชื่อมโยง"}
+                                                    </p>
+                                                    <button onClick={handleLinkDoc} disabled={selectedRegistryDocIds.length === 0 || isUpdating}
+                                                        className="bg-blue-600 text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50">
+                                                        {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : `เชื่อมโยง (${selectedRegistryDocIds.length})`}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             )}
 
