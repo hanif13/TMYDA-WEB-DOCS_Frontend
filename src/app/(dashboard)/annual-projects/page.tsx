@@ -122,7 +122,7 @@ export default function AnnualProjectsPage() {
                 try {
                     const currentPlan = plans.find(p => p.id === selectedPlanId);
                     const targetYear = currentPlan?.thaiYear || selectedYear || 2567;
-                    
+
                     // 1. Resolve unique department names from CSV
                     const uniqueDeptNames = Array.from(new Set(data.map(row => {
                         const dName = String(row['หน่วยงาน'] || row.department || "").trim();
@@ -220,7 +220,7 @@ export default function AnnualProjectsPage() {
     const refreshData = () => {
         setIsLoading(true);
         console.log("[DEBUG] Starting refreshData...");
-        
+
         // Find the current plan's year for department filtering
         const currentPlan = plans.find(p => p.id === selectedPlanId);
         const targetYear = currentPlan?.thaiYear || selectedYear || 2567;
@@ -843,8 +843,8 @@ export default function AnnualProjectsPage() {
                                         onClick={() => setViewMode(v.id)}
                                         className={cn(
                                             "flex-shrink-0 flex items-center justify-center gap-2 px-6 py-3 text-xs font-black rounded-[1.2rem] transition-all uppercase tracking-widest whitespace-nowrap",
-                                            viewMode === v.id 
-                                                ? "bg-[#0f172a] text-white shadow-[0_8px_16px_-4px_rgba(15,23,42,0.25)] transform scale-[1.02]" 
+                                            viewMode === v.id
+                                                ? "bg-[#0f172a] text-white shadow-[0_8px_16px_-4px_rgba(15,23,42,0.25)] transform scale-[1.02]"
                                                 : "text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
                                         )}
                                     >
@@ -1381,6 +1381,28 @@ export default function AnnualProjectsPage() {
                                         />
                                     </div>
                                 </div>
+                                {editingProject && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">ลำดับโครงการ (ที่)</label>
+                                            <input
+                                                value={addFormData.projectNumber}
+                                                onChange={e => setAddFormData({ ...addFormData, projectNumber: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
+                                                placeholder="เช่น 4, 10, 2.1..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">เอกสารประกาศ</label>
+                                            <input
+                                                value={addFormData.announcementDoc}
+                                                onChange={e => setAddFormData({ ...addFormData, announcementDoc: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
+                                                placeholder="ชื่อเอกสารประกาศ..."
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">ระยะเวลาดำเนินงาน (เลือกได้หลายเดือน)</label>
                                     <div className="grid grid-cols-4 gap-2">
@@ -1473,7 +1495,7 @@ function ProjectRow({
                                     <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">ตลอดทั้งปี (12 เดือน)</span>
                                 ) : checkMonths.length > 4 ? (
                                     <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
-                                        {THAI_MONTHS_SHORT[checkMonths[0]-1]} - {THAI_MONTHS_SHORT[checkMonths[checkMonths.length-1]-1]} ({checkMonths.length} เดือน)
+                                        {THAI_MONTHS_SHORT[checkMonths[0] - 1]} - {THAI_MONTHS_SHORT[checkMonths[checkMonths.length - 1] - 1]} ({checkMonths.length} เดือน)
                                     </span>
                                 ) : (
                                     checkMonths.map((m, idx) => (

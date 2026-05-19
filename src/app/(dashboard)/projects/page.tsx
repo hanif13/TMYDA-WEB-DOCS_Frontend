@@ -52,7 +52,7 @@ export default function ProjectsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [allRegistryDocs, setAllRegistryDocs] = useState<any[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
-    
+
     // Form & Modal States
     const [showNewProject, setShowNewProject] = useState(false);
     const [showUnplannedForm, setShowUnplannedForm] = useState(false);
@@ -61,13 +61,13 @@ export default function ProjectsPage() {
     const [isSubmittingPj, setIsSubmittingPj] = useState(false);
     const [filterDept, setFilterDept] = useState("");
 
-    const [unplannedForm, setUnplannedForm] = useState({ 
-        name: "", 
-        department: "", 
+    const [unplannedForm, setUnplannedForm] = useState({
+        name: "",
+        department: "",
         subDepartment: "",
         projectType: PROJECT_TYPE_OPTIONS[0],
-        budget: "", 
-        lead: "", 
+        budget: "",
+        lead: "",
         reason: "",
         months: [] as number[]
     });
@@ -103,7 +103,7 @@ export default function ProjectsPage() {
                 fetchDepartments(),
                 fetchDocuments(selectedYear || undefined)
             ]);
-            
+
             setDepartments(deptsData);
             setAllRegistryDocs(docsData);
 
@@ -139,9 +139,9 @@ export default function ProjectsPage() {
             const filteredPlans = mappedPlans.filter(p => !selectedYear || p.thaiYear === selectedYear);
             setAnnualPlans(filteredPlans);
 
-            const allStarted = filteredPlans.flatMap(plan => 
+            const allStarted = filteredPlans.flatMap(plan =>
                 plan.projects
-                    .filter(proj => proj.isStarted) 
+                    .filter(proj => proj.isStarted)
                     .map(proj => ({
                         id: proj.id,
                         name: proj.name,
@@ -168,7 +168,7 @@ export default function ProjectsPage() {
                             uploadedBy: d.uploadedBy?.name || "ผู้ใช้งาน",
                             uploadedAt: new Date(d.createdAt).toLocaleDateString("th-TH"),
                             fileUrl: d.filePath || undefined
-                        })) 
+                        }))
                     }))
             );
             setProjects(allStarted);
@@ -220,9 +220,9 @@ export default function ProjectsPage() {
             });
             toast.success("สร้างโครงการนอกแผนงานสำเร็จ!", { icon: "🚀" });
             setShowUnplannedForm(false);
-            setUnplannedForm({ 
-                name: "", 
-                department: departments.length > 0 ? departments[0].name : "", 
+            setUnplannedForm({
+                name: "",
+                department: departments.length > 0 ? departments[0].name : "",
                 subDepartment: (departments.length > 0 && departments[0].subDepts.length > 0) ? departments[0].subDepts[0] : "",
                 projectType: PROJECT_TYPE_OPTIONS[0], budget: "", lead: "", reason: "", months: []
             });
@@ -236,7 +236,7 @@ export default function ProjectsPage() {
 
     const handleCreatePlanned = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!selectedAnnualPlanId) return toast.error("กรุณาเลือกโครงการ");
+        if (!selectedAnnualPlanId) return toast.error("กรุณาเลือกโครงการ");
         setIsSubmittingPj(true);
         try {
             await updateProject(selectedAnnualPlanId, { isStarted: true, status: "in_progress" });
@@ -294,7 +294,7 @@ export default function ProjectsPage() {
                                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">ตลอดทั้งปี (12 เดือน)</span>
                                         ) : p.months.length > 4 ? (
                                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
-                                                {THAI_MONTHS_SHORT[p.months[0]-1]} - {THAI_MONTHS_SHORT[p.months[p.months.length-1]-1]} ({p.months.length} เดือน)
+                                                {THAI_MONTHS_SHORT[p.months[0] - 1]} - {THAI_MONTHS_SHORT[p.months[p.months.length - 1] - 1]} ({p.months.length} เดือน)
                                             </span>
                                         ) : (
                                             p.months.map((m, idx) => (
@@ -342,8 +342,8 @@ export default function ProjectsPage() {
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     <div className="relative group flex-1 sm:min-w-[180px]">
-                        <select 
-                            value={filterDept} 
+                        <select
+                            value={filterDept}
                             onChange={e => setFilterDept(e.target.value)}
                             className="w-full appearance-none bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-2.5 text-[10px] sm:text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all pr-8 sm:pr-10 cursor-pointer text-slate-700 shadow-sm hover:shadow-md hover:border-blue-200"
                         >
@@ -362,7 +362,7 @@ export default function ProjectsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* 1. Add Project Button Card */}
                 {!isViewer && (
-                    <button 
+                    <button
                         onClick={() => setShowNewProject(true)}
                         className="group h-[180px] bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-all flex flex-col items-center justify-center gap-3 active:scale-95 shadow-sm hover:shadow-md mt-6"
                     >
@@ -387,9 +387,9 @@ export default function ProjectsPage() {
             </div>
 
             {/* Project Detail Modal */}
-            {selectedId && <ProjectDetailModal 
-                id={selectedId} 
-                onClose={() => setSelectedId("")} 
+            {selectedId && <ProjectDetailModal
+                id={selectedId}
+                onClose={() => setSelectedId("")}
                 onUpdate={() => { setSelectedId(""); refreshData(); }}
                 allDocs={allRegistryDocs}
                 departments={departments}
@@ -408,7 +408,7 @@ export default function ProjectsPage() {
                                 <X className="w-5 h-5 text-slate-400" />
                             </button>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button onClick={() => { setShowNewProject(false); setShowPlannedForm(true); }}
                                 className="group relative overflow-hidden rounded-[2rem] border-2 border-slate-100 hover:border-blue-400 p-6 text-left transition-all hover:shadow-xl hover:shadow-blue-50 bg-white">
@@ -449,28 +449,28 @@ export default function ProjectsPage() {
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ชื่อโครงการ *</label>
-                                    <input 
-                                        required 
+                                    <input
+                                        required
                                         placeholder="เช่น โครงการช่วยเหลือผู้ประสบภัย..."
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" 
-                                        value={unplannedForm.name} 
-                                        onChange={e => setUnplannedForm({...unplannedForm, name: e.target.value})} 
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
+                                        value={unplannedForm.name}
+                                        onChange={e => setUnplannedForm({ ...unplannedForm, name: e.target.value })}
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">หน่วยงาน *</label>
-                                        <select 
-                                            required 
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none cursor-pointer" 
-                                            value={unplannedForm.department} 
+                                        <select
+                                            required
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none cursor-pointer"
+                                            value={unplannedForm.department}
                                             onChange={e => {
                                                 const deptName = e.target.value;
                                                 const d = departments.find(x => x.name === deptName);
                                                 setUnplannedForm({
-                                                    ...unplannedForm, 
-                                                    department: deptName, 
+                                                    ...unplannedForm,
+                                                    department: deptName,
                                                     subDepartment: d?.subDepts[0] || ""
                                                 });
                                             }}
@@ -480,10 +480,10 @@ export default function ProjectsPage() {
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ฝ่าย/กลุ่มงาน</label>
-                                        <select 
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none cursor-pointer" 
-                                            value={unplannedForm.subDepartment} 
-                                            onChange={e => setUnplannedForm({...unplannedForm, subDepartment: e.target.value})}
+                                        <select
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none cursor-pointer"
+                                            value={unplannedForm.subDepartment}
+                                            onChange={e => setUnplannedForm({ ...unplannedForm, subDepartment: e.target.value })}
                                         >
                                             {departments.find(d => d.name === unplannedForm.department)?.subDepts.map(sd => (
                                                 <option key={sd} value={sd}>{sd}</option>
@@ -495,35 +495,35 @@ export default function ProjectsPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ประเภทโครงการ</label>
-                                        <select 
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none cursor-pointer" 
-                                            value={unplannedForm.projectType} 
-                                            onChange={e => setUnplannedForm({...unplannedForm, projectType: e.target.value})}
+                                        <select
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none cursor-pointer"
+                                            value={unplannedForm.projectType}
+                                            onChange={e => setUnplannedForm({ ...unplannedForm, projectType: e.target.value })}
                                         >
                                             {PROJECT_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ผู้รับผิดชอบ *</label>
-                                        <input 
-                                            required 
+                                        <input
+                                            required
                                             placeholder="ระบุชื่อผู้รับผิดชอบ..."
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" 
-                                            value={unplannedForm.lead} 
-                                            onChange={e => setUnplannedForm({...unplannedForm, lead: e.target.value})} 
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
+                                            value={unplannedForm.lead}
+                                            onChange={e => setUnplannedForm({ ...unplannedForm, lead: e.target.value })}
                                         />
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">งบประมาณจัดสรร (บาท) *</label>
-                                    <input 
-                                        required 
-                                        type="number" 
+                                    <input
+                                        required
+                                        type="number"
                                         placeholder="0.00"
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" 
-                                        value={unplannedForm.budget} 
-                                        onChange={e => setUnplannedForm({...unplannedForm, budget: e.target.value})} 
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
+                                        value={unplannedForm.budget}
+                                        onChange={e => setUnplannedForm({ ...unplannedForm, budget: e.target.value })}
                                     />
                                 </div>
 
@@ -533,7 +533,7 @@ export default function ProjectsPage() {
                                         {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                                             <button key={m} type="button" onClick={() => toggleUnplannedMonth(m)}
                                                 className={cn("h-11 rounded-xl text-[10px] font-black transition-all border-2", unplannedForm.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-50 text-slate-400 hover:border-slate-200")}>
-                                                {THAI_MONTHS_SHORT[m-1]}
+                                                {THAI_MONTHS_SHORT[m - 1]}
                                             </button>
                                         ))}
                                     </div>
@@ -608,14 +608,14 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
     const [tab, setTab] = useState<"info" | "docs">("info");
     const [isLoading, setIsLoading] = useState(true);
     const [showLinkDoc, setShowLinkDoc] = useState(false);
-    const [selectedRegistryDocIds, setSelectedRegistryDocIds] = useState<string[]>([]);
+    const [selectedRegistryDocId, setSelectedRegistryDocId] = useState("");
     const [isUpdating, setIsUpdating] = useState(false);
     const [linkFilterDept, setLinkFilterDept] = useState("");
     const [linkFilterCategory, setLinkFilterCategory] = useState("");
     const [reportText, setReportText] = useState("");
     const [actualDateText, setActualDateText] = useState("");
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
-    
+
     // Edit Mode State
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({
@@ -692,7 +692,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
         const newCompleted = project.completedMonths.includes(m)
             ? project.completedMonths.filter(x => x !== m)
             : [...project.completedMonths, m];
-        
+
         try {
             await updateProject(id, { completedMonths: newCompleted });
             setProject({ ...project, completedMonths: newCompleted });
@@ -704,21 +704,12 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
     };
 
     const handleLinkDoc = async () => {
-        if (selectedRegistryDocIds.length === 0) return;
+        if (!selectedRegistryDocId) return;
         setIsUpdating(true);
         try {
-            let successCount = 0;
-            for (const docId of selectedRegistryDocIds) {
-                try {
-                    await linkDocumentToProject(docId, id);
-                    successCount++;
-                } catch (err) {
-                    console.error(`Failed to link doc ${docId}:`, err);
-                }
-            }
-            toast.success(`เชื่อมโยงเอกสารสำเร็จ ${successCount} รายการ`);
+            await linkDocumentToProject(selectedRegistryDocId, id);
+            toast.success("เชื่อมโยงเอกสารสำเร็จ");
             setShowLinkDoc(false);
-            setSelectedRegistryDocIds([]);
             fetchProject();
         } catch (error) {
             toast.error("ไม่สามารถเชื่อมโยงได้");
@@ -746,7 +737,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                 if (actualDateText) formData.append("actualDate", actualDateText);
                 // budgetUsed is already calculated from transactions, no need to manually send actualBudget unless they specifically want a manual override, but user said "ไม่ต้องให้มีการกรอก"
                 if (reportText) formData.append("description", `${project?.description || ""}\n\n[สรุปรายงาน]: ${reportText}`);
-                
+
                 selectedImages.forEach(img => {
                     formData.append("images", img);
                 });
@@ -755,7 +746,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
             } else {
                 await updateProject(id, { status: newStatus });
             }
-            
+
             toast.success(newStatus === "completed" ? "ปิดโครงการสำเร็จแล้ว!" : "อัปเดตสถานะสำเร็จ");
             onUpdate();
             fetchProject();
@@ -820,10 +811,10 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                         </div>
                         <div className="min-w-0">
                             {isEditing ? (
-                                <input 
+                                <input
                                     className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm sm:text-xl font-bold w-full outline-none focus:bg-white/20"
                                     value={editForm.name}
-                                    onChange={e => setEditForm({...editForm, name: e.target.value})}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                                 />
                             ) : (
                                 <h3 className="text-sm sm:text-xl font-bold truncate">{project.name}</h3>
@@ -832,13 +823,13 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                 <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest truncate">{project.department}</span>
                                 <span className="text-slate-600 hidden sm:inline">·</span>
                                 <span className="text-[10px] sm:text-xs font-bold text-blue-400 flex items-center gap-1 shrink-0">
-                                    <Banknote className="w-3 sm:w-3.5 h-3 sm:h-3.5" /> 
+                                    <Banknote className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                                     {isEditing ? (
-                                        <input 
+                                        <input
                                             type="number"
                                             className="bg-transparent border-b border-blue-400/30 text-blue-400 outline-none w-16 sm:w-24 text-[10px] sm:text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             value={editForm.budget}
-                                            onChange={e => setEditForm({...editForm, budget: e.target.value})}
+                                            onChange={e => setEditForm({ ...editForm, budget: e.target.value })}
                                         />
                                     ) : (
                                         `฿${project.budget.toLocaleString()}`
@@ -879,10 +870,10 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">สถานะปัจจุบัน:</span>
-                        <span className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider", 
+                        <span className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider",
                             project.step === "in_progress" ? "bg-green-100 text-green-700" :
-                            project.step === "waiting_summary" ? "bg-amber-100 text-amber-700" :
-                            "bg-purple-100 text-purple-700"
+                                project.step === "waiting_summary" ? "bg-amber-100 text-amber-700" :
+                                    "bg-purple-100 text-purple-700"
                         )}>
                             {project.step === "in_progress" && project.months.length > 0 && project.months.every(m => project.completedMonths?.includes(m))
                                 ? "ดำเนินการเสร็จสิ้น"
@@ -914,26 +905,26 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <div className="flex-1">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase">หัวหน้าโครงการ</p>
                                                 {isEditing ? (
-                                                    <input 
+                                                    <input
                                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 focus:border-blue-400"
                                                         value={editForm.lead}
-                                                        onChange={e => setEditForm({...editForm, lead: e.target.value})}
+                                                        onChange={e => setEditForm({ ...editForm, lead: e.target.value })}
                                                     />
                                                 ) : (
                                                     <p className="text-sm font-bold text-slate-700">{project.lead}</p>
                                                 )}
                                             </div>
                                         </div>
-                                        
+
                                         <div className="flex items-start gap-3 pt-2 border-t border-slate-100">
                                             <Target className="w-4 h-4 text-slate-400 mt-0.5" />
                                             <div className="flex-1">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase">ประเภทโครงการ</p>
                                                 {isEditing ? (
-                                                    <select 
+                                                    <select
                                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 cursor-pointer focus:border-blue-400"
                                                         value={editForm.projectType}
-                                                        onChange={e => setEditForm({...editForm, projectType: e.target.value})}
+                                                        onChange={e => setEditForm({ ...editForm, projectType: e.target.value })}
                                                     >
                                                         {PROJECT_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                                     </select>
@@ -948,10 +939,10 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <div className="flex-1">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase">ฝ่าย/กลุ่มงาน</p>
                                                 {isEditing ? (
-                                                    <select 
+                                                    <select
                                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 cursor-pointer focus:border-blue-400"
                                                         value={editForm.subDepartment}
-                                                        onChange={e => setEditForm({...editForm, subDepartment: e.target.value})}
+                                                        onChange={e => setEditForm({ ...editForm, subDepartment: e.target.value })}
                                                     >
                                                         {departments.find(d => d.name === project.department)?.subDepts.map(sd => (
                                                             <option key={sd} value={sd}>{sd}</option>
@@ -968,11 +959,11 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <div className="flex-1">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase">งบประมาณสบทบภายนอก (บริจาค)</p>
                                                 {isEditing ? (
-                                                    <input 
+                                                    <input
                                                         type="number"
                                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none mt-1 focus:border-blue-400"
                                                         value={editForm.externalBudget}
-                                                        onChange={e => setEditForm({...editForm, externalBudget: e.target.value})}
+                                                        onChange={e => setEditForm({ ...editForm, externalBudget: e.target.value })}
                                                     />
                                                 ) : (
                                                     <p className="text-sm font-bold text-slate-700">฿{(project.actualBudgetExternal || 0).toLocaleString()}</p>
@@ -1010,7 +1001,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     <button key={m} type="button" onClick={() => toggleEditMonth(m)}
                                                         className={cn("p-4 rounded-[1.5rem] border-2 transition-all text-left",
                                                             editForm.months.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200")}>
-                                                        <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m-1]}</p>
+                                                        <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m - 1]}</p>
                                                         <p className="text-sm font-bold">{editForm.months.includes(m) ? "เลือกแล้ว" : "ไม่ได้เลือก"}</p>
                                                     </button>
                                                 ))
@@ -1021,7 +1012,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                             project.completedMonths.includes(m) ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-white border-slate-100 text-slate-400 hover:border-blue-200",
                                                             isViewer && "cursor-default text-opacity-50"
                                                         )}>
-                                                        <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m-1]}</p>
+                                                        <p className="text-[10px] font-black uppercase opacity-60 mb-1">{THAI_MONTHS_SHORT[m - 1]}</p>
                                                         <p className="text-sm font-bold">{project.completedMonths.includes(m) ? "เสร็จแล้ว" : "รอดำเนินงาน"}</p>
                                                         {project.completedMonths.includes(m) && <CheckCircle2 className="absolute -right-2 -bottom-2 w-10 h-10 opacity-20" />}
                                                     </button>
@@ -1059,14 +1050,14 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     <Clock className="w-10 h-10 text-amber-600" />
                                                 </div>
                                                 <h5 className="text-lg font-bold text-slate-800">รอรายงานผล/ประเมินผล</h5>
-                                                
+
                                                 <div className="w-full mt-4 text-left">
                                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">วันที่จัดกิจกรรมจริง</label>
                                                     <input type="text" placeholder="เช่น 15 มีนาคม 2567" className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none focus:border-blue-400" value={actualDateText} onChange={e => setActualDateText(e.target.value)} />
                                                 </div>
 
                                                 <textarea placeholder="สรุปผลโครงการเบื้องต้น (ถ้ามี)..." className="w-full mt-4 bg-white border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none h-32" value={reportText} onChange={e => setReportText(e.target.value)} />
-                                                
+
                                                 <div className="w-full mt-6">
                                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">ภาพบรรยากาศโครงการ (อย่างน้อย 6 รูป)</label>
                                                     <div className="flex flex-wrap gap-2 mb-4">
@@ -1081,12 +1072,12 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                         ))}
                                                         <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
                                                             <Plus className="w-4 h-4 text-slate-400" />
-                                                            <input type="file" multiple accept="image/*" className="hidden" 
+                                                            <input type="file" multiple accept="image/*" className="hidden"
                                                                 onChange={e => {
                                                                     if (e.target.files) {
                                                                         setSelectedImages(prev => [...prev, ...Array.from(e.target.files!)]);
                                                                     }
-                                                                }} 
+                                                                }}
                                                             />
                                                         </label>
                                                     </div>
@@ -1095,8 +1086,8 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                 <p className="text-[10px] text-slate-400 mt-2 px-6 italic">** กรุณาแนบไฟล์ &apos;รายงานผลโครงการ&apos; ใน Tab เอกสารก่อนปิดโครงการ **</p>
                                                 {!isViewer && (
                                                     <>
-                                                        <button 
-                                                            onClick={() => handleUpdateStatus("completed")} 
+                                                        <button
+                                                            onClick={() => handleUpdateStatus("completed")}
                                                             disabled={isUpdating}
                                                             className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                                         >
@@ -1122,7 +1113,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-700 border-t border-purple-100 pt-3">
                                                         <span>งบประมาณที่ใช้รวมจริง</span>
                                                         <span className="text-slate-900 text-xs font-black">
-                                                            ฿{( (project.budgetUsed || 0) + (isEditing ? Number(editForm.externalBudget || 0) : (project.actualBudgetExternal || 0)) ).toLocaleString()}
+                                                            ฿{((project.budgetUsed || 0) + (isEditing ? Number(editForm.externalBudget || 0) : (project.actualBudgetExternal || 0))).toLocaleString()}
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest text-slate-400 px-1">
@@ -1144,14 +1135,14 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                     <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                                         📸 ภาพบรรยากาศโครงการ {project.summaryImages && `(${project.summaryImages.length})`}
                                                     </h5>
-                                                    
+
                                                     {project.step === "completed" && !isViewer && (
                                                         <label className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1.5 active:scale-95 shadow-sm">
                                                             <Plus className="w-3 h-3" /> เพิ่มรูปภาพ
-                                                            <input 
-                                                                type="file" 
-                                                                multiple 
-                                                                accept="image/*" 
+                                                            <input
+                                                                type="file"
+                                                                multiple
+                                                                accept="image/*"
                                                                 className="hidden"
                                                                 onChange={async (e) => {
                                                                     if (e.target.files && e.target.files.length > 0) {
@@ -1181,12 +1172,12 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                                         {project.summaryImages.map((url, idx) => (
                                                             <div key={idx} className="aspect-square rounded-2xl overflow-visible border border-slate-200 bg-slate-100 group relative">
                                                                 <img src={url} className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105" alt={`project-${idx}`} />
-                                                                
+
                                                                 {/* View overlay on hover (always available) */}
-                                                                <a 
-                                                                    href={url} 
-                                                                    target="_blank" 
-                                                                    rel="noreferrer" 
+                                                                <a
+                                                                    href={url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
                                                                     className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center rounded-2xl"
                                                                     title="ดูรูปเต็ม"
                                                                     onClick={e => e.stopPropagation()}
@@ -1196,7 +1187,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
 
                                                                 {/* Delete X — only visible when isEditing */}
                                                                 {isEditing && !isViewer && (
-                                                                    <button 
+                                                                    <button
                                                                         onClick={async (e) => {
                                                                             e.stopPropagation();
                                                                             if (confirm("ยืนยันการลบรูปภาพนี้?")) {
@@ -1241,7 +1232,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                     <FileText className="w-3.5 h-3.5" /> เอกสารแนบทั้งหมด
                                 </h4>
                                 {!isViewer && (
-                                    <button onClick={() => setShowLinkDoc(true)} 
+                                    <button onClick={() => setShowLinkDoc(true)}
                                         className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-bold flex items-center gap-2 transition-all">
                                         <Plus className="w-3.5 h-3.5" /> ดึงเอกสารจากทะเบียน
                                     </button>
@@ -1252,7 +1243,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                 <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 animate-in fade-in duration-300">
                                     <div className="flex items-center justify-between mb-4">
                                         <p className="text-xs font-bold text-slate-600 tracking-tight">เลือกเอกสารที่ต้องการเชื่อมโยง</p>
-                                        <button onClick={() => { setShowLinkDoc(false); setLinkFilterDept(""); setLinkFilterCategory(""); setSelectedRegistryDocIds([]); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 tracking-widest uppercase">ยกเลิก</button>
+                                        <button onClick={() => { setShowLinkDoc(false); setLinkFilterDept(""); setLinkFilterCategory(""); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 tracking-widest uppercase">ยกเลิก</button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 mb-3">
                                         <div>
@@ -1260,7 +1251,7 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <select
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all"
                                                 value={linkFilterDept}
-                                                onChange={e => { setLinkFilterDept(e.target.value); }}
+                                                onChange={e => { setLinkFilterDept(e.target.value); setSelectedRegistryDocId(""); }}
                                             >
                                                 <option value="">ทุกหน่วยงาน</option>
                                                 {departments.map((d: Department) => <option key={d.id} value={d.name}>{d.name}</option>)}
@@ -1271,65 +1262,35 @@ function ProjectDetailModal({ id, onClose, onUpdate, allDocs, departments }: { i
                                             <select
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all"
                                                 value={linkFilterCategory}
-                                                onChange={e => { setLinkFilterCategory(e.target.value); }}
+                                                onChange={e => { setLinkFilterCategory(e.target.value); setSelectedRegistryDocId(""); }}
                                             >
                                                 <option value="">ทุกประเภท</option>
                                                 {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
                                     </div>
-                                    {(() => {
-                                        const availableDocs = allDocs
-                                            .filter(d => !d.projectId)
-                                            .filter(d => !linkFilterDept || d.department?.name === linkFilterDept)
-                                            .filter(d => !linkFilterCategory || d.category?.name === linkFilterCategory);
-                                        return (
-                                            <>
-                                                <div className="bg-white border border-slate-200 rounded-2xl max-h-[240px] overflow-y-auto divide-y divide-slate-50">
-                                                    {availableDocs.length === 0 ? (
-                                                        <p className="text-xs text-slate-400 text-center py-6 italic">ไม่พบเอกสารที่สามารถเชื่อมโยงได้</p>
-                                                    ) : availableDocs.map(d => {
-                                                        const isChecked = selectedRegistryDocIds.includes(d.id);
-                                                        return (
-                                                            <label key={d.id}
-                                                                className={cn(
-                                                                    "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all hover:bg-blue-50/50",
-                                                                    isChecked && "bg-blue-50/80"
-                                                                )}
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isChecked}
-                                                                    onChange={() => {
-                                                                        setSelectedRegistryDocIds(prev =>
-                                                                            isChecked
-                                                                                ? prev.filter(x => x !== d.id)
-                                                                                : [...prev, d.id]
-                                                                        );
-                                                                    }}
-                                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer flex-shrink-0"
-                                                                />
-                                                                <span className={cn("text-[11px] font-bold leading-tight", isChecked ? "text-blue-700" : "text-slate-700")}>
-                                                                    <span className="text-slate-400 font-black">[{d.docNo}]</span> {d.name}
-                                                                </span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                                <div className="flex items-center justify-between mt-3">
-                                                    <p className="text-[9px] text-slate-400 italic">
-                                                        {selectedRegistryDocIds.length > 0
-                                                            ? `เลือกแล้ว ${selectedRegistryDocIds.length} รายการ`
-                                                            : "* ติ๊กเลือกเอกสารที่ต้องการเชื่อมโยง"}
-                                                    </p>
-                                                    <button onClick={handleLinkDoc} disabled={selectedRegistryDocIds.length === 0 || isUpdating}
-                                                        className="bg-blue-600 text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50">
-                                                        {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : `เชื่อมโยง (${selectedRegistryDocIds.length})`}
-                                                    </button>
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
+                                    <div className="flex gap-3">
+                                        <select
+                                            className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/5 select-none"
+                                            value={selectedRegistryDocId}
+                                            onChange={e => setSelectedRegistryDocId(e.target.value)}
+                                        >
+                                            <option value="">เลือกเอกสาร...</option>
+                                            {allDocs
+                                                .filter(d => !d.projectId)
+                                                .filter(d => !linkFilterDept || d.department?.name === linkFilterDept)
+                                                .filter(d => !linkFilterCategory || d.category?.name === linkFilterCategory)
+                                                .map(d => (
+                                                    <option key={d.id} value={d.id}>[{d.docNo}] {d.name}</option>
+                                                ))
+                                            }
+                                        </select>
+                                        <button onClick={handleLinkDoc} disabled={!selectedRegistryDocId || isUpdating}
+                                            className="bg-blue-600 text-white px-6 rounded-2xl text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50">
+                                            {isUpdating ? <Loader className="w-4 h-4 animate-spin" /> : "เชื่อมโยง"}
+                                        </button>
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 mt-3 italic">* เฉพาะเอกสารในทะเบียนที่ยังไม่ถูกเชื่อมโยงกับโครงการใด ๆ เท่านั้น</p>
                                 </div>
                             )}
 
