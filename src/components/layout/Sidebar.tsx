@@ -22,18 +22,23 @@ const navGroups = [
             { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'คณะกรรมการ', href: '/committee', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'คำทับศัพท์ที่ใช้บ่อย', href: '/transliteration', icon: Languages, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
         ],
     },
     {
-        label: 'การดำเนินงาน',
+        label: 'กลุ่มงานเลขานุการ',
         items: [
-            { name: 'เอกสาร', href: '/documents?tab=request', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'คำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'ส่งคำขอเอกสาร', href: '/documents?tab=request', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'ประวัติคำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'คำทับศัพท์', href: '/transliteration', icon: Languages, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+        ],
+    },
+    {
+        label: 'กลุ่มงานการเงินและบัญชี',
+        items: [
+            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
         ],
     },
     {
@@ -41,6 +46,7 @@ const navGroups = [
         items: [
             { name: 'ผู้ใช้งาน', href: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
             { name: 'จัดการปีการทำงาน', href: '/settings/years', icon: CalendarDays, roles: ['SUPER_ADMIN'] },
+            { name: 'ประวัติการใช้งาน', href: '/activity-logs', icon: LayoutDashboard, roles: ['SUPER_ADMIN'] },
         ],
     },
 ];
@@ -53,7 +59,15 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: strin
     VIEWER: { label: 'ผู้ใช้ทั่วไป', color: 'text-slate-400', bgColor: 'bg-slate-500/20' },
 };
 
-export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function Sidebar({ 
+    isOpen, 
+    onClose,
+    isDesktopCollapsed = false
+}: { 
+    isOpen: boolean; 
+    onClose: () => void;
+    isDesktopCollapsed?: boolean;
+}) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -73,6 +87,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.VIEWER;
 
     const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+    const toggleGroup = (label: string) => {
+        setCollapsedGroups(prev => ({
+            ...prev,
+            [label]: !prev[label]
+        }));
+    };
 
     useEffect(() => {
         const checkProfile = async () => {
@@ -137,8 +159,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
             {/* Sidebar drawer */}
             <div className={cn(
-                "fixed inset-y-0 left-0 w-64 bg-[#0f172a] h-full h-[100dvh] md:h-screen flex flex-col z-50 transition-transform duration-300 md:relative md:translate-x-0",
-                isOpen ? "translate-x-0" : "-translate-x-full"
+                "fixed inset-y-0 left-0 bg-[#0f172a] h-full h-[100dvh] md:h-screen flex flex-col z-50 transition-all duration-300 md:relative md:translate-x-0 overflow-hidden whitespace-nowrap",
+                isOpen ? "translate-x-0" : "-translate-x-full",
+                isDesktopCollapsed ? "w-64 md:w-0 md:opacity-0" : "w-64 md:opacity-100"
             )}>
                 {/* Logo */}
                 <div className="h-20 flex items-center px-5 border-b border-white/5">
@@ -198,10 +221,25 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
                     {filteredGroups.map((group) => (
                         <div key={group.label}>
-                            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-1.5">
-                                {group.label}
-                            </p>
-                            <div className="space-y-0.5">
+                            <button 
+                                onClick={() => toggleGroup(group.label)}
+                                className="w-full flex items-center justify-between px-3 mb-1.5 group"
+                            >
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest transition-colors group-hover:text-slate-400">
+                                    {group.label}
+                                </p>
+                                <ChevronDown 
+                                    className={cn(
+                                        "w-3.5 h-3.5 text-slate-600 transition-transform duration-200",
+                                        collapsedGroups[group.label] ? "rotate-180" : ""
+                                    )} 
+                                />
+                            </button>
+                            
+                            <div className={cn(
+                                "space-y-0.5 overflow-hidden transition-all duration-300",
+                                collapsedGroups[group.label] ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+                            )}>
                                 {group.items.map((item) => {
                                     const fullCurrentPath = pathname + (searchParams.toString() ? ('?' + searchParams.toString()) : '');
                                     const isActive = item.href.includes('?') 

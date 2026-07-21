@@ -335,13 +335,18 @@ export async function deleteCommitteeMember(id: string) {
 }
 
 // ─── DEPARTMENTS ──────────────────────────────────────────
-export async function fetchDepartments(year?: number | string, scope?: 'global' | 'committee') {
+export async function fetchDepartments(year?: number | string, scope?: 'global' | 'committee', includeAllDeptsName: boolean = false) {
     let url = "/departments?";
     const params = new URLSearchParams();
     if (year) params.append("year", year.toString());
     if (scope) params.append("scope", scope);
     
-    return apiFetch<any[]>(url + params.toString());
+    return apiFetch<any[]>(url + params.toString()).then(depts => {
+        if (!includeAllDeptsName) {
+            return depts.filter(d => d.name !== "ทุกหน่วยงาน");
+        }
+        return depts;
+    });
 }
 
 export async function createDepartment(data: any, year?: number, isCommitteeOnly?: boolean) {
@@ -559,3 +564,17 @@ export async function bulkDeleteTransliterations(ids: string[]) {
         body: JSON.stringify({ ids }),
     });
 }
+
+// ==========================================
+// ACTIVITY LOGS API
+// ==========================================
+
+export const getActivityLogs = async (params: { page?: number; limit?: number; userId?: string; resource?: string; action?: string; }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.userId) query.append('userId', params.userId);
+    if (params.resource) query.append('resource', params.resource);
+    if (params.action) query.append('action', params.action);
+    return apiFetch<any>(`/logs?${query.toString()}`);
+};

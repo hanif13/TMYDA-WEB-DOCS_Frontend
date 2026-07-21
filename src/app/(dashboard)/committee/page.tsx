@@ -340,12 +340,24 @@ export default function CommitteePage() {
                 fetchCommitteeMembers(selectedYear || undefined),
                 fetchDepartments(selectedYear || undefined, 'committee')
             ]);
+            
+            // Merge orphan departments: if a member references a department
+            // not in the fetched list, extract it from the member's included data
+            const deptIds = new Set(deptsData.map((d: any) => d.id));
+            const orphanDepts = new Map();
+            membersData.forEach((m: any) => {
+                if (m.department && !deptIds.has(m.departmentId)) {
+                    orphanDepts.set(m.departmentId, m.department);
+                }
+            });
+            const allDepts = [...deptsData, ...Array.from(orphanDepts.values())];
+            
             setMembers(membersData);
-            setDbDepartments(deptsData);
+            setDbDepartments(allDepts);
             
             // Set default departmentId if not set
-            if ((!formData.departmentId || formData.departmentId === 'admin') && deptsData.length > 0) {
-                setFormData(prev => ({ ...prev, departmentId: deptsData[0].id }));
+            if ((!formData.departmentId || formData.departmentId === 'admin') && allDepts.length > 0) {
+                setFormData(prev => ({ ...prev, departmentId: allDepts[0].id }));
             }
         } catch (error) {
             console.error("Error loading committee data:", error);
@@ -355,7 +367,9 @@ export default function CommitteePage() {
     };
 
     useEffect(() => {
-        loadMembers();
+        if (selectedYear) {
+            loadMembers();
+        }
     }, [selectedYear]);
 
     // Body Scroll Lock

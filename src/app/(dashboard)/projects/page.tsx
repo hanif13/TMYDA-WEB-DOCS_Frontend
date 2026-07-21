@@ -100,7 +100,7 @@ export default function ProjectsPage() {
         try {
             const [data, deptsData, docsData] = await Promise.all([
                 fetchAnnualPlans(),
-                fetchDepartments(),
+                fetchDepartments(undefined, undefined, true),
                 fetchDocuments(selectedYear || undefined)
             ]);
 

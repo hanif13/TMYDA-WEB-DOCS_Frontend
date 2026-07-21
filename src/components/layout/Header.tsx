@@ -15,7 +15,13 @@ const breadcrumbMap: Record<string, string> = {
     '/settings': 'ตั้งค่า',
 };
 
-export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
+export function Header({ 
+    onMobileMenuToggle, 
+    onDesktopMenuToggle 
+}: { 
+    onMobileMenuToggle: () => void;
+    onDesktopMenuToggle: () => void;
+}) {
     const pathname = usePathname();
     const { data: session } = useSession();
     const pageName = breadcrumbMap[pathname] ?? 'หน้าหลัก';
@@ -27,9 +33,16 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
                 {/* Mobile Menu Toggle & Breadcrumbs */}
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={onMenuToggle}
+                        onClick={onMobileMenuToggle}
                         className="p-2 -ml-2 text-slate-500 hover:bg-slate-50 rounded-lg md:hidden transition-colors"
-                        aria-label="Toggle Menu"
+                        aria-label="Toggle Mobile Menu"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                    <button
+                        onClick={onDesktopMenuToggle}
+                        className="p-2 -ml-2 text-slate-500 hover:bg-slate-50 rounded-lg hidden md:block transition-colors"
+                        aria-label="Toggle Desktop Menu"
                     >
                         <Menu className="w-6 h-6" />
                     </button>

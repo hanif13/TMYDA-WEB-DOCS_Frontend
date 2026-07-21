@@ -10,18 +10,27 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  const toggleMobileMenu = () => setIsMobileOpen(!isMobileOpen);
+  const closeMobileMenu = () => setIsMobileOpen(false);
+  const toggleDesktopMenu = () => setIsDesktopCollapsed(!isDesktopCollapsed);
 
   return (
     <WorkingYearGuard>
       <div className="flex h-screen overflow-hidden relative">
-        <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+        <Sidebar 
+          isOpen={isMobileOpen} 
+          onClose={closeMobileMenu} 
+          isDesktopCollapsed={isDesktopCollapsed} 
+        />
         
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onMenuToggle={toggleSidebar} />
+          <Header 
+            onMobileMenuToggle={toggleMobileMenu} 
+            onDesktopMenuToggle={toggleDesktopMenu} 
+          />
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 lg:p-8">
             {children}
           </main>

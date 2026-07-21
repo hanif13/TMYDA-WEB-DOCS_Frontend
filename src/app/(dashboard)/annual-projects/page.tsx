@@ -225,7 +225,7 @@ export default function AnnualProjectsPage() {
         const currentPlan = plans.find(p => p.id === selectedPlanId);
         const targetYear = currentPlan?.thaiYear || selectedYear || 2567;
 
-        Promise.all([fetchAnnualPlans(), fetchDepartments(targetYear)])
+        Promise.all([fetchAnnualPlans(), fetchDepartments(targetYear, undefined, true)])
             .then(([plansData, deptsData]) => {
                 const plansArr = Array.isArray(plansData) ? plansData : [];
                 const deptsArr = Array.isArray(deptsData) ? deptsData : [];

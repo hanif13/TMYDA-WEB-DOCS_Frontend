@@ -14,12 +14,12 @@ export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
 
     const pathname = usePathname();
 
-    // Force redirect to login if unauthenticated
+    // Force redirect to login if unauthenticated (only if not already on login page)
     useEffect(() => {
-        if (status === "unauthenticated") {
+        if (status === "unauthenticated" && pathname !== "/login") {
             router.push("/login");
         }
-    }, [status, router]);
+    }, [status, router, pathname]);
 
     if (status === "loading" || isLoading) {
         return (

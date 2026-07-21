@@ -5,7 +5,7 @@ import { YearProvider } from "@/context/YearContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchOnWindowFocus={false}>
       <YearProvider>
         {children}
       </YearProvider>
