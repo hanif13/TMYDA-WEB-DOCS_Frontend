@@ -351,6 +351,7 @@ export default function CommitteePage() {
                 }
             });
             const allDepts = [...deptsData, ...Array.from(orphanDepts.values())];
+            allDepts.sort((a, b) => (a.order || 0) - (b.order || 0));
             
             setMembers(membersData);
             setDbDepartments(allDepts);
