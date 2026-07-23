@@ -11,6 +11,7 @@ interface YearContextType {
     availableYears: number[];
     plans: any[];
     isLoading: boolean;
+    hasLoadError: boolean;
     refreshYears: () => Promise<void>;
 }
 
@@ -22,11 +23,13 @@ export function YearProvider({ children }: { children: ReactNode }) {
     const [availableYears, setAvailableYears] = useState<number[]>([]);
     const [plans, setPlans] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasLoadError, setHasLoadError] = useState(false);
 
     const loadYears = async () => {
         if (status !== "authenticated") return;
         
         setIsLoading(true);
+        setHasLoadError(false);
         try {
             const fetchedPlans = await fetchAnnualYears();
             setPlans(fetchedPlans);
@@ -46,10 +49,8 @@ export function YearProvider({ children }: { children: ReactNode }) {
             }
         } catch (error: any) {
             console.error("Failed to fetch available years:", error);
-            // If the error is 401 Unauthorized, it means the session has expired
-            if (error.message?.includes("401")) {
-                signOut({ callbackUrl: "/login" });
-            }
+            setHasLoadError(true);
+            // Note: 401/403 errors are now auto-handled by apiFetch (auto signOut)
         } finally {
             setIsLoading(false);
         }
@@ -85,9 +86,7 @@ export function YearProvider({ children }: { children: ReactNode }) {
             });
         } catch (error: any) {
             console.error("Failed to refresh years:", error);
-            if (error.message?.includes("401")) {
-                signOut({ callbackUrl: "/login" });
-            }
+            // Note: 401/403 errors are now auto-handled by apiFetch (auto signOut)
         }
     };
 
@@ -111,7 +110,7 @@ export function YearProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <YearContext.Provider value={{ selectedYear, setSelectedYear, availableYears, plans, isLoading, refreshYears }}>
+        <YearContext.Provider value={{ selectedYear, setSelectedYear, availableYears, plans, isLoading, hasLoadError, refreshYears }}>
             {children}
         </YearContext.Provider>
     );

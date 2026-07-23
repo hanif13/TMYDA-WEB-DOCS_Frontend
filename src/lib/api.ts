@@ -40,6 +40,12 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     });
 
     if (!res.ok) {
+        // Auto sign-out on expired/invalid token
+        if (res.status === 401 || res.status === 403) {
+            const { signOut } = await import("next-auth/react");
+            signOut({ callbackUrl: "/login" });
+            throw new Error("Session expired");
+        }
         const errorText = await res.text();
         throw new Error(`API error ${res.status}: ${errorText}`);
     }
@@ -78,6 +84,11 @@ export async function createDocument(formData: FormData) {
     });
 
     if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+            const { signOut } = await import("next-auth/react");
+            signOut({ callbackUrl: "/login" });
+            throw new Error("Session expired");
+        }
         const errorText = await res.text();
         throw new Error(`API error ${res.status}: ${errorText}`);
     }
@@ -98,6 +109,11 @@ export async function updateDocument(id: string, formData: FormData) {
     });
 
     if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+            const { signOut } = await import("next-auth/react");
+            signOut({ callbackUrl: "/login" });
+            throw new Error("Session expired");
+        }
         const errorText = await res.text();
         throw new Error(`API error ${res.status}: ${errorText}`);
     }

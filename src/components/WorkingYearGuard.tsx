@@ -2,13 +2,13 @@
 
 import { useYear } from "@/context/YearContext";
 import { YearSelection } from "@/components/YearSelection";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader } from "lucide-react";
 import { useEffect } from "react";
 
 export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
-    const { selectedYear, isLoading } = useYear();
+    const { selectedYear, isLoading, hasLoadError } = useYear();
     const { data: session, status } = useSession();
     const router = useRouter();
 
@@ -20,6 +20,14 @@ export function WorkingYearGuard({ children }: { children: React.ReactNode }) {
             router.push("/login");
         }
     }, [status, router, pathname]);
+
+    // If authenticated but API load failed, force sign out 
+    // (likely expired backend token that apiFetch already handled)
+    useEffect(() => {
+        if (status === "authenticated" && hasLoadError) {
+            signOut({ callbackUrl: "/login" });
+        }
+    }, [status, hasLoadError]);
 
     if (status === "loading" || isLoading) {
         return (
