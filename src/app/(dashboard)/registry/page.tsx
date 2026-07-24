@@ -69,10 +69,7 @@ export default function RegistryPage() {
             const [depts, cats, users] = await Promise.all([
                 fetchDepartments('all'),
                 fetchCategories(),
-                fetchUsers().catch(err => {
-                    console.error("Failed to fetch users, falling back to empty list:", err);
-                    return [];
-                })
+                canEdit ? fetchUsers().catch(() => []) : Promise.resolve([])
             ]);
             const filteredDepts = depts.filter((d: any) => d.name !== "ทุกหน่วยงาน");
             setDbDepartments(filteredDepts);
