@@ -594,3 +594,133 @@ export const getActivityLogs = async (params: { page?: number; limit?: number; u
     if (params.action) query.append('action', params.action);
     return apiFetch<any>(`/logs?${query.toString()}`);
 };
+
+// ==========================================
+// EVENTS / CALENDAR API
+// ==========================================
+
+export async function fetchEvents(params?: { year?: number; departmentId?: string; from?: string; to?: string }) {
+    const query = new URLSearchParams();
+    if (params?.year) query.append('year', params.year.toString());
+    if (params?.departmentId) query.append('departmentId', params.departmentId);
+    if (params?.from) query.append('from', params.from);
+    if (params?.to) query.append('to', params.to);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiFetch<any[]>(`/events${qs}`);
+}
+
+export async function createEvent(data: {
+    title: string;
+    departmentId: string;
+    date: string;
+    endDate?: string;
+    location?: string;
+    description?: string;
+    color?: string;
+    thaiYear?: number;
+}) {
+    return apiFetch<any>('/events', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateEvent(id: string, data: Partial<{
+    title: string;
+    departmentId: string;
+    date: string;
+    endDate: string;
+    location: string;
+    description: string;
+    color: string;
+}>) {
+    return apiFetch<any>(`/events/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteEvent(id: string) {
+    return apiFetch<any>(`/events/${id}`, {
+        method: 'DELETE',
+    });
+}
+
+// ==========================================
+// MEMBERS (สมาชิก) API
+// ==========================================
+
+export async function fetchMembers(params?: { search?: string; status?: string; province?: string; page?: number; limit?: number }) {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.status) query.append('status', params.status);
+    if (params?.province) query.append('province', params.province);
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.limit) query.append('limit', params.limit.toString());
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiFetch<any>(`/members${qs}`);
+}
+
+export async function fetchMemberStats() {
+    return apiFetch<any>('/members/stats');
+}
+
+export async function fetchMemberById(id: string) {
+    return apiFetch<any>(`/members/${id}`);
+}
+
+export async function updateMemberStatus(id: string, data: { status: string; note?: string }) {
+    return apiFetch<any>(`/members/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteMember(id: string) {
+    return apiFetch<any>(`/members/${id}`, {
+        method: 'DELETE',
+    });
+}
+
+// Public API (No Auth) — สำหรับหน้า /register
+export async function registerMember(data: {
+    fullName: string;
+    nickname?: string;
+    birthDate?: string;
+    age?: number;
+    bloodType?: string;
+    address?: string;
+    phoneNumber: string;
+    email?: string;
+    facebook?: string;
+    lineId?: string;
+    emergencyContact?: string;
+    education?: string;
+    institution?: string;
+    fieldOfStudy?: string;
+    occupation?: string;
+    workplace?: string;
+    workProvince?: string;
+    maritalStatus?: string;
+    childrenBoys?: number;
+    childrenGirls?: number;
+    childrenAges?: string;
+    knowFrom?: string;
+    activities?: any;
+    skills?: string;
+    interests?: string;
+}) {
+    const url = `${API_BASE}/members/register`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`API error ${res.status}: ${errorText}`);
+    }
+    return res.json();
+}
+
+

@@ -7,7 +7,7 @@ import {
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
     KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox, Languages
+    Inbox, Languages, UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -23,6 +23,7 @@ const navGroups = [
             { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'คณะกรรมการ', href: '/committee', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
             { name: 'คำทับศัพท์ที่ใช้บ่อย', href: '/transliteration', icon: Languages, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'ปฏิทินกิจกรรม', href: '/calendar', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
         ],
     },
     {
@@ -39,6 +40,12 @@ const navGroups = [
         label: 'กลุ่มงานการเงินและบัญชี',
         items: [
             { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
+        ],
+    },
+    {
+        label: 'กลุ่มงานสมาชิก',
+        items: [
+            { name: 'ข้อมูลสมาชิก', href: '/members', icon: UserPlus, roles: ['SUPER_ADMIN', 'ADMIN'] },
         ],
     },
     {
