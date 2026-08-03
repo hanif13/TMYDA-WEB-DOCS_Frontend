@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import logoFityatulhaq from "./logo-fityatulhaq.png";
+import logoTmyda from "./logo-tmyda.png";
 import {
     UserPlus, User, Phone, Mail, MapPin, Briefcase,
     CalendarDays, Loader, CheckCircle2, ArrowRight,
@@ -519,11 +521,11 @@ export default function RegisterPage() {
                 >
                     <div className="flex items-center justify-center gap-4 sm:gap-6 mb-4">
                         <div className="w-20 h-20 sm:w-24 sm:h-24 overflow-hidden transform hover:scale-110 transition-transform duration-500 cursor-pointer">
-                            <img src="/logo-fityatulhaq-sm.png" alt="FITYATULHAQ Logo" className="w-full h-full object-contain" />
+                            <img src={logoFityatulhaq.src} alt="FITYATULHAQ Logo" className="w-full h-full object-contain" />
                         </div>
                         <div className="w-px h-14 sm:h-20 bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
                         <div className="w-20 h-20 sm:w-24 sm:h-24 overflow-hidden transform hover:scale-110 transition-transform duration-500 cursor-pointer">
-                            <img src="/tmyda-logo.png" alt="TMYDA Logo" className="w-full h-full object-contain" />
+                            <img src={logoTmyda.src} alt="TMYDA Logo" className="w-full h-full object-contain" />
                         </div>
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">สมัครสมาชิก</h1>
