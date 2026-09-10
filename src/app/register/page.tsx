@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import logoFityatulhaq from "./logo-fityatulhaq.png";
 import logoTmyda from "./logo-tmyda.png";
 import {
     UserPlus, User, Phone, Mail, MapPin, Briefcase,
     CalendarDays, Loader, CheckCircle2, ArrowRight,
     GraduationCap, Heart, Users, Building, MessageCircle,
-    Droplets, AlertTriangle, Sparkles, Star, ScrollText, ShieldCheck, ChevronDown
+    Droplets, AlertTriangle, Sparkles, Star, ScrollText, ShieldCheck, ChevronDown,
+    Camera, ImagePlus, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerMember } from "@/lib/api";
@@ -114,6 +115,9 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
     const [showTerms, setShowTerms] = useState(true);
     const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const photoInputRef = useRef<HTMLInputElement>(null);
 
     const handleChange = (field: keyof FormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -229,6 +233,7 @@ export default function RegisterPage() {
                 activities: Object.keys(activitiesJson).length > 0 ? activitiesJson : undefined,
                 skills: formData.skills || undefined,
                 interests: formData.interests || undefined,
+                photoFile: photoFile || undefined,
             });
             setSuccess(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -307,22 +312,22 @@ export default function RegisterPage() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 30 }}
                             transition={{ duration: 0.4, ease: "easeOut" }}
-                            className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+                            className="relative bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden"
                         >
                             {/* Header */}
-                            <div className="bg-gradient-to-r from-[#009EDB] to-[#0072B5] px-6 py-5 text-white flex items-center gap-3 shrink-0">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                    <ScrollText className="w-5 h-5" />
+                            <div className="bg-gradient-to-r from-[#009EDB] to-[#0072B5] px-6 sm:px-8 py-5 text-white flex items-center gap-4 shrink-0">
+                                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <ScrollText className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold">ข้อบังคับองค์กร</h2>
-                                    <p className="text-xs text-white/80">กลุ่มเยาวชนแห่งสัจธรรม — หมวดสมาชิกภาพ</p>
+                                    <h2 className="text-xl font-bold">ข้อบังคับองค์กร</h2>
+                                    <p className="text-sm text-white/80">กลุ่มเยาวชนแห่งสัจธรรม — หมวดสมาชิกภาพ</p>
                                 </div>
                             </div>
 
                             {/* Scrollable Content */}
                             <div
-                                className="flex-1 overflow-y-auto px-6 py-5 text-sm text-slate-700 leading-relaxed space-y-5 terms-scroll"
+                                className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 text-base text-slate-700 leading-relaxed space-y-6 terms-scroll"
                                 onScroll={(e) => {
                                     const el = e.currentTarget;
                                     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
@@ -331,10 +336,10 @@ export default function RegisterPage() {
                                 }}
                             >
                                 <div className="text-center mb-4">
-                                    <p className="text-xs text-slate-400 font-medium">(เริ่มบังคับใช้ พ.ศ. 2569)</p>
+                                    <p className="text-sm text-slate-400 font-medium">(เริ่มบังคับใช้ พ.ศ. 2569)</p>
                                 </div>
 
-                                <p className="text-slate-600 text-xs leading-relaxed">
+                                <p className="text-slate-600 text-sm leading-relaxed">
                                     ข้อบังคับกลุ่มฟิตยะตุลฮักฉบับนี้ร่างขึ้นโดยกลุ่มงานสมาชิก สังกัดสำนักอำนวยการ วาระการทำงาน ปี พ.ศ.2569-2572
                                     โดยผ่านการนำเสนอพร้อมได้รับความเห็นชอบจากผู้อำนวยการกลุ่มฟิตยะตุลฮัก และอนุมัติบังคับใช้โดยคณะกรรมการที่ปรึกษา (ชูรอ)
                                     ในการประชุมคณะกรรมการที่ปรึกษา ครั้งที่ 12/2569 เมื่อวันเสาร์ 11 กรกฎาคม 2569 เวลา 13.00 น. เป็นต้นไป
@@ -343,8 +348,8 @@ export default function RegisterPage() {
 
                                 {/* ═══ ข้อที่ 1 ═══ */}
                                 <div>
-                                    <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-xs font-black">1</span>
+                                    <h3 className="font-bold text-slate-900 text-lg mb-2 flex items-center gap-2.5">
+                                        <span className="w-7 h-7 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-sm font-black">1</span>
                                         ประเภทสมาชิก
                                     </h3>
                                     <p className="mb-2">สมาชิกขององค์กรมี 2 ประเภท</p>
@@ -368,7 +373,7 @@ export default function RegisterPage() {
                                         </div>
                                     </div>
                                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
-                                        <p className="text-xs text-amber-800">
+                                        <p className="text-sm text-amber-800">
                                             <strong>*หมายเหตุ :</strong> ผู้ปกครองของสมาชิกวัยนักเรียนและนักศึกษา และภรรยาตลอดจนลูก ๆ ของสมาชิกวัยทำงาน ไม่ถือเป็นสมาชิกกลุ่ม เว้นแต่จะดำเนินการตามขั้นตอนการเป็นสมาชิก ที่จะกล่าวถึงต่อไป
                                         </p>
                                     </div>
@@ -376,8 +381,8 @@ export default function RegisterPage() {
 
                                 {/* ═══ ข้อที่ 2 ═══ */}
                                 <div>
-                                    <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-xs font-black">2</span>
+                                    <h3 className="font-bold text-slate-900 text-lg mb-2 flex items-center gap-2.5">
+                                        <span className="w-7 h-7 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-sm font-black">2</span>
                                         คุณสมบัติการเป็นสมาชิก
                                     </h3>
                                     <p className="mb-2">ผู้ที่จะเป็นสมาชิกขององค์กรได้ ต้องมีคุณสมบัติและหลักเกณฑ์พื้นฐาน ดังนี้</p>
@@ -387,8 +392,7 @@ export default function RegisterPage() {
                                         <li>
                                             ยอมรับเงื่อนไขในการสมัครเป็นสมาชิก ได้แก่
                                             <ul className="list-disc ml-5 mt-1 space-y-0.5">
-                                                <li>ต้องสนับสนุนและส่งเสริมกิจกรรมต่าง ๆ ขององค์กร</li>
-                                                <li>ต้องเข้าร่วมกิจกรรม, สนับสนุน, ให้ความร่วมมือ</li>
+                                                <li>เข้าร่วม ให้ความร่วมมือ สนับสนุน และส่งเสริมกิจกรรมและโครงการต่าง ๆ ขององค์กร</li>
                                                 <li>ประพฤติตนตามกฎระเบียบขององค์กร (ตามประกาศขององค์กร)</li>
                                                 <li>จ่ายค่าบำรุงสมาชิก โดยสมาชิกวัยนักเรียนและนักศึกษา จ่ายขั้นต่ำ 30 บาท/เดือน (360 บาท/ปี) ส่วนสมาชิกวัยทำงาน จ่ายขั้นต่ำ 100 บาท/เดือน (1,200 บาท/ปี)</li>
                                             </ul>
@@ -402,7 +406,7 @@ export default function RegisterPage() {
                                         <li>และเคยผ่านการเป็นน้องค่ายหรือพี่ค่ายหลักขององค์กร ยกเว้นกรณีพิเศษ</li>
                                     </ol>
                                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
-                                        <p className="text-xs text-amber-800">
+                                        <p className="text-sm text-amber-800">
                                             <strong>*หมายเหตุ :</strong> การเข้ามาดำรงตำแหน่งสำคัญขององค์กรให้เป็นไปตามระเบียบของตำแหน่งงานนั้น ๆ
                                         </p>
                                     </div>
@@ -410,13 +414,13 @@ export default function RegisterPage() {
 
                                 {/* ═══ ข้อที่ 3 ═══ */}
                                 <div>
-                                    <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-xs font-black">3</span>
+                                    <h3 className="font-bold text-slate-900 text-lg mb-2 flex items-center gap-2.5">
+                                        <span className="w-7 h-7 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-sm font-black">3</span>
                                         สิทธิและสวัสดิการ
                                     </h3>
                                     <p className="mb-2">สมาชิกกลุ่มมีสิทธิได้รับสวัสดิการต่าง ๆ ดังนี้</p>
                                     <ol className="list-decimal ml-5 text-slate-600 space-y-1.5">
-                                        <li>การเข้าร่วมโครงการและกิจกรรมต่าง ๆ ขององค์กร รวมถึงกิจกรรมภายใน</li>
+                                        <li>มีสิทธิ์เข้าร่วมโครงการและกิจกรรมต่าง ๆ ขององค์กร ทั้งกิจกรรมสาธารณะและกิจกรรมภายในเฉพาะสมาชิก</li>
                                         <li>ได้รับบริการความรู้และวิชาการที่พิเศษจากองค์กร (โดยเฉพาะจากงานวิชาการ)</li>
                                         <li>มีสิทธิได้รับทุนการศึกษาและซะกาต</li>
                                         <li>มีสิทธิได้รับการระดมทุนช่วยเหลือเมื่อประสบอุบัติเหตุหรือภัยต่าง ๆ</li>
@@ -433,7 +437,7 @@ export default function RegisterPage() {
                                         <li>ได้รับการพิจารณาสวัสดิการก่อนหรือพิเศษกว่าสมาชิกทั่วไป</li>
                                     </ol>
                                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
-                                        <p className="text-xs text-amber-800">
+                                        <p className="text-sm text-amber-800">
                                             <strong>*หมายเหตุ :</strong> การดำเนินการใด ๆ เกี่ยวกับสวัสดิการให้เป็นไปตามประกาศระเบียบขององค์กร โดยพิจารณาถึงศักยภาพและข้อจำกัดต่าง ๆ ในแต่ละช่วงเวลา ภายใต้ดุลยพินิจของคณะกรรมการที่ปรึกษา (ชูรอ), ฝ่ายบริหาร และหน่วยงานที่เกี่ยวข้อง
                                         </p>
                                     </div>
@@ -441,8 +445,8 @@ export default function RegisterPage() {
 
                                 {/* ═══ ข้อที่ 4 ═══ */}
                                 <div>
-                                    <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-xs font-black">4</span>
+                                    <h3 className="font-bold text-slate-900 text-lg mb-2 flex items-center gap-2.5">
+                                        <span className="w-7 h-7 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-sm font-black">4</span>
                                         การสิ้นสมาชิกภาพ
                                     </h3>
                                     <p className="mb-2">สมาชิกภาพของสมาชิกจะสิ้นสุดลงด้วยเหตุดังต่อไปนี้</p>
@@ -460,7 +464,7 @@ export default function RegisterPage() {
                                         <li>ถูกปลด ตามมติฝ่ายบริหารของหน่วยงานนั้น ๆ หรือที่เหนือกว่า</li>
                                     </ol>
                                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
-                                        <p className="text-xs text-amber-800">
+                                        <p className="text-sm text-amber-800">
                                             <strong>*หมายเหตุ :</strong> การสิ้นสภาพของคณะกรรมการไม่ถือว่าได้หลุดพ้นจากการเป็นสมาชิก ยกเว้นกรณีพิเศษ
                                         </p>
                                     </div>
@@ -468,8 +472,8 @@ export default function RegisterPage() {
 
                                 {/* ═══ ข้อที่ 5 ═══ */}
                                 <div>
-                                    <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-xs font-black">5</span>
+                                    <h3 className="font-bold text-slate-900 text-lg mb-2 flex items-center gap-2.5">
+                                        <span className="w-7 h-7 bg-[#009EDB]/10 text-[#009EDB] rounded-lg flex items-center justify-center text-sm font-black">5</span>
                                         ขั้นตอนการสมัครสมาชิก
                                     </h3>
                                     <ol className="list-decimal ml-5 text-slate-600 space-y-1.5">
@@ -493,11 +497,11 @@ export default function RegisterPage() {
                             </div>
 
                             {/* Footer with Accept Button */}
-                            <div className="shrink-0 border-t border-slate-100 px-6 py-4 bg-slate-50/80">
+                            <div className="shrink-0 border-t border-slate-100 px-6 sm:px-8 py-4 bg-slate-50/80">
                                 <button
                                     type="button"
                                     onClick={() => setShowTerms(false)}
-                                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#009EDB] to-[#0072B5] hover:from-[#0088C6] hover:to-[#005FA0] text-white font-bold text-sm rounded-2xl shadow-lg shadow-[#009EDB]/20 transition-all duration-200 active:scale-[0.98]"
+                                    className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-gradient-to-r from-[#009EDB] to-[#0072B5] hover:from-[#0088C6] hover:to-[#005FA0] text-white font-bold text-base rounded-2xl shadow-lg shadow-[#009EDB]/20 transition-all duration-200 active:scale-[0.98]"
                                 >
                                     <ShieldCheck className="w-5 h-5" />
                                     ข้าพเจ้ายอมรับข้อบังคับองค์กร
@@ -528,9 +532,9 @@ export default function RegisterPage() {
                             <img src={logoTmyda.src} alt="TMYDA Logo" className="w-full h-full object-contain" />
                         </div>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">สมัครสมาชิก</h1>
-                    <p className="text-sm text-slate-500">กลุ่มฟิตยะตุลฮัก | Fityatulhaq</p>
-                    <p className="text-sm text-slate-500">สมาคมพัฒนาเยาวชนมุสลิมไทย | Thai Muslim Youth Development Association</p>
+                    <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">สมัครสมาชิก</h1>
+                    <p className="text-base text-slate-500">กลุ่มฟิตยะตุลฮัก | Fityatulhaq</p>
+                    <p className="text-base text-slate-500">สมาคมพัฒนาเยาวชนมุสลิมไทย | Thai Muslim Youth Development Association</p>
                 </motion.div>
 
                 {/* Form Card */}
@@ -550,23 +554,24 @@ export default function RegisterPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <FormInput label="ชื่อ-สกุล" required value={formData.fullName} onChange={(v) => handleChange("fullName", v)} placeholder="เช่น มูฮัมหมัด อะลี" icon={User} error={errors.fullName} className="sm:col-span-2" />
                                 <FormInput label="ชื่อเล่น" required value={formData.nickname} onChange={(v) => handleChange("nickname", v)} placeholder="เช่น หมัด" error={errors.nickname} />
+                                <div className="sm:col-span-2" />
 
                                 {/* Birth Date (พ.ศ.) */}
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <label className="text-sm font-semibold text-slate-700">วัน/เดือน/ปีเกิด (พ.ศ.) <span className="text-red-500">*</span></label>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <label className="text-base font-semibold text-slate-700">วัน/เดือน/ปีเกิด (พ.ศ.) <span className="text-red-500">*</span></label>
                                     <div className="grid grid-cols-3 gap-2">
                                         <select value={bDay} onChange={(e) => setBDay(e.target.value)}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none">
+                                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none">
                                             <option value="">วัน</option>
                                             {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
                                         <select value={bMonth} onChange={(e) => setBMonth(e.target.value)}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none">
+                                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none">
                                             <option value="">เดือน</option>
                                             {MONTHS_TH.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                                         </select>
                                         <select value={bYear} onChange={(e) => setBYear(e.target.value)}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none">
+                                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none">
                                             <option value="">ปี พ.ศ.</option>
                                             {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() + 543 - i).map(y => <option key={y} value={y}>{y}</option>)}
                                         </select>
@@ -574,12 +579,12 @@ export default function RegisterPage() {
                                 </div>
 
                                 {/* Blood Type */}
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">กรุ๊ปเลือด <span className="text-red-500">*</span></label>
+                                <div className="space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">กรุ๊ปเลือด <span className="text-red-500">*</span></label>
                                     <div className="flex gap-2">
                                         {BLOOD_TYPES.map(bt => (
                                             <button key={bt} type="button" onClick={() => handleChange("bloodType", formData.bloodType === bt ? "" : bt)}
-                                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${formData.bloodType === bt
+                                                className={`flex-1 py-3 rounded-xl text-base font-bold transition-all border-2 ${formData.bloodType === bt
                                                     ? "bg-red-500 text-white border-red-500 shadow-sm"
                                                     : "bg-slate-50 text-slate-600 border-slate-200 hover:border-red-300"
                                                     }`}
@@ -596,13 +601,13 @@ export default function RegisterPage() {
                         <div>
                             <SectionHeader icon={Phone} label="2. ข้อมูลติดต่อ" color="text-emerald-500" />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                <div className="sm:col-span-2 space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">ที่อยู่ตามทะเบียนบ้าน <span className="text-red-500">*</span></label>
+                                <div className="sm:col-span-2 space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">ที่อยู่ตามทะเบียนบ้าน <span className="text-red-500">*</span></label>
                                     <textarea value={formData.address} onChange={(e) => handleChange("address", e.target.value)}
                                         placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"
-                                        rows={2} className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all resize-none ${errors.address ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}
+                                        rows={2} className={`w-full px-4 py-3.5 bg-slate-50 border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all resize-none ${errors.address ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}
                                     />
-                                    {errors.address && <p className="text-xs text-red-500 font-medium">{errors.address}</p>}
+                                    {errors.address && <p className="text-sm text-red-500 font-medium">{errors.address}</p>}
                                 </div>
                                 <FormInput label="เบอร์โทรติดต่อ" required type="tel" value={formData.phoneNumber} onChange={(v) => handleChange("phoneNumber", v)} placeholder="08x-xxx-xxxx" icon={Phone} error={errors.phoneNumber} />
                                 <FormInput label="E-mail" required type="email" value={formData.email} onChange={(v) => handleChange("email", v)} placeholder="example@email.com" icon={Mail} error={errors.email} />
@@ -618,10 +623,10 @@ export default function RegisterPage() {
                         <div>
                             <SectionHeader icon={GraduationCap} label="3. การศึกษา" color="text-violet-500" />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                <div className="sm:col-span-2 space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">สำเร็จการศึกษาสูงสุด <span className="text-red-500">*</span></label>
+                                <div className="sm:col-span-2 space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">สำเร็จการศึกษาสูงสุด <span className="text-red-500">*</span></label>
                                     <select value={formData.education} onChange={(e) => handleChange("education", e.target.value)}
-                                        className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none ${errors.education ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
+                                        className={`w-full px-4 py-3.5 bg-slate-50 border rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none ${errors.education ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
                                         <option value="">เลือกระดับการศึกษา</option>
                                         {EDUCATION_LEVELS.map(e => <option key={e} value={e}>{e}</option>)}
                                     </select>
@@ -639,22 +644,22 @@ export default function RegisterPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <FormInput label="อาชีพปัจจุบัน" required value={formData.occupation} onChange={(v) => handleChange("occupation", v)} placeholder="เช่น นักศึกษา, วิศวกร" icon={Briefcase} error={errors.occupation} />
                                 <FormInput label="ชื่อสถานประกอบการ/สถานศึกษา" required value={formData.workplace} onChange={(v) => handleChange("workplace", v)} placeholder="ชื่อบริษัท/สถานศึกษา" icon={Building} error={errors.workplace} />
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">จังหวัด สถานศึกษาหรือที่ทำงาน <span className="text-red-500">*</span></label>
+                                <div className="space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">จังหวัด สถานศึกษาหรือที่ทำงาน <span className="text-red-500">*</span></label>
                                     <select value={formData.workProvince} onChange={(e) => handleChange("workProvince", e.target.value)}
-                                        className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none ${errors.workProvince ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
+                                        className={`w-full px-4 py-3.5 bg-slate-50 border rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all appearance-none ${errors.workProvince ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
                                         <option value="">เลือกจังหวัด</option>
                                         {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
                                 </div>
 
                                 {/* Marital Status */}
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">สถานะ <span className="text-red-500">*</span></label>
+                                <div className="space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">สถานะ <span className="text-red-500">*</span></label>
                                     <div className="flex gap-2">
                                         {MARITAL_STATUSES.map(s => (
                                             <button key={s} type="button" onClick={() => handleChange("maritalStatus", formData.maritalStatus === s ? "" : s)}
-                                                className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border-2 ${formData.maritalStatus === s
+                                                className={`flex-1 py-3 rounded-xl text-sm sm:text-base font-bold transition-all border-2 ${formData.maritalStatus === s
                                                     ? "bg-amber-500 text-white border-amber-500 shadow-sm"
                                                     : "bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-300"
                                                     }`}
@@ -666,8 +671,8 @@ export default function RegisterPage() {
                                 {/* Children (conditional) */}
                                 {["แต่งงานแล้ว", "หย่าร้าง"].includes(formData.maritalStatus) && (
                                     <div className="sm:col-span-2 bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-4">
-                                        <p className="text-sm font-bold text-amber-700 flex items-center gap-2">
-                                            <Heart className="w-4 h-4" />
+                                        <p className="text-base font-bold text-amber-700 flex items-center gap-2">
+                                            <Heart className="w-5 h-5" />
                                             ข้อมูลเรื่องลูก
                                         </p>
                                         <div className="grid grid-cols-2 gap-4">
@@ -689,7 +694,7 @@ export default function RegisterPage() {
                                 <FormInput label="รู้จักกลุ่มองค์กรจากไหน" required value={formData.knowFrom} onChange={(v) => handleChange("knowFrom", v)} placeholder="เช่น เพื่อนแนะนำ, โซเชียลมีเดีย" icon={Star} error={errors.knowFrom} />
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700">เคยเข้าร่วมกิจกรรมใดบ้างของกลุ่ม <span className="text-xs text-slate-400 font-normal">(เลือกได้หลายข้อ)</span></label>
+                                    <label className="text-base font-semibold text-slate-700">เคยเข้าร่วมกิจกรรมใดบ้างของกลุ่ม <span className="text-sm text-slate-400 font-normal">(เลือกได้หลายข้อ)</span></label>
                                     <div className="space-y-2">
                                         {ACTIVITY_LIST.map(activity => (
                                             <div key={activity.key} className={`rounded-xl border-2 transition-all ${activities[activity.key].selected
@@ -709,7 +714,7 @@ export default function RegisterPage() {
                                                             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                                                         )}
                                                     </div>
-                                                    <span className={`text-sm font-medium ${activities[activity.key].selected ? "text-sky-800" : "text-slate-700"
+                                                    <span className={`text-base font-medium ${activities[activity.key].selected ? "text-sky-800" : "text-slate-700"
                                                         }`}>{activity.label}</span>
                                                 </button>
 
@@ -721,7 +726,7 @@ export default function RegisterPage() {
                                                             value={activities[activity.key].detail}
                                                             onChange={(e) => setActivityDetail(activity.key, e.target.value)}
                                                             placeholder={activity.placeholder}
-                                                            className="w-full px-3 py-2 bg-white border border-sky-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+                                                            className="w-full px-3 py-2.5 bg-white border border-sky-200 rounded-lg text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
                                                         />
                                                     </div>
                                                 )}
@@ -738,28 +743,108 @@ export default function RegisterPage() {
                         <div>
                             <SectionHeader icon={Sparkles} label="6. ข้อมูลเพิ่มเติม" color="text-pink-500" />
                             <div className="grid grid-cols-1 gap-4 mt-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">ทักษะหรือความสามารถพิเศษ <span className="text-red-500">*</span></label>
+                                <div className="space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">ทักษะหรือความสามารถพิเศษ <span className="text-red-500">*</span></label>
                                     <textarea value={formData.skills} onChange={(e) => handleChange("skills", e.target.value)}
                                         placeholder="เช่น ออกแบบกราฟิก, พิธีกร, ถ่ายภาพ, ตัดต่อวิดีโอ..."
-                                        rows={2} className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all resize-none ${errors.skills ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}
+                                        rows={2} className={`w-full px-4 py-3.5 bg-slate-50 border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all resize-none ${errors.skills ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}
                                     />
-                                    {errors.skills && <p className="text-xs text-red-500 font-medium">{errors.skills}</p>}
+                                    {errors.skills && <p className="text-sm text-red-500 font-medium">{errors.skills}</p>}
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">ความสนใจพิเศษ <span className="text-red-500">*</span></label>
+                                <div className="space-y-2">
+                                    <label className="text-base font-semibold text-slate-700">ความสนใจพิเศษ <span className="text-red-500">*</span></label>
                                     <textarea value={formData.interests} onChange={(e) => handleChange("interests", e.target.value)}
                                         placeholder="เช่น กีฬา, ดาอฺวะฮฺ, การศึกษาอิสลาม..."
-                                        rows={2} className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all resize-none ${errors.interests ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}
+                                        rows={2} className={`w-full px-4 py-3.5 bg-slate-50 border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all resize-none ${errors.interests ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}
                                     />
-                                    {errors.interests && <p className="text-xs text-red-500 font-medium">{errors.interests}</p>}
+                                    {errors.interests && <p className="text-sm text-red-500 font-medium">{errors.interests}</p>}
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="h-px bg-slate-100" />
+
+                        {/* ═══ 7. รูปภาพโปรไฟล์ (ไม่บังคับ) ═══ */}
+                        <div>
+                            <SectionHeader icon={Camera} label="7. รูปภาพโปรไฟล์" color="text-teal-500" />
+                            <div className="mt-4 space-y-3">
+                                <p className="text-base text-slate-600">
+                                    อัปโหลดรูปภาพของท่าน <span className="text-slate-400 text-sm">(ไม่บังคับ)</span>
+                                </p>
+
+                                <div className="flex flex-col items-center gap-4">
+                                    {/* Preview */}
+                                    {photoPreview ? (
+                                        <div className="relative w-36 h-36 rounded-2xl overflow-hidden border-2 border-teal-200 shadow-md">
+                                            <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPhotoFile(null);
+                                                    setPhotoPreview(null);
+                                                    if (photoInputRef.current) photoInputRef.current.value = '';
+                                                }}
+                                                className="absolute top-1.5 right-1.5 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => photoInputRef.current?.click()}
+                                            className="w-36 h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-teal-400 bg-slate-50 hover:bg-teal-50/50 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group"
+                                        >
+                                            <ImagePlus className="w-8 h-8 text-slate-400 group-hover:text-teal-500 transition-colors" />
+                                            <span className="text-sm text-slate-400 group-hover:text-teal-600 transition-colors">เลือกรูปภาพ</span>
+                                        </button>
+                                    )}
+
+                                    <input
+                                        ref={photoInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                if (file.size > 5 * 1024 * 1024) {
+                                                    alert('ไฟล์ภาพต้องมีขนาดไม่เกิน 5MB');
+                                                    return;
+                                                }
+                                                setPhotoFile(file);
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+
+                                    {photoPreview && (
+                                        <button
+                                            type="button"
+                                            onClick={() => photoInputRef.current?.click()}
+                                            className="text-sm text-teal-600 hover:text-teal-700 font-medium underline underline-offset-2"
+                                        >
+                                            เปลี่ยนรูปภาพ
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* หมายเหตุ */}
+                                <div className="mt-3 p-3.5 bg-amber-50 border border-amber-200/60 rounded-xl">
+                                    <p className="text-sm text-amber-800 leading-relaxed">
+                                        <strong>📌 หมายเหตุ :</strong> สำหรับมุสลิมะฮฺ สามารถสงวนสิทธิ์ไม่อัปโหลดรูปภาพได้
+                                    </p>
+                                </div>
+
+                                <p className="text-sm text-slate-400">รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน 5MB</p>
                             </div>
                         </div>
 
                         {/* Submit */}
                         <button type="submit" disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-gradient-to-r from-[#009EDB] to-[#0072B5] hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-sky-600/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group text-base"
+                            className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-gradient-to-r from-[#009EDB] to-[#0072B5] hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-sky-600/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group text-lg"
                         >
                             {loading ? (
                                 <Loader className="w-5 h-5 animate-spin" />
@@ -789,9 +874,9 @@ export default function RegisterPage() {
 
 function SectionHeader({ icon: Icon, label, color }: { icon: any; label: string; color: string }) {
     return (
-        <div className="flex items-center gap-2">
-            <Icon className={`w-4 h-4 ${color}`} />
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">{label}</h2>
+        <div className="flex items-center gap-2.5">
+            <Icon className={`w-5 h-5 ${color}`} />
+            <h2 className="text-base font-black text-slate-800 uppercase tracking-wider">{label}</h2>
         </div>
     );
 }
@@ -803,24 +888,24 @@ function FormInput({
     placeholder?: string; error?: string; icon?: any; type?: string; maxLength?: number; className?: string;
 }) {
     return (
-        <div className={`space-y-1.5 ${className || ''}`}>
-            <label className="text-sm font-semibold text-slate-700">
+        <div className={`space-y-2 ${className || ''}`}>
+            <label className="text-base font-semibold text-slate-700">
                 {label} {required && <span className="text-red-500">*</span>}
             </label>
             <div className="relative group">
                 {Icon && (
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <Icon className="h-4 w-4 text-slate-400 group-focus-within:text-[#009EDB] transition-colors" />
+                        <Icon className="h-5 w-5 text-slate-400 group-focus-within:text-[#009EDB] transition-colors" />
                     </div>
                 )}
                 <input
                     type={type} value={value} onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder} maxLength={maxLength}
-                    className={`w-full ${Icon ? 'pl-10' : 'pl-4'} pr-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all ${error ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
+                    className={`w-full ${Icon ? 'pl-11' : 'pl-4'} pr-4 py-3.5 bg-slate-50 border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#009EDB]/20 focus:border-[#009EDB] transition-all ${error ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
                         }`}
                 />
             </div>
-            {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+            {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
         </div>
     );
 }

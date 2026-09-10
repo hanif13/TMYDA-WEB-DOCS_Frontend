@@ -709,12 +709,30 @@ export async function registerMember(data: {
     activities?: any;
     skills?: string;
     interests?: string;
+    photoFile?: File;
 }) {
     const url = `${API_BASE}/members/register`;
+    
+    const formData = new FormData();
+
+    // Append all text fields
+    Object.entries(data).forEach(([key, value]) => {
+        if (key === 'photoFile' || value === undefined || value === null) return;
+        if (key === 'activities') {
+            formData.append(key, JSON.stringify(value));
+        } else {
+            formData.append(key, String(value));
+        }
+    });
+
+    // Append photo if provided
+    if (data.photoFile) {
+        formData.append('photo', data.photoFile);
+    }
+
     const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: formData,
     });
     if (!res.ok) {
         const errorText = await res.text();
