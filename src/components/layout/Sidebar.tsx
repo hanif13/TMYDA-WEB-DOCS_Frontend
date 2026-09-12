@@ -13,47 +13,48 @@ import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef } from 'react';
+import { hasPermission } from '@/config/permissions';
 
-// Role-based navigation configuration
+// Permission-based navigation configuration
 const navGroups = [
     {
         label: 'หลัก',
         items: [
-            { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'คณะกรรมการ', href: '/committee', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'คำทับศัพท์ที่ใช้บ่อย', href: '/transliteration', icon: Languages, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'ปฏิทินกิจกรรม', href: '/calendar', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'Dashboard', href: '/', icon: LayoutDashboard, permission: 'dashboard.view' },
+            { name: 'โครงการที่เสร็จสิ้น', href: '/completed-projects', icon: FolderKanban, permission: 'completed_projects.view' },
+            { name: 'คณะกรรมการ', href: '/committee', icon: Users, permission: 'committee.view' },
+            { name: 'คำทับศัพท์ที่ใช้บ่อย', href: '/transliteration', icon: Languages, permission: 'transliteration.view' },
+            { name: 'ปฏิทินกิจกรรม', href: '/calendar', icon: CalendarDays, permission: 'calendar.view' },
         ],
     },
     {
         label: 'กลุ่มงานเลขานุการ',
         items: [
-            { name: 'ส่งคำขอเอกสาร', href: '/documents?tab=request', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'ประวัติคำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
-            { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'VIEWER'] },
+            { name: 'ส่งคำขอเอกสาร', href: '/documents?tab=request', icon: FileText, permission: 'documents.view' },
+            { name: 'ประวัติคำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, permission: 'documents.view' },
+            { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, permission: 'registry.view' },
+            { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, permission: 'annual_projects.view' },
+            { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, permission: 'projects.view' },
         ],
     },
     {
         label: 'กลุ่มงานการเงินและบัญชี',
         items: [
-            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE'] },
+            { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, permission: 'income_expense.view' },
         ],
     },
     {
         label: 'กลุ่มงานสมาชิก',
         items: [
-            { name: 'ข้อมูลสมาชิก', href: '/members', icon: UserPlus, roles: ['SUPER_ADMIN', 'ADMIN'] },
+            { name: 'ข้อมูลสมาชิก', href: '/members', icon: UserPlus, permission: 'members.view' },
         ],
     },
     {
         label: 'ระบบ',
         items: [
-            { name: 'ผู้ใช้งาน', href: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
-            { name: 'จัดการปีการทำงาน', href: '/settings/years', icon: CalendarDays, roles: ['SUPER_ADMIN'] },
-            { name: 'ประวัติการใช้งาน', href: '/activity-logs', icon: LayoutDashboard, roles: ['SUPER_ADMIN'] },
+            { name: 'ผู้ใช้งาน', href: '/users', icon: Users, permission: 'users.view' },
+            { name: 'จัดการปีการทำงาน', href: '/settings/years', icon: CalendarDays, permission: 'settings.view' },
+            { name: 'ประวัติการใช้งาน', href: '/activity-logs', icon: LayoutDashboard, permission: 'activity_logs.view' },
         ],
     },
 ];
@@ -141,10 +142,13 @@ export function Sidebar({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Filter navigation based on role
+    // Filter navigation based on permissions
+    const userPermissions = user?.permissions || [];
     const filteredGroups = navGroups.map(group => {
         const filteredItems = group.items.filter(item => {
-            return item.roles.includes(role);
+            // SUPER_ADMIN bypasses all checks
+            if (role === 'SUPER_ADMIN') return true;
+            return hasPermission(userPermissions, item.permission);
         });
 
         return {

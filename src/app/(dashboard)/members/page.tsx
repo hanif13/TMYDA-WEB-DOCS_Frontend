@@ -37,7 +37,8 @@ function StatCard({ title, value, icon: Icon, color, bgColor }: any) {
 export default function MembersPage() {
     const { data: session } = useSession();
     const userRole = (session?.user as any)?.role;
-    const canManage = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const canManage = userRole === 'SUPER_ADMIN' || userPermissions.includes('members.edit');
 
     const [members, setMembers] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);

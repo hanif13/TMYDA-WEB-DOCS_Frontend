@@ -41,7 +41,8 @@ type View = "dept" | "type" | "all";
 export default function RegistryPage() {
     const { data: session } = useSession();
     const userRole = (session?.user as any)?.role || "VIEWER";
-    const canEdit = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const canEdit = userRole === "SUPER_ADMIN" || userPermissions.includes('registry.edit');
 
     const { selectedYear } = useYear();
     const [docs, setDocs] = useState<StoredDocument[]>([]);

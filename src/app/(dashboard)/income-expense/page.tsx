@@ -35,7 +35,8 @@ export default function IncomeExpensePage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
     const userRole = (session?.user as any)?.role || "VIEWER";
-    const isViewer = userRole !== "SUPER_ADMIN" && userRole !== "FINANCE";
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const isViewer = userRole !== "SUPER_ADMIN" && !userPermissions.includes('income_expense.edit');
 
     const [transactions, setTransactions] = useState<BudgetTransaction[]>([]);
     const [projects, setProjects] = useState<{

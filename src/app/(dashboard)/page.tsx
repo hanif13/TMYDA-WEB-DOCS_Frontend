@@ -19,7 +19,8 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const { selectedYear } = useYear();
   const userRole = (session?.user as any)?.role || "VIEWER";
-  const isViewer = userRole === "VIEWER" || userRole === "FINANCE";
+  const userPermissions: string[] = (session?.user as any)?.permissions || [];
+  const isViewer = userRole !== "SUPER_ADMIN" && !userPermissions.includes('projects.edit');
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [documents, setDocuments] = useState<StoredDocument[]>([]);

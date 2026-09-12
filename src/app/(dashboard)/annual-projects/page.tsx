@@ -58,7 +58,8 @@ export default function AnnualProjectsPage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
     const userRole = (session?.user as any)?.role || "VIEWER";
-    const isViewer = userRole === "VIEWER" || userRole === "FINANCE";
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const isViewer = userRole !== "SUPER_ADMIN" && !userPermissions.includes('annual_projects.edit');
     const [plans, setPlans] = useState<AnnualPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>("quarter");

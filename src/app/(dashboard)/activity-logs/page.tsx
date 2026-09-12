@@ -29,7 +29,9 @@ const RESOURCE_MAP: Record<string, string> = {
 
 export default function ActivityLogsPage() {
     const { data: session } = useSession();
-    const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
+    const userRole = (session?.user as any)?.role;
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const canViewLogs = userRole === "SUPER_ADMIN" || userPermissions.includes('activity_logs.view');
 
     const [logs, setLogs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -59,12 +61,12 @@ export default function ActivityLogsPage() {
     };
 
     useEffect(() => {
-        if (isSuperAdmin) {
+        if (canViewLogs) {
             fetchLogs();
         }
-    }, [page, filterAction, filterResource, isSuperAdmin]);
+    }, [page, filterAction, filterResource, canViewLogs]);
 
-    if (!isSuperAdmin) {
+    if (!canViewLogs) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-500 space-y-4">
                 <Activity className="w-16 h-16 text-slate-300" />

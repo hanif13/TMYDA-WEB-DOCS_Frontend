@@ -14,7 +14,9 @@ import { useState } from "react";
 export default function YearsPage() {
     const { plans, refreshYears } = useYear();
     const { data: session } = useSession();
-    const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
+    const userRole = (session?.user as any)?.role;
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const canManageSettings = userRole === "SUPER_ADMIN" || userPermissions.includes('settings.edit');
 
     const [isAdding, setIsAdding] = useState(false);
     const [formData, setFormData] = useState({ 
@@ -24,7 +26,7 @@ export default function YearsPage() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    if (session && !isSuperAdmin) {
+    if (session && !canManageSettings) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500 bg-white rounded-[3rem] border border-slate-100 p-10">
                 <ShieldAlert className="w-16 h-16 text-rose-500 mb-4" />

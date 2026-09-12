@@ -283,7 +283,8 @@ export default function CommitteePage() {
     const { data: session } = useSession();
     const { selectedYear } = useYear();
     const userRole = (session?.user as any)?.role;
-    const canEdit = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
+    const canEdit = userRole === "SUPER_ADMIN" || userPermissions.includes('committee.edit');
     
     const [members, setMembers] = useState<CommitteeMember[]>([]);
     const [loading, setLoading] = useState(true);

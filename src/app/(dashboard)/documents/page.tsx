@@ -587,8 +587,9 @@ function DocumentsPageContent() {
     const currentUserId = (session?.user as any)?.id || (session?.user as any)?.userId || "";
     
     const userRole = (session?.user as any)?.role || "VIEWER";
+    const userPermissions: string[] = (session?.user as any)?.permissions || [];
     // Everyone can request documents, but only SUPER_ADMIN/ADMIN can manage (edit/delete/change status)
-    const isManager = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+    const isManager = userRole === "SUPER_ADMIN" || userPermissions.includes('documents.edit');
     const isViewer = !isManager;
     const { selectedYear } = useYear();
     const [tab, setTab] = useState<Tab>("request");

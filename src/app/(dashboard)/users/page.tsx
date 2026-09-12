@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, User, Plus, MoreHorizontal,
     Loader, X, Check, Trash2, Key, Mail, Building2,
     ShieldAlert, Eye, UserCog, Phone, Facebook,
-    FileUp, Download, AlertCircle
+    FileUp, Download, AlertCircle, Pencil
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import {
     fetchUsers, createUser, updateUser, deleteUser,
     fetchDepartments, uploadUsersCsv
 } from "@/lib/api";
+import { PERMISSION_CATALOG, ROLE_PRESETS, getDefaultPermissions } from "@/config/permissions";
 
 const ROLES_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
     SUPER_ADMIN: { label: 'ผู้ดูแลระบบ', color: 'bg-amber-100 text-amber-700 border-amber-200', desc: 'ทำได้ทุกอย่าง (สูงสุด 3 คน)' },
@@ -28,6 +29,9 @@ const MAX_SUPER_ADMINS = 3;
 export default function UsersPage() {
     const { data: session } = useSession();
     const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
+    const userPerms: string[] = (session?.user as any)?.permissions || [];
+    const canViewUsers = isSuperAdmin || userPerms.includes('users.view');
+    const canEditUsers = isSuperAdmin || userPerms.includes('users.edit');
 
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +91,7 @@ export default function UsersPage() {
         };
     }, [showModal, showUploadModal]);
 
-    if (session && !isSuperAdmin) {
+    if (session && !canViewUsers) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500 bg-white rounded-[3rem] border border-slate-100 p-10">
                 <ShieldAlert className="w-16 h-16 text-rose-500 mb-4" />
@@ -124,7 +128,7 @@ export default function UsersPage() {
                 phoneNumber: "",
                 facebook: "",
                 subDepartment: "",
-                permissions: ["ACCESS_DASHBOARD"]
+                permissions: getDefaultPermissions("VIEWER")
             });
         }
         setShowModal(true);
@@ -435,7 +439,14 @@ export default function UsersPage() {
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ระดับสิทธิ์ *</label>
-                                    <select required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}>
+                                    <select required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none" value={formData.role} onChange={e => {
+                                        const newRole = e.target.value;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            role: newRole,
+                                            permissions: getDefaultPermissions(newRole)
+                                        }));
+                                    }}>
                                         {ROLES.map(role => {
                                             const cfg = ROLES_CONFIG[role];
                                             const isDisabled = role === 'SUPER_ADMIN' && users.filter(u => u.role === 'SUPER_ADMIN').length >= MAX_SUPER_ADMINS && formData.role !== 'SUPER_ADMIN';
@@ -483,17 +494,88 @@ export default function UsersPage() {
                                 </div>
                             </div>
 
-                            {/* Role Description */}
+                            {/* Granular Permissions Checklist */}
                             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 flex items-center gap-2">
-                                    <ShieldCheck className="w-4 h-4" /> สิทธิ์ของ {ROLES_CONFIG[formData.role]?.label || formData.role}
-                                </h4>
-                                <p className="text-sm text-slate-600 font-medium">
-                                    {formData.role === 'SUPER_ADMIN' && 'ทำได้ทุกอย่าง — จัดการผู้ใช้, แก้ไขทุกหน้า, ตั้งค่าระบบ, ดูรายรับ-รายจ่าย'}
-                                    {formData.role === 'ADMIN' && 'จัดการโครงการ, เพิ่มเอกสาร, จัดการคณะกรรมการ, ดูรายรับ-รายจ่าย (อ่านอย่างเดียว)'}
-                                    {formData.role === 'FINANCE' && 'จัดการรายรับ-รายจ่ายทั้งหมด, ดูหน้าอื่นได้ (อ่านอย่างเดียว), ขอเอกสารได้'}
-                                    {formData.role === 'VIEWER' && 'ดูข้อมูลทุกหน้า, ขอเอกสาร, ดาวน์โหลดเอกสาร — ไม่สามารถแก้ไขข้อมูลใดๆ'}
-                                </p>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                                        <ShieldCheck className="w-4 h-4" /> สิทธิ์การเข้าถึง — {ROLES_CONFIG[formData.role]?.label || formData.role}
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, permissions: getDefaultPermissions(prev.role) }))}
+                                        className="text-[10px] font-bold text-blue-500 hover:text-blue-700 transition-colors"
+                                    >
+                                        รีเซ็ตเป็นค่าเริ่มต้น
+                                    </button>
+                                </div>
+
+                                {formData.role === 'SUPER_ADMIN' ? (
+                                    <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200/60 rounded-xl">
+                                        <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
+                                        <p className="text-sm text-amber-800 font-medium">ผู้ดูแลระบบมีสิทธิ์เข้าถึงทุกหน้าโดยอัตโนมัติ ไม่สามารถจำกัดสิทธิ์ได้</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {PERMISSION_CATALOG.map(group => (
+                                            <div key={group.groupLabel}>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{group.groupLabel}</p>
+                                                <div className="space-y-1">
+                                                    {group.permissions.map(perm => {
+                                                        const isChecked = formData.permissions.includes(perm.key);
+                                                        return (
+                                                            <label
+                                                                key={perm.key}
+                                                                className={cn(
+                                                                    "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150",
+                                                                    isChecked
+                                                                        ? "bg-blue-50 border border-blue-200/60"
+                                                                        : "bg-white border border-slate-100 hover:bg-slate-50"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    {perm.type === 'view' ? (
+                                                                        <Eye className={cn("w-3.5 h-3.5", isChecked ? "text-blue-500" : "text-slate-300")} />
+                                                                    ) : (
+                                                                        <Pencil className={cn("w-3.5 h-3.5", isChecked ? "text-amber-500" : "text-slate-300")} />
+                                                                    )}
+                                                                    <span className={cn("text-sm font-medium", isChecked ? "text-slate-800" : "text-slate-400")}>
+                                                                        {perm.label}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="relative">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isChecked}
+                                                                        onChange={() => togglePermission(perm.key)}
+                                                                        className="sr-only peer"
+                                                                    />
+                                                                    <div className={cn(
+                                                                        "w-9 h-5 rounded-full transition-colors duration-200",
+                                                                        isChecked ? "bg-blue-500" : "bg-slate-200"
+                                                                    )} />
+                                                                    <div className={cn(
+                                                                        "absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200",
+                                                                        isChecked ? "translate-x-4" : "translate-x-0"
+                                                                    )} />
+                                                                </div>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="mt-3 pt-3 border-t border-slate-200/60">
+                                    <p className="text-[10px] text-slate-400">
+                                        <Eye className="w-3 h-3 inline mr-1" /> = ดูได้อย่างเดียว
+                                        <span className="mx-2">|</span>
+                                        <Pencil className="w-3 h-3 inline mr-1" /> = แก้ไข/จัดการได้
+                                        <span className="mx-2">|</span>
+                                        สิทธิ์ทั้งหมด: {formData.permissions.length} รายการ
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6">
