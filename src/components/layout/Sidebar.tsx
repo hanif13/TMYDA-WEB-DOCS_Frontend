@@ -7,7 +7,7 @@ import {
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
     KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox, Languages, UserPlus
+    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -47,6 +47,14 @@ const navGroups = [
         label: 'กลุ่มงานสมาชิก',
         items: [
             { name: 'ข้อมูลสมาชิก', href: '/members', icon: UserPlus, permission: 'members.view' },
+        ],
+    },
+    {
+        label: 'จัดการเว็บไซต์หลัก',
+        items: [
+            { name: 'หน้าแรก & แบนเนอร์', href: '/website/home', icon: Globe, permission: 'website.view' },
+            { name: 'ข่าวประชาสัมพันธ์', href: '/website/news', icon: Newspaper, permission: 'website.view' },
+            { name: 'คำประกาศ / แถลงการณ์', href: '/website/announcements', icon: Megaphone, permission: 'website.view' },
         ],
     },
     {

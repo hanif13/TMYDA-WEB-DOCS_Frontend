@@ -258,7 +258,7 @@ export async function updateProject(id: string, data: FormData | Partial<{
 }>) {
     return apiFetch<any>(`/projects/${id}`, {
         method: "PATCH",
-        body: data instanceof FormData ? data : JSON.stringify(data),
+        body: data instanceof FormData ? await compressFormDataImages(data) : JSON.stringify(data),
     });
 }
 
@@ -289,7 +289,7 @@ export async function createTransaction(data: FormData | {
 }) {
     return apiFetch<any>("/finance", {
         method: "POST",
-        body: data instanceof FormData ? data : JSON.stringify(data),
+        body: data instanceof FormData ? await compressFormDataImages(data) : JSON.stringify(data),
     });
 }
 
@@ -314,7 +314,7 @@ export async function updateTransaction(id: string, data: FormData | Partial<{
 }>) {
     return apiFetch<any>(`/finance/${id}`, {
         method: "PATCH",
-        body: data instanceof FormData ? data : JSON.stringify(data),
+        body: data instanceof FormData ? await compressFormDataImages(data) : JSON.stringify(data),
     });
 }
 
@@ -326,7 +326,7 @@ export async function fetchCommitteeMembers(year?: number) {
 export async function createCommitteeMember(data: FormData | any) {
     return apiFetch<any>("/committee", {
         method: "POST",
-        body: data instanceof FormData ? data : JSON.stringify(data),
+        body: data instanceof FormData ? await compressFormDataImages(data) : JSON.stringify(data),
     });
 }
 
@@ -340,7 +340,7 @@ export async function createCommitteeBulk(data: any[]) {
 export async function updateCommitteeMember(id: string, data: FormData | any) {
     return apiFetch<any>(`/committee/${id}`, {
         method: "PATCH",
-        body: data instanceof FormData ? data : JSON.stringify(data),
+        body: data instanceof FormData ? await compressFormDataImages(data) : JSON.stringify(data),
     });
 }
 
@@ -481,34 +481,39 @@ export async function uploadUsersCsv(file: File) {
 }
 
 // ─── UPLOADS ──────────────────────────────────────────────
+// Shrink photos before upload (max ~500KB, 1920px) to save Supabase Storage space.
+// Non-image files (PDF etc.) and GIFs are returned unchanged; on any error the original is used.
+export async function compressImage(file: File): Promise<File> {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+    try {
+        const compressed = await imageCompression(file, {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+        });
+        return compressed.size < file.size ? new File([compressed], file.name, { type: file.type }) : file;
+    } catch (error) {
+        console.error('Error compressing image:', error);
+        return file;
+    }
+}
+
+// Return a copy of the FormData with every image file compressed.
+async function compressFormDataImages(data: FormData): Promise<FormData> {
+    const out = new FormData();
+    for (const [key, value] of Array.from(data.entries())) {
+        if (value instanceof File) out.append(key, await compressImage(value), value.name);
+        else out.append(key, value);
+    }
+    return out;
+}
+
 export async function uploadImages(files: File[]) {
     const formData = new FormData();
-    
-    // Compression options
-    const options = {
-      maxSizeMB: 0.5, // 500KB Max
-      maxWidthOrHeight: 1920,
-      useWebWorker: true
-    };
-
     for (const file of files) {
-        try {
-            // Only compress if it's an image
-            if (file.type.startsWith('image/')) {
-                const compressedFile = await imageCompression(file, options);
-                // Keep the original name and type
-                const finalFile = new File([compressedFile], file.name, { type: file.type });
-                formData.append('files', finalFile);
-            } else {
-                formData.append('files', file);
-            }
-        } catch (error) {
-            console.error('Error compressing image:', error);
-            // Fallback to original file
-            formData.append('files', file);
-        }
+        formData.append('files', await compressImage(file));
     }
-    
+
     return apiFetch<{ urls: string[] }>("/upload", {
         method: "POST",
         body: formData,
@@ -727,7 +732,7 @@ export async function registerMember(data: {
 
     // Append photo if provided
     if (data.photoFile) {
-        formData.append('photo', data.photoFile);
+        formData.append('photo', await compressImage(data.photoFile));
     }
 
     const res = await fetch(url, {
@@ -742,3 +747,45 @@ export async function registerMember(data: {
 }
 
 
+
+// ─── เว็บไซต์หลัก (จัดการเว็บไซต์หลัก) ─────────────────────
+export type SiteNews = {
+    id: string; slug: string; title: string; department: string;
+    excerpt: string | null; content: string | null; coverUrl: string | null; images: string[];
+    isPublished: boolean; isPinned: boolean; publishedAt: string | null;
+    createdBy: string | null; createdAt: string; updatedAt: string;
+};
+export type SiteAnnouncement = { id: string; number: string; title: string; date: string; pdfUrl: string | null; isPublished: boolean };
+export type SiteBanner = { id: string; title: string | null; imageUrl: string; linkUrl: string | null; order: number; isActive: boolean };
+export type SiteSettings = {
+    home: { heroBadge: string; heroTitle: string; heroSubtitle: string; highlight: { enabled: boolean; text: string; href: string } };
+    contact: { address: string; phone: string; email: string; facebook: string; youtube: string; tiktok: string; instagram: string; line: string };
+};
+
+const jsonBody = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
+
+export const fetchSiteSettings = () => apiFetch<SiteSettings>("/site/settings");
+export const updateSiteSetting = <K extends keyof SiteSettings>(key: K, value: SiteSettings[K]) =>
+    apiFetch<SiteSettings[K]>(`/site/settings/${key}`, jsonBody("PUT", value));
+
+export const fetchSiteNews = () => apiFetch<SiteNews[]>("/site/news");
+export const createSiteNews = (data: Partial<SiteNews>) => apiFetch<SiteNews>("/site/news", jsonBody("POST", data));
+export const updateSiteNews = (id: string, data: Partial<SiteNews>) => apiFetch<SiteNews>(`/site/news/${id}`, jsonBody("PUT", data));
+export const deleteSiteNews = (id: string) => apiFetch(`/site/news/${id}`, { method: "DELETE" });
+
+export const fetchSiteAnnouncements = () => apiFetch<SiteAnnouncement[]>("/site/announcements");
+export const createSiteAnnouncement = (data: Partial<SiteAnnouncement>) => apiFetch<SiteAnnouncement>("/site/announcements", jsonBody("POST", data));
+export const updateSiteAnnouncement = (id: string, data: Partial<SiteAnnouncement>) => apiFetch<SiteAnnouncement>(`/site/announcements/${id}`, jsonBody("PUT", data));
+export const deleteSiteAnnouncement = (id: string) => apiFetch(`/site/announcements/${id}`, { method: "DELETE" });
+
+export const fetchSiteBanners = () => apiFetch<SiteBanner[]>("/site/banners");
+export const createSiteBanner = (data: Partial<SiteBanner>) => apiFetch<SiteBanner>("/site/banners", jsonBody("POST", data));
+export const updateSiteBanner = (id: string, data: Partial<SiteBanner>) => apiFetch<SiteBanner>(`/site/banners/${id}`, jsonBody("PUT", data));
+export const reorderSiteBanners = (ids: string[]) => apiFetch("/site/banners/reorder", jsonBody("PUT", { ids }));
+export const deleteSiteBanner = (id: string) => apiFetch(`/site/banners/${id}`, { method: "DELETE" });
+
+export async function uploadSitePdf(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiFetch<{ url: string }>("/site/upload-pdf", { method: "POST", body: fd });
+}

@@ -13,6 +13,9 @@ const breadcrumbMap: Record<string, string> = {
     '/users': 'ผู้ใช้งาน',
     '/registry': 'ทะเบียนเอกสาร',
     '/settings': 'ตั้งค่า',
+    '/website/home': 'เว็บไซต์หลัก · หน้าแรก & แบนเนอร์',
+    '/website/news': 'เว็บไซต์หลัก · ข่าวประชาสัมพันธ์',
+    '/website/announcements': 'เว็บไซต์หลัก · คำประกาศ / แถลงการณ์',
 };
 
 export function Header({ 
