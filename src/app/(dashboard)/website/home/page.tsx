@@ -6,6 +6,7 @@ import {
     type SiteBanner, type SiteSettings,
 } from "@/lib/api";
 import { ConfirmDelete, ImagePicker, Modal, PageHeader, StatusPill, inputCls, labelCls, useCanEditWebsite, useToast } from "../_shared";
+import { ContactOrgsEditor } from "../_contact-orgs";
 
 function Section({ title, description, children, action }: { title: string; description: string; children: React.ReactNode; action?: React.ReactNode }) {
     return (
@@ -111,7 +112,7 @@ export default function WebsiteHomePage() {
     const home = settings.home;
     const setHome = (patch: Partial<SiteSettings["home"]>) => setSettings(s => s && ({ ...s, home: { ...s.home, ...patch } }));
     const contact = settings.contact;
-    const setContact = (k: keyof SiteSettings["contact"], v: string) => setSettings(s => s && ({ ...s, contact: { ...s.contact, [k]: v } }));
+    const setContact = (k: Exclude<keyof SiteSettings["contact"], "orgs">, v: string) => setSettings(s => s && ({ ...s, contact: { ...s.contact, [k]: v } }));
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
@@ -209,6 +210,7 @@ export default function WebsiteHomePage() {
                             </div>
                         ))}
                     </fieldset>
+                    <ContactOrgsEditor orgs={contact.orgs ?? []} disabled={!canEdit} onChange={orgs => setSettings(s => s && ({ ...s, contact: { ...s.contact, orgs } }))} />
                     {canEdit && <div className="flex justify-end"><SaveButton busy={busy === "contact"} /></div>}
                 </form>
             </Section>

@@ -788,9 +788,16 @@ export type SiteAnnouncement = { id: string; number: string; title: string; date
 export type SiteBanner = { id: string; title: string | null; imageUrl: string; linkUrl: string | null; order: number; isActive: boolean };
 type Doc = { updated: string; intro: string; sections: { title: string; body: string }[] };
 type BoardInfo = { name: string; description: string; tags: string[] };
+export type ContactLink = { kind: string; handle: string; url: string };
+export type ContactOrg = { name: string; subtitle: string; logoUrl: string; links: ContactLink[] };
+
 export type SiteSettings = {
     home: { heroBadge: string; heroTitle: string; heroSubtitle: string; highlight: { enabled: boolean; text: string; href: string } };
-    contact: { address: string; phone: string; email: string; hours: string; mapUrl: string; facebook: string; youtube: string; tiktok: string; instagram: string; line: string };
+    contact: {
+        address: string; phone: string; email: string; hours: string; mapUrl: string; facebook: string; youtube: string; tiktok: string; instagram: string; line: string;
+        /** official channels of each unit */
+        orgs: ContactOrg[];
+    };
     about: {
         intro: string; vision: string; missions: string[];
         values: { title: string; text: string }[]; stats: { label: string; value: string }[];
