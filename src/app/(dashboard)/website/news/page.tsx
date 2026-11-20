@@ -1,6 +1,6 @@
 "use client";
-// โพสต์ข่าวและความรู้ — one place to post on the website. The writer picks the page:
-// ข่าวประชาสัมพันธ์ (/news) or one of the knowledge pages (/knowledge/<category>).
+// ประชาสัมพันธ์ & เนื้อหาศาสนา — every piece of website content in one place. Creating content asks the type
+// (ประชาสัมพันธ์ / เนื้อหาศาสนา) and then the subcategory (unit for news; ข้อมูลวิชาการ, Q&A … for religious content).
 // Posts already on the wrong page can be moved (images, video and source link go along).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRightLeft, BookOpen, ExternalLink, Loader2, Newspaper, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
@@ -9,7 +9,8 @@ import {
     updateSiteContent, updateSiteNews, type SiteContent, type SiteNews,
 } from "@/lib/api";
 import { ContentManager, ContentModal } from "../_content";
-import { ARTICLE_CATEGORIES, articleConfigs, campConfig } from "../_configs";
+import { ARTICLE_CATEGORIES, articleConfigs, bookConfig, campConfig, qaConfig, recommendedConfig, videoConfig } from "../_configs";
+import type { ContentConfig } from "../_content";
 import {
     ConfirmDelete, ImagePicker, Modal, PageHeader, PUBLIC_SITE_URL, SITE_DEPARTMENTS, StatusPill,
     formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite, useToast,
@@ -36,12 +37,12 @@ function toPublishedAt(date: string, original: string | null): string | null {
     return new Date(`${date}T08:00:00`).toISOString();
 }
 
-function NewsModal({ item, onClose, onSaved }: { item: SiteNews | null; onClose: () => void; onSaved: (msg: string) => void }) {
+function NewsModal({ item, onClose, onSaved, department }: { item: SiteNews | null; onClose: () => void; onSaved: (msg: string) => void; department?: string }) {
     const [form, setForm] = useState<Form>(() => item ? {
         title: item.title, slug: item.slug, department: item.department, excerpt: item.excerpt ?? "", content: item.content ?? "",
         coverUrl: item.coverUrl ?? "", images: item.images, videoUrl: item.videoUrl ?? "", isPublished: item.isPublished, isPinned: item.isPinned,
         publishedAt: toDateInput(item.publishedAt),
-    } : emptyForm());
+    } : { ...emptyForm(), ...(department ? { department } : {}) });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm(f => ({ ...f, [k]: v }));
@@ -150,25 +151,6 @@ const fromArticle = (a: SiteContent): Post => ({
     date: a.date, published: a.isPublished, pinned: false, cover: a.coverUrl, href: `/knowledge/${a.category}/${a.slug}`, raw: a,
 });
 
-/** Step 1 of a new post: which page should it go on? */
-function ChooseDest({ onPick, onClose }: { onPick: (d: Dest) => void; onClose: () => void }) {
-    return (
-        <Modal title="โพสต์ใหม่ — จะลงหน้าไหน?" onClose={onClose}>
-            <div className="p-6 space-y-2">
-                {DESTS.map(d => (
-                    <button key={d.key} onClick={() => onPick(d.key)} className="w-full text-left flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40">
-                        {d.key === "news" ? <Newspaper className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" /> : <BookOpen className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />}
-                        <span>
-                            <span className="block font-semibold text-slate-800">{d.label} <span className="text-xs font-normal text-slate-400">· {d.page}</span></span>
-                            <span className="block text-xs text-slate-500 mt-0.5">{d.hint}</span>
-                        </span>
-                    </button>
-                ))}
-            </div>
-        </Modal>
-    );
-}
-
 /** Move an existing post to another page. */
 function MovePost({ post, onClose, onMoved }: { post: Post; onClose: () => void; onMoved: (msg: string) => void }) {
     const [to, setTo] = useState<Dest | null>(null);
@@ -218,125 +200,214 @@ function MovePost({ post, onClose, onMoved }: { post: Post; onClose: () => void;
 }
 const updateSiteContentCategory = (a: SiteContent, category: string) => updateSiteContent(a.id, { ...a, category });
 
-export default function WebsitePostsPage() {
+
+// ═══ One page for all website content ══════════════════════════
+// ประชาสัมพันธ์ → by unit (news) + ค่ายและกิจกรรม
+// เนื้อหาศาสนา → ข้อมูลวิชาการ · สาระน่ารู้ · ชีวประวัติ · คำแนะนำแด่เยาวชน · Q&A · หนังสือ · วิดีโอ · รายการแนะนำ
+type Section = "pr" | "rel";
+type Sub = { key: string; label: string; hint?: string; kind: "news" | "article" | "content"; cfg?: ContentConfig; path: string };
+const PR_CAMPS: Sub = { key: "camps", label: "ค่ายและกิจกรรม", hint: "ค่ายที่ผ่านมาและที่กำลังจะจัด", kind: "content", cfg: campConfig, path: "/news/camps" };
+const REL_SUBS: Sub[] = [
+    ...ARTICLE_CATEGORIES.map(c => ({ key: c.key, label: c.label, hint: DESTS.find(d => d.key === c.key)?.hint, kind: "article" as const, path: `/knowledge/${c.key}` })),
+    { key: "qa", label: "Youth Care Q&A", hint: "คำถามที่ทีม Youth Care ตอบแล้ว", kind: "content", cfg: qaConfig, path: "/knowledge/qa" },
+    { key: "books", label: "หนังสือแนะนำ", hint: "หนังสือและไฟล์ให้ดาวน์โหลด", kind: "content", cfg: bookConfig, path: "/knowledge/books" },
+    { key: "videos", label: "วิดีโอแนะนำ", hint: "คลิปความรู้จาก YouTube", kind: "content", cfg: videoConfig, path: "/knowledge/videos" },
+    { key: "recommended", label: "รายการแนะนำ", hint: "พอดแคสต์ บทความ เว็บไซต์ที่คัดสรร", kind: "content", cfg: recommendedConfig, path: "/knowledge/recommended" },
+];
+const SECTION: Record<Section, { label: string; hint: string; icon: typeof Newspaper }> = {
+    pr: { label: "ประชาสัมพันธ์", hint: "ข่าวกิจกรรมของแต่ละหน่วยงาน ประกาศรับสมัคร ค่ายและกิจกรรม", icon: Newspaper },
+    rel: { label: "เนื้อหาศาสนา", hint: "บทความ นาซีฮัต ชีวประวัติ Q&A หนังสือ วิดีโอ", icon: BookOpen },
+};
+/** "pr" · "pr/camps" · "pr/<unit>" · "rel/<sub>" */
+function readHash(): { section: Section; sub: string } {
+    if (typeof window === "undefined") return { section: "pr", sub: "" };
+    const [sec, ...rest] = decodeURIComponent(window.location.hash.slice(1)).split("/");
+    const sub = rest.join("/");
+    if (sec === "rel") return { section: "rel", sub: REL_SUBS.some(x => x.key === sub) ? sub : REL_SUBS[0].key };
+    // old links: /website/knowledge#qa etc. and #camps
+    if (REL_SUBS.some(x => x.key === sec)) return { section: "rel", sub: sec };
+    if (sec === "camps") return { section: "pr", sub: "camps" };
+    return { section: "pr", sub: sub === "camps" || SITE_DEPARTMENTS.includes(sub) ? sub : "" };
+}
+
+/** New content in two steps: section → subcategory (for news: which unit). */
+function ChooseKind({ onPick, onClose }: { onPick: (section: Section, sub: string) => void; onClose: () => void }) {
+    const [section, setSection] = useState<Section | null>(null);
+    const opt = (key: string, label: string, hint?: string) => (
+        <button key={key} onClick={() => onPick(section!, key)} className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40">
+            <span className="block font-semibold text-slate-800 text-sm">{label}</span>
+            {hint && <span className="block text-xs text-slate-500 mt-0.5">{hint}</span>}
+        </button>
+    );
+    return (
+        <Modal title={section ? `สร้าง${SECTION[section].label} — เลือกหมวด` : "สร้างเนื้อหาใหม่ — เป็นเนื้อหาแบบไหน?"} onClose={onClose}>
+            <div className="p-6 space-y-3">
+                {!section ? (Object.keys(SECTION) as Section[]).map(k => {
+                    const S = SECTION[k];
+                    return (
+                        <button key={k} onClick={() => setSection(k)} className="w-full text-left flex items-start gap-3 p-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40">
+                            <S.icon className={`w-6 h-6 mt-0.5 shrink-0 ${k === "pr" ? "text-blue-600" : "text-amber-600"}`} />
+                            <span><span className="block font-bold text-slate-800">{S.label}</span><span className="block text-xs text-slate-500 mt-0.5">{S.hint}</span></span>
+                        </button>
+                    );
+                }) : section === "pr" ? (<>
+                    <p className="text-xs font-semibold text-slate-500">ข่าวประชาสัมพันธ์ของหน่วยงาน</p>
+                    <div className="grid sm:grid-cols-2 gap-2">{SITE_DEPARTMENTS.map(d => opt(d, d))}</div>
+                    <p className="text-xs font-semibold text-slate-500 pt-2">อื่น ๆ</p>
+                    {opt(PR_CAMPS.key, PR_CAMPS.label, PR_CAMPS.hint)}
+                </>) : (
+                    <div className="grid sm:grid-cols-2 gap-2">{REL_SUBS.map(x => opt(x.key, x.label, x.hint))}</div>
+                )}
+                {section && <button onClick={() => setSection(null)} className="text-xs font-semibold text-slate-500 hover:text-slate-700">← เปลี่ยนประเภทเนื้อหา</button>}
+            </div>
+        </Modal>
+    );
+}
+
+export default function WebsiteContentPage() {
     const canEdit = useCanEditWebsite();
     const toast = useToast();
+    const { show } = toast;
+    const [view, setView] = useState<{ section: Section; sub: string }>({ section: "pr", sub: "" });
+    useEffect(() => { setView(readHash()); }, []);
+    const go = (section: Section, sub: string) => {
+        setView({ section, sub });
+        history.replaceState(null, "", `#${section}${sub ? `/${encodeURIComponent(sub)}` : ""}`);
+    };
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [dept, setDept] = useState("");
-    const [dest, setDest] = useState<Dest | "">("");
     const [choosing, setChoosing] = useState(false);
-    const [editNews, setEditNews] = useState<SiteNews | null | "new">(null);
-    const [editArticle, setEditArticle] = useState<{ cat: string; item: SiteContent | null } | null>(null);
+    const [editNews, setEditNews] = useState<{ item: SiteNews | null; department?: string } | null>(null);
+    const [editContent, setEditContent] = useState<{ cfg: ContentConfig; item: SiteContent | null } | null>(null);
     const [moving, setMoving] = useState<Post | null>(null);
     const [deleting, setDeleting] = useState<Post | null>(null);
-    const { show } = toast;
-    const [section, setSection] = useState<"posts" | "camps">("posts");
+    const [listKey, setListKey] = useState(0);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
             const [news, articles] = await Promise.all([fetchSiteNews(), fetchSiteContent("article")]);
             setPosts([...news.map(fromNews), ...articles.map(fromArticle)].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")));
-        } catch { show("โหลดโพสต์ไม่สำเร็จ", "error"); } finally { setLoading(false); }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        } catch { show("โหลดเนื้อหาไม่สำเร็จ", "error"); } finally { setLoading(false); }
+    }, [show]);
     useEffect(() => { load(); }, [load]);
 
-    const count = (k: Dest) => posts.filter(p => p.dest === k).length;
-    const shown = useMemo(() => posts.filter(p =>
-        (!dest || p.dest === dest) && (!dept || p.dept === dept) && (!search || p.title.toLowerCase().includes(search.toLowerCase()))
-    ), [posts, dest, dept, search]);
-    const done = (msg: string) => { setEditNews(null); setEditArticle(null); setMoving(null); show(msg); load(); };
+    const news = posts.filter(p => p.kind === "news");
+    const sub: Sub | null = view.section === "rel" ? REL_SUBS.find(x => x.key === view.sub) ?? REL_SUBS[0] : view.sub === "camps" ? PR_CAMPS : null;
+    const listed = useMemo(() => posts.filter(p =>
+        (view.section === "pr" ? p.kind === "news" && (!view.sub || p.dept === view.sub) : p.dest === view.sub) &&
+        (!search || p.title.toLowerCase().includes(search.toLowerCase()))
+    ), [posts, view, search]);
+    const done = (msg: string) => { setEditNews(null); setEditContent(null); setMoving(null); show(msg); load(); setListKey(k => k + 1); };
+    const startNew = (section: Section, key: string) => {
+        setChoosing(false);
+        if (section === "pr" && key !== "camps") { go("pr", key); setEditNews({ item: null, department: key }); return; }
+        go(section, key);
+        const s = section === "pr" ? PR_CAMPS : REL_SUBS.find(x => x.key === key)!;
+        setEditContent({ cfg: s.kind === "article" ? articleConfigs[s.key] : s.cfg!, item: null });
+    };
+    const chip = (active: boolean) => `px-3.5 py-2 rounded-full text-sm font-semibold border ${active ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`;
+    const previewPath = sub?.path ?? "/news";
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
-            <PageHeader icon={Newspaper} title="โพสต์ข่าวและความรู้" subtitle={`ข่าวประชาสัมพันธ์ ${count("news")} · ศูนย์เนื้อหาศาสนา ${posts.length - count("news")} — เลือกได้ว่าจะลงหน้าไหน`} previewPath={dest && dest !== "news" ? `/knowledge/${dest}` : "/news"}>
+        <div className="max-w-7xl mx-auto space-y-5">
+            <PageHeader icon={Newspaper} title="ประชาสัมพันธ์ & เนื้อหาศาสนา" subtitle="ทุกเนื้อหาบนเว็บไซต์ในที่เดียว — เลือกประเภทและหมวดตอนสร้าง" previewPath={previewPath}>
                 {canEdit && (
                     <button onClick={() => setChoosing(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 shadow-md shadow-blue-900/20">
-                        <Plus className="w-4 h-4" />โพสต์ใหม่
+                        <Plus className="w-4 h-4" />สร้างเนื้อหา
                     </button>
                 )}
             </PageHeader>
 
-            <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-                {([["posts", "ข่าวและบทความ"], ["camps", "ค่ายและกิจกรรม"]] as const).map(([k, label]) => (
-                    <button key={k} onClick={() => setSection(k)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${section === k ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
-                ))}
+            <div className="grid sm:grid-cols-2 gap-3">
+                {(Object.keys(SECTION) as Section[]).map(k => {
+                    const S = SECTION[k];
+                    const on = view.section === k;
+                    const n = k === "pr" ? news.length : posts.length - news.length;
+                    return (
+                        <button key={k} onClick={() => go(k, k === "pr" ? "" : REL_SUBS[0].key)}
+                            className={`text-left flex items-start gap-3 p-4 rounded-2xl border-2 ${on ? "border-blue-500 bg-blue-50/60" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                            <S.icon className={`w-6 h-6 mt-0.5 shrink-0 ${on ? "text-blue-600" : "text-slate-400"}`} />
+                            <span><span className="block font-bold text-slate-800">{S.label} <span className="text-xs font-semibold text-slate-400">{n} โพสต์</span></span><span className="block text-xs text-slate-500 mt-0.5">{S.hint}</span></span>
+                        </button>
+                    );
+                })}
             </div>
 
-            {section === "camps" ? <ContentManager cfg={campConfig} toast={show} /> : <>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="หน้าที่แสดง">
-                {[{ key: "" as const, label: "ทั้งหมด", n: posts.length }, ...DESTS.map(d => ({ key: d.key, label: d.label, n: count(d.key) }))].map(t => (
-                    <button key={t.key || "all"} role="tab" aria-selected={dest === t.key} onClick={() => setDest(t.key)}
-                        className={`px-3.5 py-2 rounded-full text-sm font-semibold border ${dest === t.key ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
-                        {t.label} <span className="opacity-60">{t.n}</span>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="หมวด">
+                {view.section === "pr" ? (<>
+                    <button role="tab" aria-selected={!view.sub} onClick={() => go("pr", "")} className={chip(!view.sub)}>ทุกหน่วยงาน <span className="opacity-60">{news.length}</span></button>
+                    {SITE_DEPARTMENTS.map(d => (
+                        <button key={d} role="tab" aria-selected={view.sub === d} onClick={() => go("pr", d)} className={chip(view.sub === d)}>{d} <span className="opacity-60">{news.filter(p => p.dept === d).length}</span></button>
+                    ))}
+                    <button role="tab" aria-selected={view.sub === "camps"} onClick={() => go("pr", "camps")} className={chip(view.sub === "camps")}>ค่ายและกิจกรรม</button>
+                </>) : REL_SUBS.map(x => (
+                    <button key={x.key} role="tab" aria-selected={view.sub === x.key} onClick={() => go("rel", x.key)} className={chip(view.sub === x.key)}>
+                        {x.label}{x.kind === "article" && <span className="opacity-60"> {posts.filter(p => p.dest === x.key).length}</span>}
                     </button>
                 ))}
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-wrap gap-3">
-                <div className="flex-1 min-w-[200px] relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input aria-label="ค้นหาโพสต์" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาหัวข้อ…" className={`${inputCls} pl-9 bg-slate-50/50`} />
-                </div>
-                <select aria-label="กรองตามหน่วยงาน" value={dept} onChange={e => setDept(e.target.value)} className={`${inputCls} w-auto bg-slate-50/50`}>
-                    <option value="">ทุกหน่วยงาน</option>
-                    {SITE_DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-                </select>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {loading ? (
-                    <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto mb-2" /><p className="text-sm text-slate-400">กำลังโหลด…</p></div>
-                ) : shown.length === 0 ? (
-                    <div className="py-16 text-center">
-                        <Newspaper className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                        <p className="text-sm font-semibold text-slate-400">{posts.length ? "ไม่พบโพสต์ที่ค้นหา" : "ยังไม่มีโพสต์"}</p>
+            {sub && sub.kind === "content" ? (
+                <ContentManager key={`${sub.key}-${listKey}`} cfg={sub.cfg!} toast={show} />
+            ) : (<>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input aria-label="ค้นหา" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาหัวข้อ…" className={`${inputCls} pl-9 bg-slate-50/50`} />
                     </div>
-                ) : (
-                    <ul className="divide-y divide-slate-100">
-                        {shown.map(p => {
-                            const d = destOf(p.dest);
-                            return (
-                                <li key={`${p.kind}-${p.id}`} className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-slate-50/80">
-                                    <div className="w-20 sm:w-24 aspect-video rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        {p.cover ? <img src={p.cover} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300">{p.kind === "news" ? <Newspaper className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}</div>}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            {p.pinned && <Pin aria-label="ปักหมุด" className="w-3.5 h-3.5 text-amber-500" />}
-                                            <p className="font-semibold text-slate-800 line-clamp-2 sm:truncate">{p.title}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    {loading ? (
+                        <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto mb-2" /><p className="text-sm text-slate-400">กำลังโหลด…</p></div>
+                    ) : listed.length === 0 ? (
+                        <div className="py-16 text-center">
+                            <Newspaper className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                            <p className="text-sm font-semibold text-slate-400">{search ? "ไม่พบเนื้อหาที่ค้นหา" : "ยังไม่มีเนื้อหาในหมวดนี้"}</p>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-slate-100">
+                            {listed.map(p => {
+                                const d = destOf(p.dest);
+                                return (
+                                    <li key={`${p.kind}-${p.id}`} className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-slate-50/80">
+                                        <div className="w-20 sm:w-24 aspect-video rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            {p.cover ? <img src={p.cover} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300">{p.kind === "news" ? <Newspaper className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}</div>}
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                                            <span className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${d.cls}`}>{d.label}</span>
-                                            {p.dept && <span>{p.dept}</span>}<span>{formatThaiDate(p.date)}</span>
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
-                                    <span className="mr-auto sm:mr-2"><StatusPill on={p.published} onLabel="เผยแพร่" offLabel="ฉบับร่าง" /></span>
-                                        {p.published && (
-                                            <a href={`${PUBLIC_SITE_URL}${p.href}`} target="_blank" rel="noreferrer" aria-label={`เปิด ${p.title} บนเว็บ`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"><ExternalLink className="w-4 h-4" /></a>
-                                        )}
-                                        {canEdit && <>
-                                            <button onClick={() => setMoving(p)} aria-label={`ย้าย ${p.title} ไปหน้าอื่น`} title="ย้ายไปหน้าอื่น" className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"><ArrowRightLeft className="w-4 h-4" /></button>
-                                            <button onClick={() => p.kind === "news" ? setEditNews(p.raw) : setEditArticle({ cat: p.dest, item: p.raw })} aria-label={`แก้ไข ${p.title}`} className="p-2 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600"><Pencil className="w-4 h-4" /></button>
-                                            <button onClick={() => setDeleting(p)} aria-label={`ลบ ${p.title}`} className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
-                                        </>}
-                                    </div>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                )}
-            </div>
-            </>}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                {p.pinned && <Pin aria-label="ปักหมุด" className="w-3.5 h-3.5 text-amber-500" />}
+                                                <p className="font-semibold text-slate-800 line-clamp-2 sm:truncate">{p.title}</p>
+                                            </div>
+                                            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                                <span className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${d.cls}`}>{d.label}</span>
+                                                {p.dept && <span>{p.dept}</span>}<span>{formatThaiDate(p.date)}</span>
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
+                                            <span className="mr-auto sm:mr-2"><StatusPill on={p.published} onLabel="เผยแพร่" offLabel="ฉบับร่าง" /></span>
+                                            {p.published && (
+                                                <a href={`${PUBLIC_SITE_URL}${p.href}`} target="_blank" rel="noreferrer" aria-label={`เปิด ${p.title} บนเว็บ`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"><ExternalLink className="w-4 h-4" /></a>
+                                            )}
+                                            {canEdit && <>
+                                                <button onClick={() => setMoving(p)} aria-label={`ย้าย ${p.title} ไปหมวดอื่น`} title="ย้ายไปหมวดอื่น (ประชาสัมพันธ์ ↔ เนื้อหาศาสนา)" className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"><ArrowRightLeft className="w-4 h-4" /></button>
+                                                <button onClick={() => p.kind === "news" ? setEditNews({ item: p.raw }) : setEditContent({ cfg: articleConfigs[p.dest], item: p.raw })} aria-label={`แก้ไข ${p.title}`} className="p-2 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600"><Pencil className="w-4 h-4" /></button>
+                                                <button onClick={() => setDeleting(p)} aria-label={`ลบ ${p.title}`} className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
+                                            </>}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </div>
+            </>)}
 
-            {choosing && <ChooseDest onClose={() => setChoosing(false)} onPick={d => { setChoosing(false); if (d === "news") setEditNews("new"); else setEditArticle({ cat: d, item: null }); }} />}
-            {editNews && <NewsModal item={editNews === "new" ? null : editNews} onClose={() => setEditNews(null)} onSaved={done} />}
-            {editArticle && <ContentModal cfg={articleConfigs[editArticle.cat]} item={editArticle.item} onClose={() => setEditArticle(null)} onSaved={done} />}
+            {choosing && <ChooseKind onClose={() => setChoosing(false)} onPick={startNew} />}
+            {editNews && <NewsModal item={editNews.item} department={editNews.department} onClose={() => setEditNews(null)} onSaved={done} />}
+            {editContent && <ContentModal cfg={editContent.cfg} item={editContent.item} onClose={() => setEditContent(null)} onSaved={done} />}
             {moving && <MovePost post={moving} onClose={() => setMoving(null)} onMoved={done} />}
             {deleting && <ConfirmDelete text={`ลบ "${deleting.title}" และรูปทั้งหมดของโพสต์นี้?`} onCancel={() => setDeleting(null)}
                 onConfirm={async () => {
