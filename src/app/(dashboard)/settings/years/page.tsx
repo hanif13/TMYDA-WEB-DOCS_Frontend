@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { createAnnualPlan, deleteAnnualPlan } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
+import { CopyFromYear, type CopySelection } from "@/components/years/CopyFromYear";
 
 export default function YearsPage() {
     const { plans, refreshYears } = useYear();
@@ -25,6 +26,7 @@ export default function YearsPage() {
         label: "" 
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [copy, setCopy] = useState<CopySelection>({ copyFromYear: null, departmentIds: [], userIds: [] });
 
     if (session && !canManageSettings) {
         return (
@@ -40,8 +42,11 @@ export default function YearsPage() {
         if (!formData.label) return toast.error("กรุณาระบุชื่อเรียกโครงการ");
         setIsSubmitting(true);
         try {
-            await createAnnualPlan(formData);
-            toast.success("เพิ่มปีการทำงานสำเร็จ");
+            const created = await createAnnualPlan({ ...formData, ...(copy.copyFromYear ? copy : {}) });
+            toast.success(copy.copyFromYear
+                ? `เพิ่มปี ${formData.thaiYear} แล้ว · คัดลอก ${created.copied?.departments ?? 0} หน่วยงาน ${created.copied?.people ?? 0} คน`
+                : "เพิ่มปีการทำงานสำเร็จ");
+            setCopy({ copyFromYear: null, departmentIds: [], userIds: [] });
             setIsAdding(false);
             const nextYear = formData.year + 1;
             setFormData({ year: nextYear, thaiYear: nextYear + 543, label: "" });
@@ -122,7 +127,7 @@ export default function YearsPage() {
             {/* Add Modal Overlay */}
             {isAdding && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="bg-white rounded-[3rem] w-full max-w-2xl max-h-[92vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
                         <div className="p-8 bg-slate-900 text-white flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center">
@@ -135,7 +140,7 @@ export default function YearsPage() {
                             </button>
                         </div>
                         
-                        <div className="p-10 space-y-6">
+                        <div className="p-10 space-y-6 overflow-y-auto">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 font-bold">ปี ค.ศ. (A.D.)</label>
@@ -169,6 +174,8 @@ export default function YearsPage() {
                                 />
                             </div>
                             
+                            <CopyFromYear years={plans.map(p => p.thaiYear)} value={copy} onChange={setCopy} />
+
                             <div className="pt-4 flex gap-4">
                                 <button onClick={() => setIsAdding(false)} className="flex-1 py-4 text-sm font-bold text-slate-400 hover:bg-slate-50 rounded-2xl transition-all">ยกเลิก</button>
                                 <button 

@@ -45,10 +45,20 @@ const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   debug: true,
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, trigger, session }: any) {
       if (user) {
         token.user = user;
         token.accessToken = user.accessToken;
+      }
+      // The portal reloads the rights of the working year (role/permissions/unit are per year).
+      // Display only — the API re-checks every request against the X-Year header.
+      if (trigger === "update" && session?.yearAccess && token.user) {
+        const y = session.yearAccess;
+        token.user = {
+          ...token.user,
+          role: y.role, permissions: y.permissions, department: y.department, subDepartment: y.subDepartment,
+          workingYear: y.year, yearAccess: y.access,
+        };
       }
       return token;
     },

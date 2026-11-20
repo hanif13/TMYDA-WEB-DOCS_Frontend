@@ -24,6 +24,15 @@ export const getMediaUrl = (path: string | undefined): string => {
     return `${API_BASE_URL}${path}`;
 };
 
+/** The working year chosen in the sidebar — sent as X-Year so the API applies that year's rights. */
+export function workingYearHeader(): Record<string, string> {
+    if (typeof window === "undefined") return {};
+    try {
+        const y = window.localStorage.getItem("workingYear");
+        return y ? { "X-Year": y } : {};
+    } catch { return {}; }
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const session = await getSession();
     const token = (session as any)?.accessToken;
@@ -35,6 +44,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
         headers: {
             ...(options?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
             ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+            ...workingYearHeader(),
             ...(options?.headers || {})
         },
     });
@@ -78,7 +88,8 @@ export async function createDocument(formData: FormData) {
     const res = await fetch(`${API_BASE}/documents`, {
         method: "POST",
         headers: {
-            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+            ...workingYearHeader(),
         },
         body: formData,
     });
@@ -103,7 +114,8 @@ export async function updateDocument(id: string, formData: FormData) {
     const res = await fetch(`${API_BASE}/documents/${id}`, {
         method: "PATCH",
         headers: {
-            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+            ...workingYearHeader(),
         },
         body: formData,
     });
@@ -184,7 +196,7 @@ export async function fetchAnnualYears() {
     return apiFetch<any[]>("/projects/plans/years");
 }
 
-export async function createAnnualPlan(data: { year: number; thaiYear: number; label: string }) {
+export async function createAnnualPlan(data: { year: number; thaiYear: number; label: string; copyFromYear?: number | null; departmentIds?: string[]; userIds?: string[] }) {
     return apiFetch<any>("/projects/plans", {
         method: "POST",
         body: JSON.stringify(data),
@@ -431,11 +443,26 @@ export async function updateUserPermissions(id: string, data: { permissions: str
     });
 }
 
+/** Take a person out of the working year (account and other years stay). */
 export async function deleteUser(id: string) {
     return apiFetch<any>(`/users/${id}`, {
         method: "DELETE",
     });
 }
+
+// ─── Per-year access ──────────────────────────────────────────
+export type YearCopySource = {
+    departments: { id: string; name: string; isCommitteeOnly: boolean }[];
+    users: { id: string; name: string; username: string; role: string; position: string | null; department: string | null }[];
+};
+/** Delete the account itself, in every year (SUPER_ADMIN). */
+export const deleteUserAccount = (id: string) => apiFetch<any>(`/users/${id}?everywhere=1`, { method: "DELETE" });
+/** Every account, short form — to add someone back into the working year. */
+export const fetchAllUsers = () => apiFetch<{ id: string; name: string; username: string; superAdmin: boolean; years: number[] }[]>("/users?scope=all");
+export const setUserYear = (id: string, year: number, access: "edit" | "view") =>
+    apiFetch<any>(`/users/${id}/years/${year}`, { method: "PUT", body: JSON.stringify({ access }) });
+export const removeUserYear = (id: string, year: number) => apiFetch<any>(`/users/${id}/years/${year}`, { method: "DELETE" });
+export const fetchYearCopySource = (from: number) => apiFetch<YearCopySource>(`/projects/plans/copy-source?from=${from}`);
 
 // Self-service: Change own password
 export async function changePassword(data: { currentPassword: string; newPassword: string }) {
@@ -884,7 +911,7 @@ async function apiBlob(path: string, options?: RequestInit): Promise<Blob> {
     const token = (session as any)?.accessToken;
     const res = await fetch(`${API_BASE}${path}`, {
         ...options,
-        headers: { ...(options?.body ? { "Content-Type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { ...(options?.body ? { "Content-Type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...workingYearHeader() },
     });
     if (!res.ok) {
         const text = await res.text();

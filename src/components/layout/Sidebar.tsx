@@ -95,7 +95,7 @@ export function Sidebar({
     const searchParams = useSearchParams();
     const router = useRouter();
     const { data: session } = useSession();
-    const { selectedYear, setSelectedYear, availableYears } = useYear();
+    const { selectedYear, setSelectedYear, availableYears, plans } = useYear();
 
     // States for dropdowns
     const [yearSwitcherOpen, setYearSwitcherOpen] = useState(false);
@@ -254,7 +254,7 @@ export function Sidebar({
                                                 : "text-slate-400 hover:bg-white/5 hover:text-white"
                                         )}
                                     >
-                                        <span>พ.ศ. {year}</span>
+                                        <span>พ.ศ. {year}{plans.find(p => p.thaiYear === year)?.access === 'view' && <span className="ml-2 text-[10px] font-semibold opacity-70">ดูอย่างเดียว</span>}</span>
                                         {selectedYear === year && <Star className="w-3 h-3 fill-white" />}
                                     </button>
                                 ))}

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { fetchAnnualYears } from "@/lib/api";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
+import { fetchAnnualYears, getMyProfile } from "@/lib/api";
 import { useSession, signOut } from "next-auth/react";
 import toast from "react-hot-toast";
 
@@ -13,12 +13,19 @@ interface YearContextType {
     isLoading: boolean;
     hasLoadError: boolean;
     refreshYears: () => Promise<void>;
+    /** "edit" or "view" (view = read-only year for this user) */
+    yearAccess: "edit" | "view" | null;
 }
 
 const YearContext = createContext<YearContextType | undefined>(undefined);
 
 export function YearProvider({ children }: { children: ReactNode }) {
-    const { status } = useSession();
+    const { status, update } = useSession();
+    const [yearAccess, setYearAccess] = useState<"edit" | "view" | null>(null);
+    // Rights of the working year loaded into the session (role/permissions are per year)
+    const [accessYear, setAccessYear] = useState<number | null>(null);
+    // update() briefly sets the session status to "loading"; load each year's rights only once
+    const requestedFor = useRef<number | null>(null);
     const [selectedYear, setSelectedYearState] = useState<number | null>(null);
     const [availableYears, setAvailableYears] = useState<number[]>([]);
     const [plans, setPlans] = useState<any[]>([]);
@@ -90,27 +97,39 @@ export function YearProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    useEffect(() => {
+        if (status !== "authenticated" || selectedYear === null || requestedFor.current === selectedYear) return;
+        requestedFor.current = selectedYear;
+        getMyProfile()
+            .then(async p => {
+                const switched = sessionStorage.getItem("yearSwitched");
+                if (switched) {
+                    sessionStorage.removeItem("yearSwitched");
+                    toast.success(`สลับข้อมูลเป็นปี พ.ศ. ${switched} แล้ว`, { icon: "🗓️", duration: 2000 });
+                }
+                await update({ yearAccess: { year: selectedYear, role: p.role, permissions: p.permissions ?? [], department: p.department ?? null, subDepartment: p.subDepartment ?? null, access: p.access ?? "edit" } });
+                setYearAccess(p.access === "view" ? "view" : "edit");
+                setAccessYear(selectedYear);
+            })
+            .catch(() => { setYearAccess("view"); setAccessYear(selectedYear); });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [status, selectedYear]);
+
     const setSelectedYear = (year: number) => {
         if (year !== selectedYear) {
-            setSelectedYearState(year);
             localStorage.setItem("workingYear", year.toString());
-            
-            // Show toaster notification
-            toast.success(`สลับข้อมูลเป็นปี พ.ศ. ${year} แล้ว`, {
-                icon: '🗓️',
-                duration: 2000,
-                style: {
-                    borderRadius: '10px',
-                    background: '#2563eb',
-                    color: '#fff',
-                },
-            });
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Visual jump to top
+            // Everything (data and rights) belongs to one year: start the page over in the new year
+            sessionStorage.setItem("yearSwitched", year.toString());
+            window.location.reload();
         }
     };
 
     return (
-        <YearContext.Provider value={{ selectedYear, setSelectedYear, availableYears, plans, isLoading, hasLoadError, refreshYears }}>
+        <YearContext.Provider value={{
+            selectedYear, setSelectedYear, availableYears, plans, hasLoadError, refreshYears, yearAccess,
+            // still loading until the rights of the chosen year are in the session
+            isLoading: isLoading || (selectedYear !== null && accessYear !== selectedYear),
+        }}>
             {children}
         </YearContext.Provider>
     );

@@ -6,14 +6,16 @@ import {
     Users, ShieldCheck, User, Plus, MoreHorizontal,
     Loader, X, Check, Trash2, Key, Mail, Building2,
     ShieldAlert, Eye, UserCog, Phone, Facebook,
-    FileUp, Download, AlertCircle, Pencil
+    FileUp, Download, AlertCircle, Pencil, UserPlus
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import {
     fetchUsers, createUser, updateUser, deleteUser,
-    fetchDepartments, uploadUsersCsv
+    fetchDepartments, uploadUsersCsv, deleteUserAccount, apiErrorMessage
 } from "@/lib/api";
+import { useYear } from "@/context/YearContext";
+import { AddExistingUserModal, UserYearsEditor } from "@/components/users/UserYears";
 import { PERMISSION_CATALOG, ROLE_PRESETS, getDefaultPermissions } from "@/config/permissions";
 
 const ROLES_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
@@ -32,6 +34,8 @@ export default function UsersPage() {
     const userPerms: string[] = (session?.user as any)?.permissions || [];
     const canViewUsers = isSuperAdmin || userPerms.includes('users.view');
     const canEditUsers = isSuperAdmin || userPerms.includes('users.edit');
+    const { selectedYear, availableYears } = useYear();
+    const [showAddExisting, setShowAddExisting] = useState(false);
 
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +60,8 @@ export default function UsersPage() {
         phoneNumber: "",
         facebook: "",
         subDepartment: "",
+        position: "",
+        access: "edit",
         permissions: [] as string[]
     });
 
@@ -114,6 +120,8 @@ export default function UsersPage() {
                 phoneNumber: user.phoneNumber || "",
                 facebook: user.facebook || "",
                 subDepartment: user.subDepartment || "",
+                position: user.position || "",
+                access: user.access || "edit",
                 permissions: user.permissions || []
             });
         } else {
@@ -128,6 +136,8 @@ export default function UsersPage() {
                 phoneNumber: "",
                 facebook: "",
                 subDepartment: "",
+                position: "",
+                access: "edit",
                 permissions: getDefaultPermissions("VIEWER")
             });
         }
@@ -154,14 +164,27 @@ export default function UsersPage() {
         }
     };
 
+    // Removing = taking the person out of this working year; their account and other years stay
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`ยืนยันการลบผู้ใช้ "${name}"?`)) return;
+        if (!confirm(`นำ "${name}" ออกจากปี ${selectedYear}?\nบัญชีและปีอื่นยังอยู่ (ลบบัญชีถาวรได้จากหน้าแก้ไข สำหรับผู้ดูแลระบบ)`)) return;
         try {
             await deleteUser(id);
-            toast.success("ลบผู้ใช้สำเร็จ");
+            toast.success(`นำออกจากปี ${selectedYear} แล้ว`);
             loadData();
         } catch (error) {
-            toast.error("ไม่สามารถลบผู้ใช้ได้");
+            toast.error(apiErrorMessage(error, "ไม่สามารถนำผู้ใช้ออกได้"));
+        }
+    };
+    const handleDeleteAccount = async () => {
+        if (!editingUser) return;
+        if (!confirm(`ลบบัญชี "${editingUser.name}" ถาวรจากทุกปี?\nเข้าสู่ระบบด้วยบัญชีนี้ไม่ได้อีก และย้อนกลับไม่ได้`)) return;
+        try {
+            await deleteUserAccount(editingUser.id);
+            toast.success("ลบบัญชีถาวรแล้ว");
+            setShowModal(false);
+            loadData();
+        } catch (error) {
+            toast.error(apiErrorMessage(error, "ลบบัญชีไม่สำเร็จ"));
         }
     };
 
@@ -231,11 +254,17 @@ export default function UsersPage() {
                         <Users className="w-8 h-8 text-blue-600" />
                         ผู้ใช้งานระบบ
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">จัดการบัญชีผู้ใช้และกำหนดสิทธิ์การเข้าถึงรายบุคคล</p>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">ผู้ใช้ของปี พ.ศ. {selectedYear} — สิทธิ์ หน่วยงาน และตำแหน่งในหน้านี้เป็นของปีนี้เท่านั้น</p>
                 </div>
-                {isSuperAdmin && (
+                {canEditUsers && (
                     <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         <button
+                            onClick={() => setShowAddExisting(true)}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white text-slate-600 text-[11px] sm:text-sm font-bold px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                        >
+                            <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" /> เพิ่มผู้ใช้เดิมเข้าปีนี้
+                        </button>
+                        {isSuperAdmin && <button
                             onClick={() => {
                                 setUploadResults(null);
                                 setShowUploadModal(true);
@@ -243,7 +272,7 @@ export default function UsersPage() {
                             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white text-slate-600 text-[11px] sm:text-sm font-bold px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
                         >
                             <FileUp className="w-4 h-4 sm:w-5 sm:h-5" /> นำเข้า CSV
-                        </button>
+                        </button>}
                         <button
                             onClick={() => handleOpenModal()}
                             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white text-[11px] sm:text-sm font-bold px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95"
@@ -284,7 +313,7 @@ export default function UsersPage() {
                         <div className="h-8 w-8 sm:h-10 sm:w-10 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center">
                             <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                         </div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-800">รายชื่อสมาชิกทั้งหมด ({filteredUsers.length})</h3>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800">ผู้ใช้ในปี {selectedYear} ({filteredUsers.length})</h3>
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -339,7 +368,13 @@ export default function UsersPage() {
                                                     {user.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-slate-800 text-sm">{user.name}</p>
+                                                    <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                                        {user.name}
+                                                        {user.access === "view" && <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">ดูอย่างเดียว</span>}
+                                                    </p>
+                                                    {user.years && user.role !== "SUPER_ADMIN" && (
+                                                        <p className="text-[10px] text-slate-400 mt-0.5">ปีที่เข้าได้: {user.years.map((y: { thaiYear: number }) => y.thaiYear).sort().join(", ") || "-"}</p>
+                                                    )}
                                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 font-bold mt-0.5">
                                                         <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> @{user.username}</span>
                                                         {user.email && <span className="flex items-center gap-1 text-blue-500/60"><Mail className="w-3 h-3" /> {user.email}</span>}
@@ -374,7 +409,7 @@ export default function UsersPage() {
                                             </p>
                                         </td>
                                         <td className="px-8 py-5 text-right">
-                                            {isSuperAdmin && (
+                                            {canEditUsers && (isSuperAdmin || user.role !== "SUPER_ADMIN") && (
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => handleOpenModal(user)}
@@ -386,7 +421,7 @@ export default function UsersPage() {
                                                     <button
                                                         onClick={() => handleDelete(user.id, user.name)}
                                                         className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-all"
-                                                        title="ลบผู้ใช้งาน"
+                                                        title={`นำออกจากปี ${selectedYear}`}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -412,6 +447,7 @@ export default function UsersPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-black">{editingUser ? "แก้ไขคุณสมบัติผู้ใช้" : "เพิ่มผู้ใช้งานใหม่"}</h3>
+                                    <p className="text-blue-300 text-xs font-bold mt-1">ระดับสิทธิ์ หน่วยงาน ตำแหน่ง และสิทธิ์ ด้านล่างเป็นของปี {selectedYear}</p>
                                     <p className="text-slate-400 text-xs font-bold mt-1 uppercase tracking-widest">User Access Management</p>
                                 </div>
                             </div>
@@ -449,7 +485,7 @@ export default function UsersPage() {
                                     }}>
                                         {ROLES.map(role => {
                                             const cfg = ROLES_CONFIG[role];
-                                            const isDisabled = role === 'SUPER_ADMIN' && users.filter(u => u.role === 'SUPER_ADMIN').length >= MAX_SUPER_ADMINS && formData.role !== 'SUPER_ADMIN';
+                                            const isDisabled = role === 'SUPER_ADMIN' && ((!isSuperAdmin && formData.role !== 'SUPER_ADMIN') || (users.filter(u => u.role === 'SUPER_ADMIN').length >= MAX_SUPER_ADMINS && formData.role !== 'SUPER_ADMIN'));
                                             return <option key={role} value={role} disabled={isDisabled}> {cfg.label}{isDisabled ? ' (เต็มแล้ว)' : ''}</option>;
                                         })}
                                     </select>
@@ -492,7 +528,25 @@ export default function UsersPage() {
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Facebook (ชื่อโปรไฟล์)</label>
                                     <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="ชื่อ Facebook..." value={formData.facebook} onChange={e => setFormData({ ...formData, facebook: e.target.value })} />
                                 </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ตำแหน่ง (ใต้ลายเซ็น) ปี {selectedYear}</label>
+                                    <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all" placeholder="เช่น เลขาสำนักอำนวยการ" value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} />
+                                </div>
                             </div>
+
+                            {formData.role !== 'SUPER_ADMIN' && (
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">การเข้าถึงปี {selectedYear}</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[{ v: "edit", t: "แก้ไขได้", d: "ทำงานได้ตามสิทธิ์ด้านล่าง" }, { v: "view", t: "ดูอย่างเดียว", d: "ดูข้อมูลได้ แก้ไขอะไรไม่ได้" }].map(o => (
+                                            <label key={o.v} className={cn("flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer", formData.access === o.v ? "border-blue-300 bg-blue-50" : "border-slate-100 bg-white")}>
+                                                <input type="radio" name="access" checked={formData.access === o.v} onChange={() => setFormData({ ...formData, access: o.v })} className="mt-1 accent-blue-600" />
+                                                <span><span className="block text-sm font-bold text-slate-800">{o.t}</span><span className="block text-[11px] text-slate-500">{o.d}</span></span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Granular Permissions Checklist */}
                             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
@@ -578,6 +632,21 @@ export default function UsersPage() {
                                 </div>
                             </div>
 
+                            {editingUser && editingUser.role !== 'SUPER_ADMIN' && (
+                                <UserYearsEditor
+                                    userId={editingUser.id}
+                                    years={editingUser.years ?? []}
+                                    allYears={availableYears}
+                                    currentYear={selectedYear}
+                                    onChanged={u => { setEditingUser({ ...editingUser, years: u.years }); loadData(); }}
+                                />
+                            )}
+                            {editingUser && isSuperAdmin && editingUser.id !== (session?.user as { id?: string } | undefined)?.id && (
+                                <button type="button" onClick={handleDeleteAccount} className="text-xs font-bold text-rose-600 hover:underline">
+                                    ลบบัญชีนี้ถาวร (ทุกปี)
+                                </button>
+                            )}
+
                             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6">
                                 <button type="button" onClick={() => setShowModal(false)} className="py-3.5 sm:py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-2xl transition-all order-2 sm:order-1">ยกเลิก</button>
                                 <button
@@ -592,6 +661,9 @@ export default function UsersPage() {
                         </form>
                     </div>
                 </div>
+            )}
+            {showAddExisting && selectedYear && (
+                <AddExistingUserModal year={selectedYear} onClose={() => setShowAddExisting(false)} onAdded={() => { setShowAddExisting(false); loadData(); }} />
             )}
             {/* Bulk Upload Modal */}
             {showUploadModal && (
