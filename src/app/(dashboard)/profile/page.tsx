@@ -10,6 +10,7 @@ import {
 import { changePassword, updateMyProfile, fetchDepartments, getMyProfile } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { SignatureCard } from "@/components/profile/SignatureCard";
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: string }> = {
     SUPER_ADMIN: { label: 'ผู้ดูแลระบบ', color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-200', icon: '🛡️' },
@@ -332,6 +333,8 @@ export default function ProfilePage() {
                     )}
                 </div>
             </div>
+
+            <SignatureCard />
 
             {/* Password Change */}
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">

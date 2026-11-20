@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocRequest, StoredDocument } from "@/lib/types";
-import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest, fetchDepartments, uploadImages, getMediaUrl, fetchDocuments, createDocument } from "@/lib/api";
+import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest, fetchDepartments, uploadImages, getMediaUrl, fetchDocuments, createDocument, fetchSigners, submitRequestForSigning, previewRequestPdf, fetchRequestPdf, fetchRequestSteps, issueRequestDocument, apiErrorMessage, type Signer, type RequestStep } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
 
 type FieldDef = {
@@ -569,11 +569,31 @@ const SumFieldSync = ({ field, calculatedSum, currentValue, onChange }: any) => 
 };
 
 
+// ── Generated documents ─────────────────────────────────────────────────────
+/** Types signed by one person chosen in the form (others: project/budget documents). */
+const SIGNER_TYPES = new Set(["announcement", "appointment", "invite_committee", "cert_conduct", "invite_external", "invite_speaker", "permission_parent", "permission_school", "request_support"]);
+/** Filled from the signer's profile instead of typed in. */
+const SIGNER_FIELD_KEYS = new Set(["signer", "position", "signature"]);
+const STEP_ROLE_LABEL: Record<string, string> = { signer: "ผู้ลงนาม", unit_head: "หัวหน้าหน่วย", secretary: "เลขาสำนักอำนวยการ", finance: "การเงินสำนักอำนวยการ", office_director: "ผอ.สำนักอำนวยการ", director: "ผอ.กลุ่มฟิตยะตุลฮัก", transfer: "โอนเงินและแนบสลิป" };
+
+async function openPdfInNewTab(load: () => Promise<Blob>) {
+    const win = window.open("", "_blank"); // open first so pop-up blockers allow it
+    try {
+        const url = URL.createObjectURL(await load());
+        if (win) win.location.href = url; else window.location.href = url;
+    } catch (e) {
+        win?.close();
+        toast.error(apiErrorMessage(e, "เปิดเอกสารไม่สำเร็จ"));
+    }
+}
+
 // ── Status configs ─────────────────────────────────────────────────────────
 const requestStatusConfig: Record<string, { className: string }> = {
     "รอดำเนินการ": { className: "bg-amber-100 text-amber-700" },
     "กำลังดำเนินการ": { className: "bg-blue-100 text-blue-700" },
     "เสร็จสิ้น": { className: "bg-green-100 text-green-700" },
+    "รอลงนาม": { className: "bg-violet-100 text-violet-700" },
+    "ส่งกลับแก้ไข": { className: "bg-rose-100 text-rose-700" },
 };
 
 type Tab = "request" | "pending";
@@ -720,6 +740,9 @@ function DocumentsPageContent() {
 
     const handleEditRequest = (req: DocRequest) => {
         setEditingRequestId(req.id);
+        // Keep the signer chosen before (resubmitting after "ส่งกลับแก้ไข")
+        setSignerId("");
+        fetchRequestSteps(req.id).then(st => setSignerId(st.find(x => x.role === "signer")?.assigneeId ?? "")).catch(() => undefined);
 
         // Parse department
         const orgMatch = dbDepartments.find(d => req.department.startsWith(d.name));
@@ -794,6 +817,16 @@ function DocumentsPageContent() {
     // Form Fields (Step 3)
     const [requestFields, setRequestFields] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [signerId, setSignerId] = useState("");
+    const [signers, setSigners] = useState<Signer[]>([]);
+    const [previewing, setPreviewing] = useState(false);
+    const [requestSteps, setRequestSteps] = useState<RequestStep[]>([]);
+    const [issuing, setIssuing] = useState(false);
+    useEffect(() => {
+        setRequestSteps([]);
+        if (selectedRequest?.id) fetchRequestSteps(selectedRequest.id).then(setRequestSteps).catch(() => undefined);
+    }, [selectedRequest?.id]);
+    useEffect(() => { fetchSigners().then(setSigners).catch(() => setSigners([])); }, []);
 
     // Sub-departments derived from selected Org
     const selectedOrgDef = dbDepartments.find(d => d.name === requesterOrg);
@@ -821,6 +854,7 @@ function DocumentsPageContent() {
 
     function resetRequestForm() {
         setStep(1);
+        setSignerId("");
         // Reset to session defaults
         if (session?.user) {
             setRequesterName(session.user.name || "");
@@ -884,6 +918,12 @@ function DocumentsPageContent() {
         e.preventDefault();
         setIsSubmitting(true);
 
+        const isSignerType = SIGNER_TYPES.has(selectedRequestType ?? "");
+        if (isSignerType && !signerId) {
+            toast.error("กรุณาเลือกผู้ลงนาม");
+            setIsSubmitting(false);
+            return;
+        }
         try {
             const rt = ALL_REQUEST_TYPES.find(r => r.id === selectedRequestType);
             const finalFields = { ...requestFields };
@@ -897,16 +937,26 @@ function DocumentsPageContent() {
                     requestedBy: requesterName,
                     fields: finalFields,
                 });
-                toast.success(`แก้ไขคำขอ '${rt?.label}' สำเร็จ`);
+                if (isSignerType) {
+                    const r = await submitRequestForSigning(editingRequestId, signerId);
+                    toast.success(`แก้ไขแล้ว และส่งให้ ${r.signer.name} ลงนามอีกครั้ง`, { duration: 5000 });
+                } else {
+                    toast.success(`แก้ไขคำขอ '${rt?.label}' สำเร็จ`);
+                }
             } else {
-                await createDocumentRequest({
+                const created = await createDocumentRequest({
                     requestType: rt?.label ?? "",
                     department: fullDept,
                     requestedBy: requesterName,
                     fields: finalFields,
                     thaiYear: selectedYear || undefined,
                 });
-                toast.success(`ส่งคำขอ '${rt?.label}' สำเร็จ! เลขาจะดำเนินการให้ต่อไป`, { icon: "✅", duration: 5000 });
+                if (isSignerType) {
+                    const r = await submitRequestForSigning(created.id, signerId);
+                    toast.success(`ส่งคำขอแล้ว · รอ ${r.signer.name} ลงนาม`, { icon: "✅", duration: 5000 });
+                } else {
+                    toast.success(`ส่งคำขอ '${rt?.label}' สำเร็จ! ระบบสร้างเอกสารให้แล้ว เลขาจะตรวจและออกเลขต่อไป`, { icon: "✅", duration: 5000 });
+                }
             }
 
             resetRequestForm();
@@ -914,7 +964,7 @@ function DocumentsPageContent() {
             handleTabChange("pending");
         } catch (error) {
             console.error("Failed to save request:", error);
-            toast.error("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            toast.error(apiErrorMessage(error, "เกิดข้อผิดพลาดในการบันทึกข้อมูล"));
         } finally {
             setIsSubmitting(false);
         }
@@ -1069,7 +1119,8 @@ function DocumentsPageContent() {
                                 {(() => {
                                     const rt = ALL_REQUEST_TYPES.find(r => r.id === selectedRequestType);
                                     const fields = REQUEST_FIELDS[selectedRequestType!] ?? [];
-                                    const normalFields = fields;
+                                    const isSignerType = SIGNER_TYPES.has(selectedRequestType ?? "");
+                                    const normalFields = isSignerType ? fields.filter(f => !SIGNER_FIELD_KEYS.has(f.key)) : fields;
 
                                     return (
                                         <>
@@ -1505,11 +1556,42 @@ function DocumentsPageContent() {
 
 
 
+                                                {isSignerType && (
+                                                    <div>
+                                                        <label htmlFor="signer-select" className="text-sm font-semibold text-slate-700 mb-1.5 block">ผู้ลงนาม *</label>
+                                                        <div className="relative">
+                                                            <select id="signer-select" required value={signerId} onChange={e => setSignerId(e.target.value)}
+                                                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-slate-50 outline-none appearance-none focus:border-blue-400 focus:bg-white">
+                                                                <option value="" disabled>เลือกผู้ลงนาม...</option>
+                                                                {signers.map(s => <option key={s.id} value={s.id}>{s.name}{s.position ? ` — ${s.position}` : ""}{s.hasSignature ? "" : " (ยังไม่มีลายเซ็นในระบบ)"}</option>)}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 mt-1">{signers.length ? "ชื่อ ตำแหน่ง และลายเซ็นจะดึงจากโปรไฟล์ของผู้ลงนามอัตโนมัติ" : "ยังไม่มีผู้ใช้ที่ได้รับสิทธิ์ \"ลงนามเอกสาร\" — ให้ผู้ดูแลระบบกำหนดในเมนูผู้ใช้งาน"}</p>
+                                                    </div>
+                                                )}
+
                                                 <div className="bg-blue-50/50 rounded-xl p-4 text-sm text-blue-800 border-l-4 border-blue-500 mt-8 font-medium">
-                                                    เมื่อส่งคำขอแล้ว ฝ่ายเลขาธิการจะรับทราบและนำข้อมูลนี้ไปจัดทำเอกสารแบบฟอร์มมาตรฐานให้คุณ
+                                                    {isSignerType
+                                                        ? "เมื่อส่งคำขอ ระบบจะสร้างเอกสาร PDF ตามแบบฟอร์มมาตรฐาน และส่งให้ผู้ลงนามพิจารณา เมื่อลงนามแล้วจะออกเลขที่และเก็บเข้าทะเบียนเอกสารอัตโนมัติ"
+                                                        : "เมื่อส่งคำขอ ระบบจะสร้างเอกสาร PDF ตามแบบฟอร์มมาตรฐานให้อัตโนมัติ กด \"ดูตัวอย่าง PDF\" เพื่อตรวจก่อนส่งได้"}
                                                 </div>
 
                                                 <div className="flex gap-4 pt-6 mt-4 border-t border-slate-100">
+                                                    <button type="button" disabled={previewing}
+                                                        onClick={async () => {
+                                                            setPreviewing(true);
+                                                            await openPdfInNewTab(() => previewRequestPdf({
+                                                                requestType: rt?.label ?? "",
+                                                                department: `${requesterOrg}${requesterSubDept ? ` (${requesterSubDept})` : ""}`,
+                                                                fields: requestFields,
+                                                                signerId: isSignerType ? signerId : undefined,
+                                                            }));
+                                                            setPreviewing(false);
+                                                        }}
+                                                        className="flex items-center justify-center gap-2 border border-slate-200 bg-white text-slate-700 text-base font-semibold px-5 py-3.5 rounded-xl hover:bg-slate-50 disabled:opacity-60">
+                                                        {previewing ? <Loader className="w-5 h-5 animate-spin" /> : <Eye className="w-5 h-5" />} ดูตัวอย่าง PDF
+                                                    </button>
                                                     <button type="submit" disabled={isSubmitting}
                                                         className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white text-base font-semibold px-6 py-3.5 rounded-xl hover:bg-blue-700 disabled:opacity-60 shadow-sm shadow-blue-200 hover:shadow transition-all">
                                                         {isSubmitting ? <><Loader className="w-5 h-5 animate-spin" /> กำลังส่งคำขอ...</> : <><Send className="w-5 h-5" /> ส่งคำขอจัดทำเอกสาร</>}
@@ -1656,6 +1738,62 @@ function DocumentsPageContent() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Generated document & signing steps */}
+                            {selectedRequest && (() => {
+                                const rtId = ALL_REQUEST_TYPES.find(r => r.label === selectedRequest.requestType)?.id ?? "";
+                                const isSignerType = SIGNER_TYPES.has(rtId);
+                                const isMine = selectedRequest.requestedById === currentUserId;
+                                const returned = requestSteps.find(x => x.status === "returned");
+                                return (
+                                    <div className="mb-8 rounded-2xl border border-blue-100 bg-blue-50/40 p-5 space-y-4">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <FileText className="w-5 h-5 text-blue-600" />
+                                            <p className="flex-1 font-bold text-slate-800">เอกสาร PDF</p>
+                                            <button type="button" onClick={() => openPdfInNewTab(() => fetchRequestPdf(selectedRequest.id))}
+                                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                                <Eye className="w-4 h-4" />{selectedRequest.resultDocId ? "เปิดเอกสารฉบับจริง" : "เปิดฉบับร่าง"}
+                                            </button>
+                                            {!isSignerType && isManager && !selectedRequest.resultDocId && (
+                                                <button type="button" disabled={issuing}
+                                                    onClick={async () => {
+                                                        setIssuing(true);
+                                                        try {
+                                                            const r = await issueRequestDocument(selectedRequest.id);
+                                                            toast.success(`ออกเลข ${r.docNo} และเก็บเข้าทะเบียนเอกสารแล้ว`, { duration: 6000 });
+                                                            setSelectedRequest(null);
+                                                            refreshRequests();
+                                                        } catch (e) { toast.error(apiErrorMessage(e, "ออกเอกสารไม่สำเร็จ")); }
+                                                        finally { setIssuing(false); }
+                                                    }}
+                                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
+                                                    {issuing ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}ออกเลขและสร้างเอกสารจริง
+                                                </button>
+                                            )}
+                                        </div>
+                                        {requestSteps.length > 0 && (
+                                            <ol className="space-y-2">
+                                                {requestSteps.map(st => (
+                                                    <li key={st.id} className="flex flex-wrap items-center gap-2 text-sm">
+                                                        <span className={cn("px-2 py-0.5 rounded-md text-xs font-bold",
+                                                            st.status === "approved" ? "bg-green-100 text-green-700" : st.status === "returned" ? "bg-rose-100 text-rose-700" : st.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500")}>
+                                                            {st.status === "approved" ? "ลงนามแล้ว" : st.status === "returned" ? "ส่งกลับแก้ไข" : st.status === "pending" ? "รอพิจารณา" : "ยังไม่ถึงคิว"}
+                                                        </span>
+                                                        <span className="font-semibold text-slate-700">{STEP_ROLE_LABEL[st.role] ?? st.role}</span>
+                                                        <span className="text-slate-500">{st.actorName ?? st.assignee ?? ""}</span>
+                                                        {st.actedAt && <span className="text-xs text-slate-400">{new Date(st.actedAt).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        )}
+                                        {returned?.note && selectedRequest.status === "ส่งกลับแก้ไข" && (
+                                            <p className="text-sm text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
+                                                <b>สิ่งที่ต้องแก้ไข:</b> {returned.note}{isMine && <> — กด &quot;แก้ไข&quot; แล้วส่งใหม่ได้เลย</>}
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {/* Dynamic Fields Section */}
                             <div>

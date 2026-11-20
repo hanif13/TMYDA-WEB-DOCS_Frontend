@@ -7,7 +7,7 @@ import {
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
     KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, GraduationCap, MessagesSquare, HandHeart, UserCheck
+    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, GraduationCap, MessagesSquare, HandHeart, UserCheck, FileSignature
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -31,6 +31,7 @@ const navGroups = [
         label: 'กลุ่มงานเลขานุการ',
         items: [
             { name: 'ส่งคำขอเอกสาร', href: '/documents?tab=request', icon: FileText, permission: 'documents.view' },
+            { name: 'เอกสารรอพิจารณา', href: '/approvals', icon: FileSignature, permission: 'documents.view' },
             { name: 'ประวัติคำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, permission: 'documents.view' },
             { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, permission: 'registry.view' },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, permission: 'annual_projects.view' },

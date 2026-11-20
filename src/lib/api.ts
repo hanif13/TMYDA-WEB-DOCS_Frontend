@@ -458,6 +458,7 @@ export async function updateMyProfile(data: {
     facebook?: string; 
     departmentId?: string;
     subDepartment?: string;
+    position?: string;
 }) {
     return apiFetch<any>(`/users/me`, {
         method: "PUT",
@@ -875,3 +876,52 @@ export type RegistryAnnouncement = {
 export const fetchRegistryAnnouncements = () => apiFetch<RegistryAnnouncement[]>("/site/registry-announcements");
 export const setRegistryAnnouncementVisibility = (ids: string[], hideOnWebsite: boolean) =>
     apiFetch("/site/registry-announcements", jsonBody("PUT", { ids, hideOnWebsite }));
+
+// ─── เอกสารอัตโนมัติ & การลงนาม ─────────────────────────────
+/** Fetch a PDF (or other binary) with the login token. Errors carry the server's Thai message. */
+async function apiBlob(path: string, options?: RequestInit): Promise<Blob> {
+    const session = await getSession();
+    const token = (session as any)?.accessToken;
+    const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: { ...(options?.body ? { "Content-Type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        let msg = "สร้างเอกสารไม่สำเร็จ";
+        try { msg = JSON.parse(text).error || msg; } catch { /* not JSON */ }
+        throw new Error(msg);
+    }
+    return res.blob();
+}
+
+export type Signer = { id: string; name: string; position: string | null; department: string | null; hasSignature: boolean };
+export type ApprovalItem = {
+    id: string; step: number; role: string; createdAt: string;
+    request: { id: string; requestType: string; department: string; requestedBy: string; createdAt: string; status: string; title: string };
+};
+export type RequestStep = { id: string; step: number; role: string; status: string; assigneeId: string | null; assignee: string | null; actorName: string | null; actorPosition: string | null; note: string | null; actedAt: string | null };
+
+export const previewRequestPdf = (data: { requestType: string; department: string; fields: unknown; signerId?: string }) =>
+    apiBlob("/document-requests/preview", { method: "POST", body: JSON.stringify(data) });
+export const fetchRequestPdf = (id: string) => apiBlob(`/document-requests/${id}/pdf`);
+export const fetchRequestSteps = (id: string) => apiFetch<RequestStep[]>(`/document-requests/${id}/steps`);
+export const submitRequestForSigning = (id: string, signerId: string) =>
+    apiFetch<{ ok: boolean; signer: { id: string; name: string } }>(`/document-requests/${id}/submit`, { method: "POST", body: JSON.stringify({ signerId }) });
+export const issueRequestDocument = (id: string) => apiFetch<{ docNo: string; filePath: string }>(`/document-requests/${id}/issue`, { method: "POST" });
+export const fetchApprovalInbox = () => apiFetch<ApprovalItem[]>("/document-requests/inbox");
+export const approveStep = (stepId: string, note?: string) =>
+    apiFetch<{ docNo: string; filePath: string }>(`/document-requests/steps/${stepId}/approve`, { method: "POST", body: JSON.stringify({ note }) });
+export const returnStep = (stepId: string, note: string) =>
+    apiFetch(`/document-requests/steps/${stepId}/return`, { method: "POST", body: JSON.stringify({ note }) });
+export const fetchSigners = () => apiFetch<Signer[]>("/users/signers");
+export async function uploadMySignature(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiFetch<{ signatureUrl: string }>("/users/me/signature", { method: "POST", body: fd });
+}
+/** Thai message from "API error 400: {...}" */
+export function apiErrorMessage(err: unknown, fallback: string) {
+    const m = err instanceof Error ? err.message : "";
+    try { return JSON.parse(m.slice(m.indexOf("{"))).error || (m && !m.startsWith("API error") ? m : fallback); } catch { return m && !m.startsWith("API error") ? m : fallback; }
+}

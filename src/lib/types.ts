@@ -27,7 +27,7 @@ export interface DocRequest {
     requestedBy: string;
     requestedById?: string;
     requestedAt: string;
-    status: "รอดำเนินการ" | "กำลังดำเนินการ" | "เสร็จสิ้น";
+    status: "รอดำเนินการ" | "กำลังดำเนินการ" | "เสร็จสิ้น" | "รอลงนาม" | "ส่งกลับแก้ไข";
     fields: Record<string, string>;
     pdfPath?: string;
     resultDocId?: string;

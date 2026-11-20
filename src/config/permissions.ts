@@ -39,6 +39,17 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
         ],
     },
     {
+        groupLabel: 'การลงนามและอนุมัติเอกสาร',
+        permissions: [
+            { key: 'documents.sign', label: 'ลงนามเอกสาร — ถูกเลือกเป็นผู้ลงนามหนังสือ/ประกาศ/คำสั่งได้', type: 'edit' },
+            { key: 'approve.unit_head', label: 'อนุมัติขั้นหัวหน้าหน่วย (เฉพาะเอกสารของหน่วยงานตนเอง)', type: 'edit' },
+            { key: 'approve.secretary', label: 'ตรวจขั้นเลขาสำนักอำนวยการ', type: 'edit' },
+            { key: 'approve.finance', label: 'ตรวจขั้นการเงินสำนักอำนวยการ / แนบสลิปโอนเงิน', type: 'edit' },
+            { key: 'approve.office_director', label: 'อนุมัติขั้นผู้อำนวยการสำนักอำนวยการ', type: 'edit' },
+            { key: 'approve.director', label: 'อนุมัติขั้นผู้อำนวยการกลุ่มฟิตยะตุลฮัก', type: 'edit' },
+        ],
+    },
+    {
         groupLabel: 'กลุ่มงานการเงินและบัญชี',
         permissions: [
             { key: 'income_expense.view', label: 'รายรับ-รายจ่าย — ดู', type: 'view' },
