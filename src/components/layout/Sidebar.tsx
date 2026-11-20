@@ -55,7 +55,7 @@ const navGroups = [
         label: 'จัดการเว็บไซต์หลัก',
         items: [
             { name: 'หน้าแรก & แบนเนอร์', href: '/website/home', icon: Globe, permission: 'website.view' },
-            { name: 'ข่าวประชาสัมพันธ์', href: '/website/news', icon: Newspaper, permission: 'website.view' },
+            { name: 'โพสต์ข่าวและความรู้', href: '/website/news', icon: Newspaper, permission: 'website.view' },
             { name: 'คำประกาศ / แถลงการณ์', href: '/website/announcements', icon: Megaphone, permission: 'website.view' },
             { name: 'เกี่ยวกับองค์กร', href: '/website/about', icon: Building2, permission: 'website.view' },
             { name: 'ศูนย์เนื้อหาวิชาการ', href: '/website/knowledge', icon: GraduationCap, permission: 'website.view' },

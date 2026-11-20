@@ -116,7 +116,7 @@ function FieldInput({ def, form, setForm }: { def: FieldDef; form: FormState; se
     }
 }
 
-function ContentModal({ cfg, item, onClose, onSaved }: { cfg: ContentConfig; item: SiteContent | null; onClose: () => void; onSaved: (msg: string) => void }) {
+export function ContentModal({ cfg, item, onClose, onSaved }: { cfg: ContentConfig; item: SiteContent | null; onClose: () => void; onSaved: (msg: string) => void }) {
     const [form, setForm] = useState<FormState>(() => toForm(item, cfg));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
