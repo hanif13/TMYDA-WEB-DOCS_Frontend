@@ -991,6 +991,9 @@ export const fetchMediaPost = (id: string) => apiFetch<MediaPost>(`/media-posts/
 export const fetchMediaCalendar = (from: string, to: string) => apiFetch<MediaCalendarItem[]>(`/media-posts/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
 export const checkMediaClashes = (channels: string[], publishAt: string, excludeId?: string) =>
     apiFetch<{ windowMinutes: number; clashes: MediaClash[] }>(`/media-posts/clashes?channels=${encodeURIComponent(channels.join(","))}&publishAt=${encodeURIComponent(publishAt)}${excludeId ? `&excludeId=${excludeId}` : ""}`);
+/** The organisation's official pages and their platforms (from the website contact settings). */
+export type MediaChannelGroup = { page: string; logoUrl: string; channels: { id: string; platform: string; kind: string; handle: string; url: string }[] };
+export const fetchMediaChannels = () => apiFetch<MediaChannelGroup[]>("/media-posts/channels");
 export const fetchMediaReviewCount = () => apiFetch<{ count: number }>("/media-posts/review/count");
 export const createMediaPost = (data: MediaInput) => apiFetch<MediaPost>("/media-posts", { method: "POST", body: JSON.stringify(data) });
 export const updateMediaPost = (id: string, data: Partial<MediaInput>) => apiFetch<MediaPost>(`/media-posts/${id}`, { method: "PATCH", body: JSON.stringify(data) });

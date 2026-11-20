@@ -7,10 +7,63 @@ import { AlertTriangle, CheckCircle2, ExternalLink, ImagePlus, Loader2, Megaphon
 import { toast } from "react-hot-toast";
 import {
     apiErrorMessage, approveMediaPost, checkMediaClashes, createMediaPost, deleteMediaPost, fetchDepartments,
-    markMediaPublished, returnMediaPost, updateMediaPost, uploadImages,
-    type MediaClash, type MediaInput, type MediaPost, type MediaStatus,
+    fetchMediaChannels, markMediaPublished, returnMediaPost, updateMediaPost, uploadImages,
+    type MediaChannelGroup, type MediaClash, type MediaInput, type MediaPost, type MediaStatus,
 } from "@/lib/api";
 import { hasPermission } from "@/config/permissions";
+import { PUBLIC_SITE_URL } from "../website/_shared";
+
+// ─── Channels: the organisation's official pages (one list for every system) ──
+let channelCache: Promise<MediaChannelGroup[]> | null = null;
+/** Pages and their platforms, edited in web 2 → เว็บไซต์หลัก → ข้อมูลติดต่อ → ช่องทางของแต่ละหน่วยงาน */
+export function useMediaChannels() {
+    const [groups, setGroups] = useState<MediaChannelGroup[] | null>(null);
+    useEffect(() => {
+        channelCache ??= fetchMediaChannels().catch(e => { channelCache = null; throw e; });
+        channelCache.then(setGroups).catch(() => setGroups([]));
+    }, []);
+    return groups;
+}
+
+/** Tick platforms page by page; "ทั้งเพจ" ticks every platform of that page. */
+export function ChannelPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+    const groups = useMediaChannels();
+    if (!groups) return <Loader2 className="w-4 h-4 animate-spin text-slate-300" />;
+    const known = new Set(groups.flatMap(g => g.channels.map(c => c.id)));
+    const legacy = value.filter(v => !known.has(v)); // channels saved before the list changed
+    return (
+        <div className="space-y-2">
+            {groups.map(g => {
+                const ids = g.channels.map(c => c.id);
+                const all = ids.every(id => value.includes(id));
+                return (
+                    <div key={g.page} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2">
+                        <span className="flex items-center gap-2 min-w-[140px] text-sm font-bold text-slate-700">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            {g.logoUrl && <img src={g.logoUrl.startsWith("/") ? `${PUBLIC_SITE_URL}${g.logoUrl}` : g.logoUrl} alt="" className="w-6 h-6 rounded-full object-contain bg-white border border-slate-100" />}
+                            {g.page}
+                        </span>
+                        {g.channels.map(c => {
+                            const on = value.includes(c.id);
+                            return (
+                                <button key={c.id} type="button" aria-pressed={on} title={c.handle} onClick={() => onChange(on ? value.filter(x => x !== c.id) : [...value, c.id])}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${on ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"}`}>{c.platform}</button>
+                            );
+                        })}
+                        {ids.length > 1 && (
+                            <button type="button" onClick={() => onChange(all ? value.filter(v => !ids.includes(v)) : Array.from(new Set([...value, ...ids])))}
+                                className="ml-auto text-[11px] font-semibold text-blue-600 hover:underline">{all ? "ไม่เลือกทั้งเพจ" : "ทั้งเพจ"}</button>
+                        )}
+                    </div>
+                );
+            })}
+            {!!legacy.length && (
+                <p className="text-xs text-amber-700">ช่องทางเดิมที่ไม่มีในรายการแล้ว: {legacy.join(", ")} <button type="button" onClick={() => onChange(value.filter(v => known.has(v)))} className="underline">เอาออก</button></p>
+            )}
+            <p className="text-[11px] text-slate-400">เพจเป็นของทั้งองค์กร ทุกหน่วยงานลงได้ · รายการเพจแก้ได้ที่ เว็บไซต์หลัก → หน้าแรก &amp; แบนเนอร์ → ข้อมูลติดต่อ</p>
+        </div>
+    );
+}
 
 /** Who I am on these pages, and the unit list for the form (my own unit first). */
 export function useMediaAccess() {
@@ -29,7 +82,6 @@ export function useMediaAccess() {
     return { me: user?.id ?? "", reviewer, submitter, deptOptions };
 }
 
-export const CHANNELS = ["Facebook กลุ่มฟิตยะตุลฮัก", "Facebook สมาคม TMYDA", "Instagram", "TikTok", "YouTube", "LINE OA", "เว็บไซต์"];
 export const FORMATS = ["โพสต์ภาพเดี่ยว", "อัลบั้มภาพ", "อินโฟกราฟิก", "วิดีโอ", "คลิปสั้น / Reels", "Story", "ข่าว / บทความ", "ไลฟ์สด"];
 export const STATUS: Record<MediaStatus, { label: string; cls: string }> = {
     draft: { label: "ฉบับร่าง", cls: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -128,15 +180,7 @@ export function PostForm({ post, departments, onClose, onSaved, initialAt }: { p
                     </div>
                     <div>
                         <span className="text-xs font-semibold text-slate-600">ช่องทาง *</span>
-                        <div className="mt-1.5 flex flex-wrap gap-2">
-                            {CHANNELS.map(c => {
-                                const on = f.channels.includes(c);
-                                return (
-                                    <button key={c} type="button" onClick={() => set("channels", on ? f.channels.filter(x => x !== c) : [...f.channels, c])}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${on ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"}`}>{c}</button>
-                                );
-                            })}
-                        </div>
+                        <div className="mt-1.5"><ChannelPicker value={f.channels} onChange={v => set("channels", v)} /></div>
                     </div>
                     <label className="block">
                         <span className="text-xs font-semibold text-slate-600">วันเวลาที่ต้องการลง *</span>

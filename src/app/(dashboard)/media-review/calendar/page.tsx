@@ -7,7 +7,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { apiErrorMessage, fetchMediaCalendar, fetchMediaPost, type MediaCalendarItem, type MediaPost } from "@/lib/api";
-import { CHANNELS, PostDetail, PostForm, STATUS, timeOnly, useMediaAccess } from "../_components";
+import { PostDetail, PostForm, STATUS, timeOnly, useMediaAccess, useMediaChannels } from "../_components";
 
 type View = "month" | "week" | "day";
 const HOUR_PX = 56;
@@ -56,6 +56,7 @@ function PostChip({ p, clash, mine, compact, onOpen }: { p: MediaCalendarItem; c
 
 export default function MediaCalendarPage() {
     const { me, reviewer, submitter, deptOptions } = useMediaAccess();
+    const channelGroups = useMediaChannels();
     const [view, setView] = useState<View>("week");
     const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
     const [channel, setChannel] = useState("");
@@ -122,7 +123,9 @@ export default function MediaCalendarPage() {
                     {!items && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
                     <select aria-label="ช่องทาง" value={channel} onChange={e => setChannel(e.target.value)} className="text-sm rounded-lg border border-slate-200 px-2 py-1.5 bg-white">
                         <option value="">ทุกช่องทาง</option>
-                        {CHANNELS.map(c => <option key={c}>{c}</option>)}
+                        {(channelGroups ?? []).map(g => (
+                            <optgroup key={g.page} label={g.page}>{g.channels.map(ch => <option key={ch.id} value={ch.id}>{ch.platform} · {g.page}</option>)}</optgroup>
+                        ))}
                     </select>
                     <div className="flex gap-0.5 bg-slate-100 rounded-lg p-0.5" role="tablist" aria-label="มุมมอง">
                         {([["month", "เดือน"], ["week", "สัปดาห์"], ["day", "วัน"]] as const).map(([v, l]) => (
