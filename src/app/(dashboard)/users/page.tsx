@@ -168,8 +168,9 @@ export default function UsersPage() {
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`นำ "${name}" ออกจากปี ${selectedYear}?\nบัญชีและปีอื่นยังอยู่ (ลบบัญชีถาวรได้จากหน้าแก้ไข สำหรับผู้ดูแลระบบ)`)) return;
         try {
-            await deleteUser(id);
-            toast.success(`นำออกจากปี ${selectedYear} แล้ว`);
+            const r = await deleteUser(id);
+            if (r?.keptViewOnly) toast.success(`${name} มีประวัติคำขอเอกสาร ${r.history} รายการในปี ${selectedYear} — เปลี่ยนเป็นดูอย่างเดียวแทน เพื่อให้ยังเห็นประวัติของตัวเอง`, { duration: 7000 });
+            else toast.success(`นำออกจากปี ${selectedYear} แล้ว`);
             loadData();
         } catch (error) {
             toast.error(apiErrorMessage(error, "ไม่สามารถนำผู้ใช้ออกได้"));

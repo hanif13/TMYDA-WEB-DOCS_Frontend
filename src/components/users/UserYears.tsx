@@ -19,9 +19,13 @@ export function UserYearsEditor({ userId, years, allYears, currentYear, onChange
     onChanged: (user: { years: YearRow[] }) => void;
 }) {
     const [busy, setBusy] = useState<number | null>(null);
-    const run = async (year: number, fn: () => Promise<{ years: YearRow[] }>) => {
+    const run = async (year: number, fn: () => Promise<{ years: YearRow[]; keptViewOnly?: boolean; history?: number }>) => {
         setBusy(year);
-        try { onChanged(await fn()); }
+        try {
+            const r = await fn();
+            if (r.keptViewOnly) toast(`มีประวัติคำขอเอกสาร ${r.history} รายการในปี ${year} — เปลี่ยนเป็นดูอย่างเดียวแทนการนำออก`, { icon: "ℹ️", duration: 6000 });
+            onChanged(r);
+        }
         catch (e) { toast.error(apiErrorMessage(e, "บันทึกไม่สำเร็จ")); }
         finally { setBusy(null); }
     };
@@ -45,7 +49,7 @@ export function UserYearsEditor({ userId, years, allYears, currentYear, onChange
                                     disabled={busy !== null}
                                     onChange={() => {
                                         if (row) {
-                                            if (!confirm(`นำผู้ใช้นี้ออกจากปี ${y}? (ข้อมูลที่เคยทำไว้ในปีนั้นยังอยู่)`)) return;
+                                            if (!confirm(`นำผู้ใช้นี้ออกจากปี ${y}?\n(ถ้ามีประวัติคำขอเอกสารในปีนั้น จะเปลี่ยนเป็นดูอย่างเดียวแทน เพื่อให้ยังเห็นประวัติของตัวเอง)`)) return;
                                             run(y, () => removeUserYear(userId, y));
                                         } else run(y, () => setUserYear(userId, y, "edit"));
                                     }}
