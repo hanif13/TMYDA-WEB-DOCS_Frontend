@@ -9,12 +9,12 @@ import {
 
 type Form = {
     title: string; slug: string; department: string; excerpt: string; content: string;
-    coverUrl: string; images: string[]; isPublished: boolean; isPinned: boolean; publishedAt: string;
+    coverUrl: string; images: string[]; videoUrl: string; isPublished: boolean; isPinned: boolean; publishedAt: string;
 };
 
 const emptyForm = (): Form => ({
     title: "", slug: "", department: SITE_DEPARTMENTS[0], excerpt: "", content: "",
-    coverUrl: "", images: [], isPublished: false, isPinned: false, publishedAt: toDateInput(null),
+    coverUrl: "", images: [], videoUrl: "", isPublished: false, isPinned: false, publishedAt: toDateInput(null),
 });
 
 /**
@@ -31,7 +31,7 @@ function toPublishedAt(date: string, original: string | null): string | null {
 function NewsModal({ item, onClose, onSaved }: { item: SiteNews | null; onClose: () => void; onSaved: (msg: string) => void }) {
     const [form, setForm] = useState<Form>(() => item ? {
         title: item.title, slug: item.slug, department: item.department, excerpt: item.excerpt ?? "", content: item.content ?? "",
-        coverUrl: item.coverUrl ?? "", images: item.images, isPublished: item.isPublished, isPinned: item.isPinned,
+        coverUrl: item.coverUrl ?? "", images: item.images, videoUrl: item.videoUrl ?? "", isPublished: item.isPublished, isPinned: item.isPinned,
         publishedAt: toDateInput(item.publishedAt),
     } : emptyForm());
     const [saving, setSaving] = useState(false);
@@ -42,7 +42,7 @@ function NewsModal({ item, onClose, onSaved }: { item: SiteNews | null; onClose:
         e.preventDefault();
         if (!form.title.trim()) { setError("กรุณากรอกหัวข้อข่าว"); return; }
         setSaving(true); setError("");
-        const payload = { ...form, coverUrl: form.coverUrl || null, publishedAt: toPublishedAt(form.publishedAt, item?.publishedAt ?? null) };
+        const payload = { ...form, coverUrl: form.coverUrl || null, videoUrl: form.videoUrl.trim() || null, publishedAt: toPublishedAt(form.publishedAt, item?.publishedAt ?? null) };
         try {
             if (item) await updateSiteNews(item.id, payload as Partial<SiteNews>);
             else await createSiteNews(payload as Partial<SiteNews>);
@@ -84,6 +84,12 @@ function NewsModal({ item, onClose, onSaved }: { item: SiteNews | null; onClose:
                     <ImagePicker label="ภาพปก" value={form.coverUrl ? [form.coverUrl] : []} onChange={urls => set("coverUrl", urls[0] ?? "")} />
                     <ImagePicker label="อัลบั้มภาพ" multiple value={form.images} onChange={urls => set("images", urls)} aspect="aspect-square" />
                 </div>
+                <div>
+                    <label htmlFor="n-video" className={labelCls}>ลิงก์วิดีโอ (Facebook หรือ YouTube)</label>
+                    <input id="n-video" type="url" value={form.videoUrl} onChange={e => set("videoUrl", e.target.value)} className={inputCls} placeholder="https://www.facebook.com/reel/… หรือ https://youtu.be/…" />
+                    <p className="text-[11px] text-slate-400 mt-1">แสดงเป็นตัวเล่นวิดีโอบนหน้าข่าว แทนภาพปก (ไม่ต้องอัปโหลดไฟล์)</p>
+                </div>
+                {item?.sourceUrl && <p className="text-xs text-slate-500">นำเข้าจาก <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">โพสต์ต้นทาง</a></p>}
                 <details className="rounded-xl border border-slate-200 px-4 py-3">
                     <summary className="text-xs font-semibold text-slate-600 cursor-pointer">ตั้งค่าขั้นสูง</summary>
                     <div className="mt-3">

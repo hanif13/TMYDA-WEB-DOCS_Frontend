@@ -752,6 +752,7 @@ export async function registerMember(data: {
 export type SiteNews = {
     id: string; slug: string; title: string; department: string;
     excerpt: string | null; content: string | null; coverUrl: string | null; images: string[];
+    videoUrl: string | null; sourceUrl: string | null;
     isPublished: boolean; isPinned: boolean; publishedAt: string | null;
     createdBy: string | null; createdAt: string; updatedAt: string;
 };
