@@ -897,21 +897,23 @@ async function apiBlob(path: string, options?: RequestInit): Promise<Blob> {
 
 export type Signer = { id: string; name: string; position: string | null; department: string | null; hasSignature: boolean };
 export type ApprovalItem = {
-    id: string; step: number; role: string; createdAt: string;
+    id: string; step: number; totalSteps: number; role: string; createdAt: string;
     request: { id: string; requestType: string; department: string; requestedBy: string; createdAt: string; status: string; title: string };
 };
-export type RequestStep = { id: string; step: number; role: string; status: string; assigneeId: string | null; assignee: string | null; actorName: string | null; actorPosition: string | null; note: string | null; actedAt: string | null };
+export type RequestStep = { id: string; step: number; role: string; status: string; assigneeId: string | null; assignee: string | null; actorName: string | null; actorPosition: string | null; note: string | null; attachmentUrls: string[]; actedAt: string | null };
 
 export const previewRequestPdf = (data: { requestType: string; department: string; fields: unknown; signerId?: string }) =>
     apiBlob("/document-requests/preview", { method: "POST", body: JSON.stringify(data) });
 export const fetchRequestPdf = (id: string) => apiBlob(`/document-requests/${id}/pdf`);
 export const fetchRequestSteps = (id: string) => apiFetch<RequestStep[]>(`/document-requests/${id}/steps`);
-export const submitRequestForSigning = (id: string, signerId: string) =>
-    apiFetch<{ ok: boolean; signer: { id: string; name: string } }>(`/document-requests/${id}/submit`, { method: "POST", body: JSON.stringify({ signerId }) });
+/** Send to the signer (letters) or start/resume the approval chain (projects, budgets). */
+export const submitRequest = (id: string, signerId?: string) =>
+    apiFetch<{ ok: boolean; status: string; signer?: { id: string; name: string } }>(`/document-requests/${id}/submit`, { method: "POST", body: JSON.stringify(signerId ? { signerId } : {}) });
+export const fetchInboxCount = () => apiFetch<{ count: number }>("/document-requests/inbox/count");
 export const issueRequestDocument = (id: string) => apiFetch<{ docNo: string; filePath: string }>(`/document-requests/${id}/issue`, { method: "POST" });
 export const fetchApprovalInbox = () => apiFetch<ApprovalItem[]>("/document-requests/inbox");
-export const approveStep = (stepId: string, note?: string) =>
-    apiFetch<{ docNo: string; filePath: string }>(`/document-requests/steps/${stepId}/approve`, { method: "POST", body: JSON.stringify({ note }) });
+export const approveStep = (stepId: string, note?: string, attachmentUrls?: string[]) =>
+    apiFetch<{ docNo?: string; filePath?: string; next?: string }>(`/document-requests/steps/${stepId}/approve`, { method: "POST", body: JSON.stringify({ note, attachmentUrls }) });
 export const returnStep = (stepId: string, note: string) =>
     apiFetch(`/document-requests/steps/${stepId}/return`, { method: "POST", body: JSON.stringify({ note }) });
 export const fetchSigners = () => apiFetch<Signer[]>("/users/signers");
@@ -925,3 +927,30 @@ export function apiErrorMessage(err: unknown, fallback: string) {
     const m = err instanceof Error ? err.message : "";
     try { return JSON.parse(m.slice(m.indexOf("{"))).error || (m && !m.startsWith("API error") ? m : fallback); } catch { return m && !m.startsWith("API error") ? m : fallback; }
 }
+
+// ─── งานสื่อประชาสัมพันธ์ ─────────────────────────────────────
+export type MediaStatus = "draft" | "pending" | "approved" | "returned" | "published";
+export type MediaClash = { id: string; title: string; department: string; channels: string[]; publishAt: string; status: MediaStatus };
+export type MediaPost = {
+    id: string; title: string; department: string; channels: string[]; format: string; content: string;
+    attachmentUrls: string[]; link: string | null; publishAt: string; status: MediaStatus; note: string | null;
+    requestedById: string; requestedBy?: { id: string; name: string }; reviewedBy?: { id: string; name: string } | null;
+    reviewedAt: string | null; submittedAt: string | null; publishedAt: string | null; publishedUrl: string | null;
+    createdAt: string; updatedAt: string; clashes?: MediaClash[];
+};
+export type MediaInput = Pick<MediaPost, "title" | "department" | "channels" | "format" | "content" | "attachmentUrls" | "link" | "publishAt"> & { submit?: boolean };
+export type MediaCalendarItem = Pick<MediaPost, "id" | "title" | "department" | "channels" | "format" | "publishAt" | "status" | "requestedById">;
+
+export const fetchMediaPosts = (scope: "mine" | "review" | "all") => apiFetch<MediaPost[]>(`/media-posts?scope=${scope}`);
+export const fetchMediaPost = (id: string) => apiFetch<MediaPost>(`/media-posts/${id}`);
+export const fetchMediaCalendar = (from: string, to: string) => apiFetch<MediaCalendarItem[]>(`/media-posts/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+export const checkMediaClashes = (channels: string[], publishAt: string, excludeId?: string) =>
+    apiFetch<{ windowMinutes: number; clashes: MediaClash[] }>(`/media-posts/clashes?channels=${encodeURIComponent(channels.join(","))}&publishAt=${encodeURIComponent(publishAt)}${excludeId ? `&excludeId=${excludeId}` : ""}`);
+export const fetchMediaReviewCount = () => apiFetch<{ count: number }>("/media-posts/review/count");
+export const createMediaPost = (data: MediaInput) => apiFetch<MediaPost>("/media-posts", { method: "POST", body: JSON.stringify(data) });
+export const updateMediaPost = (id: string, data: Partial<MediaInput>) => apiFetch<MediaPost>(`/media-posts/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const submitMediaPost = (id: string) => apiFetch<{ ok: true }>(`/media-posts/${id}/submit`, { method: "POST" });
+export const approveMediaPost = (id: string, note?: string, publishAt?: string) => apiFetch<{ ok: true }>(`/media-posts/${id}/approve`, { method: "POST", body: JSON.stringify({ note, publishAt }) });
+export const returnMediaPost = (id: string, note: string) => apiFetch<{ ok: true }>(`/media-posts/${id}/return`, { method: "POST", body: JSON.stringify({ note }) });
+export const markMediaPublished = (id: string, publishedUrl?: string) => apiFetch<{ ok: true }>(`/media-posts/${id}/published`, { method: "POST", body: JSON.stringify({ publishedUrl }) });
+export const deleteMediaPost = (id: string) => apiFetch<{ ok: true }>(`/media-posts/${id}`, { method: "DELETE" });

@@ -14,6 +14,7 @@ const breadcrumbMap: Record<string, string> = {
     '/registry': 'ทะเบียนเอกสาร',
     '/settings': 'ตั้งค่า',
     '/approvals': 'เอกสารรอพิจารณา',
+    '/media-review': 'ตรวจงานสื่อประชาสัมพันธ์',
     '/website/home': 'เว็บไซต์หลัก · หน้าแรก & แบนเนอร์',
     '/website/news': 'เว็บไซต์หลัก · ข่าวประชาสัมพันธ์',
     '/website/announcements': 'เว็บไซต์หลัก · คำประกาศ / แถลงการณ์',

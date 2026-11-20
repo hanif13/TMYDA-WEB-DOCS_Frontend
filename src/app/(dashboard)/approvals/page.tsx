@@ -3,9 +3,9 @@
 // Each item opens a popup with the PDF to read before approving or sending it back.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, FileSignature, Inbox, Loader2, RotateCcw, X } from "lucide-react";
+import { CheckCircle2, FileSignature, ImagePlus, Inbox, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { apiErrorMessage, approveStep, fetchApprovalInbox, fetchRequestPdf, returnStep, type ApprovalItem } from "@/lib/api";
+import { apiErrorMessage, approveStep, fetchApprovalInbox, fetchRequestPdf, returnStep, uploadImages, type ApprovalItem } from "@/lib/api";
 
 const ROLE_LABEL: Record<string, string> = {
     signer: "ลงนาม", unit_head: "หัวหน้าหน่วย", secretary: "เลขาสำนักอำนวยการ", finance: "การเงินสำนักอำนวยการ",
@@ -19,6 +19,10 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
     const [mode, setMode] = useState<"view" | "return">("view");
     const [note, setNote] = useState("");
     const [busy, setBusy] = useState(false);
+    const [slips, setSlips] = useState<string[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const isTransfer = item.role === "transfer";
+    const isLast = item.step === item.totalSteps;
 
     useEffect(() => {
         let url: string | null = null;
@@ -37,8 +41,8 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
     const approve = async () => {
         setBusy(true);
         try {
-            const r = await approveStep(item.id);
-            toast.success(`ลงนามแล้ว · ออกเลข ${r.docNo} และเก็บเข้าทะเบียนเอกสารแล้ว`, { duration: 6000 });
+            const r = await approveStep(item.id, undefined, isTransfer ? slips : undefined);
+            toast.success(r.docNo ? `เสร็จสิ้น · ออกเลข ${r.docNo} และเก็บเข้าทะเบียนเอกสารแล้ว` : `อนุมัติแล้ว · ส่งต่อให้ ${ROLE_LABEL[r.next ?? ""] ?? "ขั้นถัดไป"}`, { duration: 6000 });
             onDone();
         } catch (e) {
             const msg = apiErrorMessage(e, "ลงนามไม่สำเร็จ");
@@ -73,13 +77,43 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
                         <div><dt className="text-xs text-slate-500">ผู้ขอ</dt><dd className="font-semibold text-slate-800">{item.request.requestedBy}</dd></div>
                         <div><dt className="text-xs text-slate-500">หน่วยงาน</dt><dd className="text-slate-800">{item.request.department}</dd></div>
                         <div><dt className="text-xs text-slate-500">ส่งเมื่อ</dt><dd className="text-slate-800">{when(item.createdAt)}</dd></div>
-                        <div><dt className="text-xs text-slate-500">ขั้นตอนของคุณ</dt><dd className="text-slate-800">{ROLE_LABEL[item.role] ?? item.role}</dd></div>
-                        <p className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">เอกสารด้านซ้ายเป็นฉบับร่าง เมื่อกดอนุมัติ ระบบจะใส่ลายเซ็นจากโปรไฟล์ของคุณ ออกเลขที่ และเก็บเข้าทะเบียนเอกสารให้อัตโนมัติ</p>
+                        <div><dt className="text-xs text-slate-500">ขั้นตอนของคุณ</dt><dd className="text-slate-800">{ROLE_LABEL[item.role] ?? item.role}{item.totalSteps > 1 && <span className="text-slate-500"> · ขั้นที่ {item.step}/{item.totalSteps}</span>}</dd></div>
+                        <p className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">
+                            {isTransfer ? "โอนเงินตามเอกสารแล้วแนบสลิป เมื่อยืนยัน ระบบจะออกเลขที่ และเก็บเอกสารพร้อมลายเซ็นทุกขั้นและสลิปเข้าทะเบียนเอกสาร"
+                                : isLast ? "เอกสารด้านซ้ายเป็นฉบับร่าง เมื่อกดอนุมัติ ระบบจะใส่ลายเซ็นจากโปรไฟล์ของคุณ ออกเลขที่ และเก็บเข้าทะเบียนเอกสารให้อัตโนมัติ"
+                                    : "เอกสารด้านซ้ายเป็นฉบับร่าง เมื่อกดอนุมัติ ระบบจะใส่ลายเซ็นจากโปรไฟล์ของคุณ แล้วส่งต่อให้ขั้นถัดไป"}
+                        </p>
+                        {isTransfer && (
+                            <div>
+                                <p className="text-xs font-semibold text-slate-600 mb-2">สลิปการโอนเงิน *</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {slips.map((u, i) => (
+                                        <div key={u} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={u} alt={`สลิป ${i + 1}`} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => setSlips(s => s.filter(x => x !== u))} aria-label="ลบสลิปนี้" className="absolute top-1 right-1 p-1 rounded bg-white/90 text-rose-600"><Trash2 className="w-3 h-3" /></button>
+                                        </div>
+                                    ))}
+                                    <label className="aspect-square rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-emerald-400 hover:text-emerald-600 cursor-pointer text-xs font-semibold">
+                                        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}{uploading ? "กำลังอัปโหลด" : "เพิ่มสลิป"}
+                                        <input type="file" accept="image/*" multiple className="hidden" disabled={uploading} onChange={async e => {
+                                            const files = Array.from(e.target.files ?? []);
+                                            e.target.value = "";
+                                            if (!files.length) return;
+                                            setUploading(true);
+                                            try { const { urls } = await uploadImages(files); setSlips(s => [...s, ...urls]); }
+                                            catch { toast.error("อัปโหลดสลิปไม่สำเร็จ"); }
+                                            finally { setUploading(false); }
+                                        }} />
+                                    </label>
+                                </div>
+                            </div>
+                        )}
                     </dl>
                     <div className="p-5 border-t space-y-2">
                         {mode === "view" ? <>
-                            <button onClick={approve} disabled={busy || !pdfUrl} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50">
-                                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}อนุมัติและลงนาม
+                            <button onClick={approve} disabled={busy || !pdfUrl || (isTransfer && !slips.length) || uploading} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50">
+                                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}{isTransfer ? "ยืนยันโอนเงินแล้ว" : item.role === "signer" ? "อนุมัติและลงนาม" : "อนุมัติ"}
                             </button>
                             <button onClick={() => setMode("return")} disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-rose-200 text-rose-700 font-semibold hover:bg-rose-50">
                                 <RotateCcw className="w-4 h-4" />ส่งกลับแก้ไข
@@ -138,7 +172,7 @@ export default function ApprovalsPage() {
                                             <span className="block font-semibold text-slate-800 truncate">{it.request.title}</span>
                                             <span className="block text-xs text-slate-500">{it.request.requestedBy} · {it.request.department} · {when(it.createdAt)}</span>
                                         </span>
-                                        <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">{ROLE_LABEL[it.role] ?? it.role}</span>
+                                        <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">{ROLE_LABEL[it.role] ?? it.role}{it.totalSteps > 1 ? ` · ${it.step}/${it.totalSteps}` : ""}</span>
                                     </button>
                                 </li>
                             ))}

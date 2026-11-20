@@ -39,6 +39,13 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
         ],
     },
     {
+        groupLabel: 'งานสื่อประชาสัมพันธ์',
+        permissions: [
+            { key: 'media.submit', label: 'ส่งตรวจงานสื่อประชาสัมพันธ์', type: 'edit' },
+            { key: 'media.review', label: 'ตรวจ/อนุมัติงานสื่อ และจัดตารางการลงสื่อ', type: 'edit' },
+        ],
+    },
+    {
         groupLabel: 'การลงนามและอนุมัติเอกสาร',
         permissions: [
             { key: 'documents.sign', label: 'ลงนามเอกสาร — ถูกเลือกเป็นผู้ลงนามหนังสือ/ประกาศ/คำสั่งได้', type: 'edit' },

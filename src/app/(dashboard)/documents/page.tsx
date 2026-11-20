@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocRequest, StoredDocument } from "@/lib/types";
-import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest, fetchDepartments, uploadImages, getMediaUrl, fetchDocuments, createDocument, fetchSigners, submitRequestForSigning, previewRequestPdf, fetchRequestPdf, fetchRequestSteps, issueRequestDocument, apiErrorMessage, type Signer, type RequestStep } from "@/lib/api";
+import { fetchDocumentRequests, createDocumentRequest, updateDocumentRequest, deleteDocumentRequest, fetchDepartments, uploadImages, getMediaUrl, fetchDocuments, createDocument, fetchSigners, submitRequest, previewRequestPdf, fetchRequestPdf, fetchRequestSteps, issueRequestDocument, apiErrorMessage, type Signer, type RequestStep } from "@/lib/api";
 import { useYear } from "@/context/YearContext";
 
 type FieldDef = {
@@ -47,6 +47,19 @@ const REQUEST_FIELDS: Record<string, FieldDef[]> = {
         { key: "budgetSources", label: "แหล่งที่มาของงบประมาณ", type: "dynamic-budget", placeholder: "แหล่งทุน", subLabel: "ระบุแหล่งทุนและจำนวนเงิน (บาท)" },
         { key: "budgetItems", label: "งบประมาณที่ใช้ในโครงการ", type: "dynamic-budget", placeholder: "รายการใช้จ่าย", subLabel: "ระบุรายการจ่ายและจำนวนเงิน (บาท)" },
         { key: "evaluation", label: "การประเมินผล", placeholder: "เช่น แบบสอบถาม ความพึงพอใจ" },
+        { key: "expectedResult", label: "ผลที่คาดว่าจะได้รับ", placeholder: "ผลลัพธ์ที่คาดหวัง...", isTextarea: true }
+    ],
+    small_project: [
+        { key: "projectName", label: "ชื่อโครงการ", placeholder: "เช่น หะละเกาะฮฺประจำเดือน" },
+        { key: "departmentOrg", label: "หน่วยงาน", type: "select-org", placeholder: "" },
+        { key: "departmentSub", label: "สังกัด", type: "select-sub", placeholder: "" },
+        { key: "leaderName", label: "ผู้รับผิดชอบโครงการ", placeholder: "ชื่อ-นามสกุล และตำแหน่ง" },
+        { key: "period", label: "วันที่ดำเนินการ", placeholder: "เช่น 12 ธันวาคม 2569" },
+        { key: "location", label: "สถานที่", placeholder: "เช่น มัสยิด..." },
+        { key: "participants", label: "ผู้เข้าร่วม", placeholder: "เช่น สมาชิกกลุ่ม 20 คน" },
+        { key: "objectives", label: "วัตถุประสงค์", type: "dynamic-list", subLabel: "กดเพิ่มเพื่อแบ่งเป็นข้อๆ" },
+        { key: "activities", label: "กิจกรรม", type: "dynamic-list", subLabel: "ลำดับกิจกรรมโดยย่อ" },
+        { key: "budgetItems", label: "งบประมาณ", type: "dynamic-budget", subLabel: "ระบุรายการและจำนวนเงิน (เว้นว่างถ้าไม่ใช้งบ)" },
         { key: "expectedResult", label: "ผลที่คาดว่าจะได้รับ", placeholder: "ผลลัพธ์ที่คาดหวัง...", isTextarea: true }
     ],
     final_report: [
@@ -240,7 +253,8 @@ const REQUEST_CATEGORIES = [
     {
         title: "ประเภทเอกสารโครงการ",
         types: [
-            { id: "project_doc", label: "ใบโครงการ", icon: "📁", color: "bg-slate-50 border-slate-200 text-slate-700" }
+            { id: "project_doc", label: "ใบโครงการ", icon: "📁", color: "bg-slate-50 border-slate-200 text-slate-700" },
+            { id: "small_project", label: "ใบโครงการขนาดเล็ก", icon: "🗂️", color: "bg-sky-50 border-sky-200 text-sky-700" }
         ]
     },
     {
@@ -572,6 +586,18 @@ const SumFieldSync = ({ field, calculatedSum, currentValue, onChange }: any) => 
 // ── Generated documents ─────────────────────────────────────────────────────
 /** Types signed by one person chosen in the form (others: project/budget documents). */
 const SIGNER_TYPES = new Set(["announcement", "appointment", "invite_committee", "cert_conduct", "invite_external", "invite_speaker", "permission_parent", "permission_school", "request_support"]);
+/** Statuses in which the writer may still edit (not while it is out for signing/approval). */
+const EDITABLE = new Set(["รอดำเนินการ", "กำลังดำเนินการ", "ส่งกลับแก้ไข"]);
+/** Older manual flow (staff attach the finished file and mark it done). */
+const MANUAL = new Set(["รอดำเนินการ", "กำลังดำเนินการ"]);
+/** Types that go through the approval chain. */
+const CHAIN_TYPES = new Set(["project_doc", "small_project", "budget_claim", "budget_report"]);
+const CHAIN_TEXT: Record<string, string> = {
+    project_doc: "หัวหน้าหน่วย → เลขาสำนักอำนวยการ → ผอ.สำนักอำนวยการ → ผอ.กลุ่มฟิตยะตุลฮัก",
+    small_project: "หัวหน้าหน่วย → เลขาสำนักอำนวยการ → ผอ.สำนักอำนวยการ → ผอ.กลุ่มฟิตยะตุลฮัก",
+    budget_claim: "หัวหน้าหน่วย → เลขาสำนักอำนวยการ → ผอ.สำนักอำนวยการ → ผอ.กลุ่มฟิตยะตุลฮัก → การเงินโอนเงินและแนบสลิป",
+    budget_report: "หัวหน้าหน่วย → เลขาสำนักอำนวยการ → การเงินสำนักอำนวยการ → ผอ.สำนักอำนวยการ → ผอ.กลุ่มฟิตยะตุลฮัก → การเงินโอนเงินและแนบสลิป",
+};
 /** Filled from the signer's profile instead of typed in. */
 const SIGNER_FIELD_KEYS = new Set(["signer", "position", "signature"]);
 const STEP_ROLE_LABEL: Record<string, string> = { signer: "ผู้ลงนาม", unit_head: "หัวหน้าหน่วย", secretary: "เลขาสำนักอำนวยการ", finance: "การเงินสำนักอำนวยการ", office_director: "ผอ.สำนักอำนวยการ", director: "ผอ.กลุ่มฟิตยะตุลฮัก", transfer: "โอนเงินและแนบสลิป" };
@@ -594,6 +620,7 @@ const requestStatusConfig: Record<string, { className: string }> = {
     "เสร็จสิ้น": { className: "bg-green-100 text-green-700" },
     "รอลงนาม": { className: "bg-violet-100 text-violet-700" },
     "ส่งกลับแก้ไข": { className: "bg-rose-100 text-rose-700" },
+    "รออนุมัติ": { className: "bg-indigo-100 text-indigo-700" },
 };
 
 type Tab = "request" | "pending";
@@ -938,8 +965,12 @@ function DocumentsPageContent() {
                     fields: finalFields,
                 });
                 if (isSignerType) {
-                    const r = await submitRequestForSigning(editingRequestId, signerId);
-                    toast.success(`แก้ไขแล้ว และส่งให้ ${r.signer.name} ลงนามอีกครั้ง`, { duration: 5000 });
+                    const r = await submitRequest(editingRequestId, signerId);
+                    toast.success(`แก้ไขแล้ว และส่งให้ ${r.signer?.name ?? "ผู้ลงนาม"} ลงนามอีกครั้ง`, { duration: 5000 });
+                } else if (CHAIN_TYPES.has(selectedRequestType ?? "")) {
+                    const resubmit = requests.find(x => x.id === editingRequestId)?.status === "ส่งกลับแก้ไข";
+                    if (resubmit) await submitRequest(editingRequestId);
+                    toast.success(resubmit ? "แก้ไขแล้ว และส่งกลับไปยังผู้พิจารณาขั้นเดิม" : `แก้ไขคำขอ '${rt?.label}' สำเร็จ`, { duration: 5000 });
                 } else {
                     toast.success(`แก้ไขคำขอ '${rt?.label}' สำเร็จ`);
                 }
@@ -952,8 +983,11 @@ function DocumentsPageContent() {
                     thaiYear: selectedYear || undefined,
                 });
                 if (isSignerType) {
-                    const r = await submitRequestForSigning(created.id, signerId);
-                    toast.success(`ส่งคำขอแล้ว · รอ ${r.signer.name} ลงนาม`, { icon: "✅", duration: 5000 });
+                    const r = await submitRequest(created.id, signerId);
+                    toast.success(`ส่งคำขอแล้ว · รอ ${r.signer?.name ?? "ผู้ลงนาม"} ลงนาม`, { icon: "✅", duration: 5000 });
+                } else if (CHAIN_TYPES.has(selectedRequestType ?? "")) {
+                    await submitRequest(created.id);
+                    toast.success("ส่งคำขอแล้ว · รอหัวหน้าหน่วยพิจารณาเป็นขั้นแรก", { icon: "✅", duration: 5000 });
                 } else {
                     toast.success(`ส่งคำขอ '${rt?.label}' สำเร็จ! ระบบสร้างเอกสารให้แล้ว เลขาจะตรวจและออกเลขต่อไป`, { icon: "✅", duration: 5000 });
                 }
@@ -1120,7 +1154,9 @@ function DocumentsPageContent() {
                                     const rt = ALL_REQUEST_TYPES.find(r => r.id === selectedRequestType);
                                     const fields = REQUEST_FIELDS[selectedRequestType!] ?? [];
                                     const isSignerType = SIGNER_TYPES.has(selectedRequestType ?? "");
-                                    const normalFields = isSignerType ? fields.filter(f => !SIGNER_FIELD_KEYS.has(f.key)) : fields;
+                                    const isChainType = CHAIN_TYPES.has(selectedRequestType ?? "");
+                                    const normalFields = isSignerType ? fields.filter(f => !SIGNER_FIELD_KEYS.has(f.key))
+                                        : isChainType ? fields.filter(f => f.key !== "signature") : fields;
 
                                     return (
                                         <>
@@ -1574,7 +1610,9 @@ function DocumentsPageContent() {
                                                 <div className="bg-blue-50/50 rounded-xl p-4 text-sm text-blue-800 border-l-4 border-blue-500 mt-8 font-medium">
                                                     {isSignerType
                                                         ? "เมื่อส่งคำขอ ระบบจะสร้างเอกสาร PDF ตามแบบฟอร์มมาตรฐาน และส่งให้ผู้ลงนามพิจารณา เมื่อลงนามแล้วจะออกเลขที่และเก็บเข้าทะเบียนเอกสารอัตโนมัติ"
-                                                        : "เมื่อส่งคำขอ ระบบจะสร้างเอกสาร PDF ตามแบบฟอร์มมาตรฐานให้อัตโนมัติ กด \"ดูตัวอย่าง PDF\" เพื่อตรวจก่อนส่งได้"}
+                                                        : isChainType
+                                                            ? <>เอกสารนี้ต้องผ่านการอนุมัติตามลำดับ: <b>{CHAIN_TEXT[selectedRequestType ?? ""]}</b> · ลายเซ็นของคุณดึงจากโปรไฟล์ เมื่ออนุมัติครบ ระบบออกเลขและเก็บเข้าทะเบียนเอกสารพร้อมลายเซ็นและหลักฐานทั้งหมด</>
+                                                            : "เมื่อส่งคำขอ ระบบจะสร้างเอกสาร PDF ตามแบบฟอร์มมาตรฐานให้อัตโนมัติ ฝ่ายเลขาจะตรวจและออกเลขให้"}
                                                 </div>
 
                                                 <div className="flex gap-4 pt-6 mt-4 border-t border-slate-100">
@@ -1659,7 +1697,7 @@ function DocumentsPageContent() {
                                             {/* Edit/Delete buttons (Owner or Manager) */}
                                             {(req.requestedById === currentUserId || isManager) && (
                                                 <>
-                                                    {req.status !== "เสร็จสิ้น" && (
+                                                    {EDITABLE.has(req.status) && (
                                                         <button onClick={() => handleEditRequest(req)} title="แก้ไข"
                                                             className="p-2 bg-blue-50 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
                                                             <Edit className="w-4 h-4" />
@@ -1754,7 +1792,7 @@ function DocumentsPageContent() {
                                                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                                                 <Eye className="w-4 h-4" />{selectedRequest.resultDocId ? "เปิดเอกสารฉบับจริง" : "เปิดฉบับร่าง"}
                                             </button>
-                                            {!isSignerType && isManager && !selectedRequest.resultDocId && (
+                                            {!isSignerType && requestSteps.length === 0 && isManager && !selectedRequest.resultDocId && (
                                                 <button type="button" disabled={issuing}
                                                     onClick={async () => {
                                                         setIssuing(true);
@@ -1777,11 +1815,12 @@ function DocumentsPageContent() {
                                                     <li key={st.id} className="flex flex-wrap items-center gap-2 text-sm">
                                                         <span className={cn("px-2 py-0.5 rounded-md text-xs font-bold",
                                                             st.status === "approved" ? "bg-green-100 text-green-700" : st.status === "returned" ? "bg-rose-100 text-rose-700" : st.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500")}>
-                                                            {st.status === "approved" ? "ลงนามแล้ว" : st.status === "returned" ? "ส่งกลับแก้ไข" : st.status === "pending" ? "รอพิจารณา" : "ยังไม่ถึงคิว"}
+                                                            {st.status === "approved" ? (st.role === "transfer" ? "โอนแล้ว" : "อนุมัติแล้ว") : st.status === "returned" ? "ส่งกลับแก้ไข" : st.status === "pending" ? "รอพิจารณา" : "ยังไม่ถึงคิว"}
                                                         </span>
                                                         <span className="font-semibold text-slate-700">{STEP_ROLE_LABEL[st.role] ?? st.role}</span>
                                                         <span className="text-slate-500">{st.actorName ?? st.assignee ?? ""}</span>
                                                         {st.actedAt && <span className="text-xs text-slate-400">{new Date(st.actedAt).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
+                                                        {st.attachmentUrls?.map((u, i) => <a key={u} href={u} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-600 hover:underline">สลิป {i + 1}</a>)}
                                                     </li>
                                                 ))}
                                             </ol>
@@ -2127,8 +2166,8 @@ function DocumentsPageContent() {
                                 className="flex-1 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 transition-colors">
                                 ปิดหน้าต่าง
                             </button>
-                            {selectedRequest?.status !== "เสร็จสิ้น" && (
-                                isManager ? (
+                            {((isManager && MANUAL.has(selectedRequest?.status ?? "")) || EDITABLE.has(selectedRequest?.status ?? "")) && (
+                                isManager && MANUAL.has(selectedRequest?.status ?? "") && !requestSteps.length ? (
                                     <button 
                                         disabled={!selectedRequest?.resultDocId}
                                         onClick={() => { handleUpdateStatus(selectedRequest?.id || "", "เสร็จสิ้น"); setSelectedRequest(null); }}

@@ -32,6 +32,7 @@ const navGroups = [
         items: [
             { name: 'ส่งคำขอเอกสาร', href: '/documents?tab=request', icon: FileText, permission: 'documents.view' },
             { name: 'เอกสารรอพิจารณา', href: '/approvals', icon: FileSignature, permission: 'documents.view' },
+            { name: 'ตรวจงานสื่อประชาสัมพันธ์', href: '/media-review', icon: Megaphone, permission: ['media.submit', 'media.review'] },
             { name: 'ประวัติคำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, permission: 'documents.view' },
             { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, permission: 'registry.view' },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, permission: 'annual_projects.view' },
@@ -135,6 +136,24 @@ export function Sidebar({
         checkProfile();
     }, [session]);
 
+    // Counts shown next to menu items (documents waiting for me, media posts waiting for review)
+    const [badges, setBadges] = useState<Record<string, number>>({});
+    useEffect(() => {
+        if (!session?.user) return;
+        let alive = true;
+        const load = async () => {
+            const api = await import('@/lib/api');
+            const [inbox, media] = await Promise.all([
+                api.fetchInboxCount().then(r => r.count).catch(() => 0),
+                api.fetchMediaReviewCount().then(r => r.count).catch(() => 0),
+            ]);
+            if (alive) setBadges({ '/approvals': inbox, '/media-review': media });
+        };
+        load();
+        const t = setInterval(load, 60_000);
+        return () => { alive = false; clearInterval(t); };
+    }, [session, pathname]);
+
     // 1. Close dropdowns when navigating to a new page
     useEffect(() => {
         setYearSwitcherOpen(false);
@@ -162,7 +181,8 @@ export function Sidebar({
         const filteredItems = group.items.filter(item => {
             // SUPER_ADMIN bypasses all checks
             if (role === 'SUPER_ADMIN') return true;
-            return hasPermission(userPermissions, item.permission);
+            const perms: string[] = Array.isArray(item.permission) ? item.permission : [item.permission];
+            return perms.some(p => hasPermission(userPermissions, p));
         });
 
         return {
@@ -286,6 +306,9 @@ export function Sidebar({
                                         >
                                             <item.icon className={cn("flex-shrink-0 h-4 w-4", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-300")} />
                                             <span className="truncate">{item.name}</span>
+                                            {!!badges[item.href] && (
+                                                <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center">{badges[item.href] > 99 ? '99+' : badges[item.href]}</span>
+                                            )}
                                         </Link>
                                     );
                                 })}
