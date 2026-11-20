@@ -866,3 +866,12 @@ export const updateSiteMemberNote = (id: string, adminNote: string) => apiFetch(
 export const deleteSiteMember = (id: string) => apiFetch(`/site/members/${id}`, { method: "DELETE" });
 export const fetchSiteEmails = (q: string) => apiFetch<SiteEmail[]>(`/site/emails?q=${encodeURIComponent(q)}`);
 export const fetchSiteEmail = (id: string) => apiFetch<SiteEmail>(`/site/emails/${id}`);
+
+// ประกาศจากทะเบียนเอกสาร ที่แสดงบนเว็บไซต์หลักอัตโนมัติ
+export type RegistryAnnouncement = {
+    id: string; docNo: string; name: string; filePath: string; createdAt: string; thaiYear: number;
+    hideOnWebsite: boolean; department: { name: string } | null;
+};
+export const fetchRegistryAnnouncements = () => apiFetch<RegistryAnnouncement[]>("/site/registry-announcements");
+export const setRegistryAnnouncementVisibility = (ids: string[], hideOnWebsite: boolean) =>
+    apiFetch("/site/registry-announcements", jsonBody("PUT", { ids, hideOnWebsite }));

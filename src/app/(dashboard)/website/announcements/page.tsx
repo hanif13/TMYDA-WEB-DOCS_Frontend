@@ -5,6 +5,8 @@ import {
     createSiteAnnouncement, deleteSiteAnnouncement, fetchSiteAnnouncements, updateSiteAnnouncement, uploadSitePdf,
     type SiteAnnouncement,
 } from "@/lib/api";
+import { RegistryAnnouncements } from "./registry";
+import { Tabs, useHashTab } from "../_editors";
 import { ConfirmDelete, Modal, PageHeader, StatusPill, formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite, useToast } from "../_shared";
 
 function AnnouncementModal({ item, onClose, onSaved }: { item: SiteAnnouncement | null; onClose: () => void; onSaved: (m: string) => void }) {
@@ -94,6 +96,7 @@ export default function WebsiteAnnouncementsPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<SiteAnnouncement | null | "new">(null);
     const [deleting, setDeleting] = useState<SiteAnnouncement | null>(null);
+    const [tab, setTab] = useHashTab<"registry" | "manual">(["registry", "manual"], "registry");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -104,13 +107,15 @@ export default function WebsiteAnnouncementsPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
-            <PageHeader icon={Megaphone} title="คำประกาศ / แถลงการณ์" subtitle={`ทั้งหมด ${items.length} รายการ · หน้าแรกของเว็บแสดง 3 รายการล่าสุด`} previewPath="/">
-                {canEdit && (
+            <PageHeader icon={Megaphone} title="คำประกาศ / แถลงการณ์" subtitle="ประกาศจากทะเบียนเอกสารแสดงอัตโนมัติ และเพิ่มประกาศเองได้ · หน้าแรกของเว็บแสดง 3 รายการล่าสุด" previewPath="/announcements">
+                {canEdit && tab === "manual" && (
                     <button onClick={() => setEditing("new")} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 shadow-md shadow-blue-900/20">
                         <Plus className="w-4 h-4" />เพิ่มประกาศ
                     </button>
                 )}
             </PageHeader>
+            <Tabs tabs={[{ key: "registry", label: "จากทะเบียนเอกสาร (อัตโนมัติ)" }, { key: "manual", label: "เพิ่มเอง", count: items.length }]} value={tab} onChange={setTab} />
+            {tab === "registry" ? <RegistryAnnouncements toast={show} /> : <>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 {loading ? (
@@ -142,6 +147,7 @@ export default function WebsiteAnnouncementsPage() {
                 )}
             </div>
 
+            </>}
             {editing && <AnnouncementModal item={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={m => { setEditing(null); show(m); load(); }} />}
             {deleting && <ConfirmDelete text={`ลบ "${deleting.number}" และไฟล์ PDF?`} onCancel={() => setDeleting(null)}
                 onConfirm={async () => { try { await deleteSiteAnnouncement(deleting.id); show("ลบประกาศแล้ว"); load(); } catch { show("ลบไม่สำเร็จ", "error"); } setDeleting(null); }} />}

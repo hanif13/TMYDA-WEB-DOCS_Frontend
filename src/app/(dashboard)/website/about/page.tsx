@@ -1,9 +1,10 @@
 "use client";
-import { Building2, Loader2 } from "lucide-react";
-import { PageHeader, inputCls, useCanEditWebsite, useToast } from "../_shared";
+import { Building2, ExternalLink, Loader2, Users } from "lucide-react";
+import { PageHeader, PUBLIC_SITE_URL, inputCls, useCanEditWebsite, useToast } from "../_shared";
 import { Field, LinesInput, RowsEditor, SaveBar, SectionTitle, Tabs, sectionCls, useHashTab, useSiteSetting } from "../_editors";
 import { ContentManager } from "../_content";
-import { committeeConfig, partnerConfig } from "../_configs";
+import Link from "next/link";
+import { partnerConfig } from "../_configs";
 
 const TABS = [
     { key: "profile", label: "ข้อมูลองค์กร", path: "/about" },
@@ -71,7 +72,19 @@ export default function WebsiteAboutPage() {
         <div className="max-w-5xl mx-auto space-y-6">
             <PageHeader icon={Building2} title="เกี่ยวกับองค์กร" subtitle="วิสัยทัศน์ พันธกิจ ประวัติ โครงสร้าง คณะกรรมการ และเครือข่ายพันธมิตร" previewPath={current.path} />
             <Tabs tabs={TABS.map(t => ({ key: t.key, label: t.label }))} value={tab} onChange={setTab} />
-            {tab === "committee" ? <ContentManager key="c" cfg={committeeConfig} toast={toast.show} />
+            {tab === "committee" ? (
+                <div className={`${sectionCls} flex flex-col sm:flex-row sm:items-center gap-5`}>
+                    <Users className="w-10 h-10 text-blue-600 shrink-0" />
+                    <div className="flex-1">
+                        <h2 className="text-base font-bold text-slate-800">รายชื่อคณะกรรมการดึงมาจากเมนู &quot;คณะกรรมการ&quot; อัตโนมัติ</h2>
+                        <p className="text-sm text-slate-500 mt-1">เว็บไซต์แสดงเฉพาะชื่อ ตำแหน่ง และรูปถ่ายของปีล่าสุด แยกตามหน่วยงาน (ไม่แสดงเบอร์โทร อีเมล และอาชีพ) แก้ไขรายชื่อได้ที่เมนูคณะกรรมการ</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Link href="/committee" className="px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">ไปที่เมนูคณะกรรมการ</Link>
+                        <a href={`${PUBLIC_SITE_URL}/about/committee`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ExternalLink className="w-4 h-4" />ดูบนเว็บ</a>
+                    </div>
+                </div>
+            )
                 : tab === "partners" ? <ContentManager key="p" cfg={partnerConfig} toast={toast.show} />
                     : <AboutSettings tab={tab} toast={toast.show} />}
             {toast.node}
