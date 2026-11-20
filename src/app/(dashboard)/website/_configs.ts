@@ -15,9 +15,9 @@ const cover: FieldDef = { path: "coverUrl", label: "รูปปก", kind: "ima
 // ─── Articles (4 categories) ──────────────────────────────────
 export const ARTICLE_CATEGORIES = [
     { key: "academic", label: "ข้อมูลวิชาการ" },
-    { key: "encyclopedia", label: "สาระน่ารู้" },
+    { key: "encyclopedia", label: "สาระน่ารู้ / บทความ" },
     { key: "biography", label: "ชีวประวัติบุคคลสำคัญ" },
-    { key: "youth-advice", label: "คำแนะนำด้านเยาวชน" },
+    { key: "youth-advice", label: "คำแนะนำแด่เยาวชน / นาศีหัต" },
 ] as const;
 
 function articleConfig(category: string): ContentConfig {
@@ -78,7 +78,7 @@ export const courseConfig: ContentConfig = {
     ],
     defaults: () => ({ data: { tone: "blue", level: "เบื้องต้น", modules: [], instructors: [], documents: [] } }),
     subtitle: i => join(i.data.level, i.data.duration, i.data.audience),
-    publicPath: i => `/knowledge/courses/${i.slug}`,
+    publicPath: i => `/about/courses/${i.slug}`,
 };
 
 // ─── Camps ────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export const campConfig: ContentConfig = {
     ],
     defaults: () => ({ data: { tone: "green", status: "upcoming", objectives: [], schedule: [], images: [] } }),
     subtitle: i => join(i.data.status === "upcoming" ? "🟢 กำลังจะจัด" : "จัดไปแล้ว", i.data.dateText, i.data.location),
-    publicPath: i => `/knowledge/camps/${i.slug}`,
+    publicPath: i => `/news/camps/${i.slug}`,
     filter: { path: "data.status", label: "สถานะ", options: CAMP_STATUS },
 };
 

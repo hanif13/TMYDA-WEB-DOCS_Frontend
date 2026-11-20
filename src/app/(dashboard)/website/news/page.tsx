@@ -8,8 +8,8 @@ import {
     createSiteNews, deleteSiteContent, deleteSiteNews, fetchSiteContent, fetchSiteNews, moveArticleToNews, moveNewsToKnowledge,
     updateSiteContent, updateSiteNews, type SiteContent, type SiteNews,
 } from "@/lib/api";
-import { ContentModal } from "../_content";
-import { ARTICLE_CATEGORIES, articleConfigs } from "../_configs";
+import { ContentManager, ContentModal } from "../_content";
+import { ARTICLE_CATEGORIES, articleConfigs, campConfig } from "../_configs";
 import {
     ConfirmDelete, ImagePicker, Modal, PageHeader, PUBLIC_SITE_URL, SITE_DEPARTMENTS, StatusPill,
     formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite, useToast,
@@ -133,10 +133,10 @@ function NewsModal({ item, onClose, onSaved }: { item: SiteNews | null; onClose:
 type Dest = "news" | (typeof ARTICLE_CATEGORIES)[number]["key"];
 const DESTS: { key: Dest; label: string; page: string; hint: string; cls: string }[] = [
     { key: "news", label: "ข่าวประชาสัมพันธ์", page: "หน้าข่าว/ประชาสัมพันธ์", hint: "ข่าวกิจกรรม ประกาศรับสมัคร เชิญชวน ประมวลภาพ", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-    { key: "academic", label: "ข้อมูลวิชาการ", page: "ศูนย์เนื้อหาวิชาการ", hint: "บทความวิชาการ งานวิจัย (แนบ PDF ฉบับเต็มได้)", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    { key: "encyclopedia", label: "สาระน่ารู้", page: "ศูนย์เนื้อหาวิชาการ", hint: "ข้อคิด นาซีฮัต เกร็ดความรู้ทั่วไป", cls: "bg-sky-50 text-sky-700 border-sky-200" },
-    { key: "biography", label: "ชีวประวัติบุคคลสำคัญ", page: "ศูนย์เนื้อหาวิชาการ", hint: "เรื่องราวบุคคลต้นแบบ อุละมาอ์", cls: "bg-violet-50 text-violet-700 border-violet-200" },
-    { key: "youth-advice", label: "คำแนะนำด้านเยาวชน", page: "ศูนย์เนื้อหาวิชาการ", hint: "คำแนะนำสำหรับผู้ปกครอง เยาวชน ครู", cls: "bg-pink-50 text-pink-700 border-pink-200" },
+    { key: "academic", label: "ข้อมูลวิชาการ", page: "ศูนย์เนื้อหาศาสนา", hint: "บทความวิชาการ งานวิจัย (แนบ PDF ฉบับเต็มได้)", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+    { key: "encyclopedia", label: "สาระน่ารู้ / บทความ", page: "ศูนย์เนื้อหาศาสนา", hint: "ข้อคิด นาซีฮัต เกร็ดความรู้ทั่วไป", cls: "bg-sky-50 text-sky-700 border-sky-200" },
+    { key: "biography", label: "ชีวประวัติบุคคลสำคัญ", page: "ศูนย์เนื้อหาศาสนา", hint: "เรื่องราวบุคคลต้นแบบ อุละมาอ์", cls: "bg-violet-50 text-violet-700 border-violet-200" },
+    { key: "youth-advice", label: "คำแนะนำแด่เยาวชน / นาศีหัต", page: "ศูนย์เนื้อหาศาสนา", hint: "คำแนะนำสำหรับผู้ปกครอง เยาวชน ครู", cls: "bg-pink-50 text-pink-700 border-pink-200" },
 ];
 const destOf = (k: Dest) => DESTS.find(d => d.key === k)!;
 
@@ -232,6 +232,7 @@ export default function WebsitePostsPage() {
     const [moving, setMoving] = useState<Post | null>(null);
     const [deleting, setDeleting] = useState<Post | null>(null);
     const { show } = toast;
+    const [section, setSection] = useState<"posts" | "camps">("posts");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -251,7 +252,7 @@ export default function WebsitePostsPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
-            <PageHeader icon={Newspaper} title="โพสต์ข่าวและความรู้" subtitle={`ข่าวประชาสัมพันธ์ ${count("news")} · ศูนย์เนื้อหาวิชาการ ${posts.length - count("news")} — เลือกได้ว่าจะลงหน้าไหน`} previewPath={dest && dest !== "news" ? `/knowledge/${dest}` : "/news"}>
+            <PageHeader icon={Newspaper} title="โพสต์ข่าวและความรู้" subtitle={`ข่าวประชาสัมพันธ์ ${count("news")} · ศูนย์เนื้อหาศาสนา ${posts.length - count("news")} — เลือกได้ว่าจะลงหน้าไหน`} previewPath={dest && dest !== "news" ? `/knowledge/${dest}` : "/news"}>
                 {canEdit && (
                     <button onClick={() => setChoosing(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 shadow-md shadow-blue-900/20">
                         <Plus className="w-4 h-4" />โพสต์ใหม่
@@ -259,6 +260,13 @@ export default function WebsitePostsPage() {
                 )}
             </PageHeader>
 
+            <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+                {([["posts", "ข่าวและบทความ"], ["camps", "ค่ายและกิจกรรม"]] as const).map(([k, label]) => (
+                    <button key={k} onClick={() => setSection(k)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${section === k ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
+                ))}
+            </div>
+
+            {section === "camps" ? <ContentManager cfg={campConfig} toast={show} /> : <>
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="หน้าที่แสดง">
                 {[{ key: "" as const, label: "ทั้งหมด", n: posts.length }, ...DESTS.map(d => ({ key: d.key, label: d.label, n: count(d.key) }))].map(t => (
                     <button key={t.key || "all"} role="tab" aria-selected={dest === t.key} onClick={() => setDest(t.key)}
@@ -324,6 +332,7 @@ export default function WebsitePostsPage() {
                     </ul>
                 )}
             </div>
+            </>}
 
             {choosing && <ChooseDest onClose={() => setChoosing(false)} onPick={d => { setChoosing(false); if (d === "news") setEditNews("new"); else setEditArticle({ cat: d, item: null }); }} />}
             {editNews && <NewsModal item={editNews === "new" ? null : editNews} onClose={() => setEditNews(null)} onSaved={done} />}

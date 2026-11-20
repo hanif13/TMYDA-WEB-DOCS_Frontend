@@ -4,13 +4,14 @@ import { PageHeader, PUBLIC_SITE_URL, inputCls, useCanEditWebsite, useToast } fr
 import { Field, LinesInput, RowsEditor, SaveBar, SectionTitle, Tabs, sectionCls, useHashTab, useSiteSetting } from "../_editors";
 import { ContentManager } from "../_content";
 import Link from "next/link";
-import { partnerConfig } from "../_configs";
+import { courseConfig, partnerConfig } from "../_configs";
 
 const TABS = [
     { key: "profile", label: "ข้อมูลองค์กร", path: "/about" },
     { key: "history", label: "ประวัติความเป็นมา", path: "/about#history" },
     { key: "structure", label: "โครงสร้างองค์กร", path: "/about#structure" },
     { key: "committee", label: "คณะกรรมการ", path: "/about/committee" },
+    { key: "courses", label: "หลักสูตรต่าง ๆ", path: "/about/courses" },
     { key: "partners", label: "เครือข่ายพันธมิตร", path: "/partners" },
 ] as const;
 type Key = (typeof TABS)[number]["key"];
@@ -85,6 +86,7 @@ export default function WebsiteAboutPage() {
                     </div>
                 </div>
             )
+                : tab === "courses" ? <ContentManager key="c" cfg={courseConfig} toast={toast.show} />
                 : tab === "partners" ? <ContentManager key="p" cfg={partnerConfig} toast={toast.show} />
                     : <AboutSettings tab={tab} toast={toast.show} />}
             {toast.node}

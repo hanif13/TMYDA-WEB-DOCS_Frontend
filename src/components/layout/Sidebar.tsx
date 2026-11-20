@@ -58,7 +58,7 @@ const navGroups = [
             { name: 'โพสต์ข่าวและความรู้', href: '/website/news', icon: Newspaper, permission: 'website.view' },
             { name: 'คำประกาศ / แถลงการณ์', href: '/website/announcements', icon: Megaphone, permission: 'website.view' },
             { name: 'เกี่ยวกับองค์กร', href: '/website/about', icon: Building2, permission: 'website.view' },
-            { name: 'ศูนย์เนื้อหาวิชาการ', href: '/website/knowledge', icon: GraduationCap, permission: 'website.view' },
+            { name: 'ศูนย์เนื้อหาศาสนา', href: '/website/knowledge', icon: GraduationCap, permission: 'website.view' },
             { name: 'สมาชิกเว็บไซต์', href: '/website/members', icon: UserCheck, permission: 'site_members.view' },
             { name: 'เว็บบอร์ด', href: '/website/webboard', icon: MessagesSquare, permission: 'website.view' },
             { name: 'บริจาค & นโยบาย', href: '/website/pages', icon: HandHeart, permission: 'website.view' },
