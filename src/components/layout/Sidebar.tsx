@@ -32,11 +32,17 @@ const navGroups = [
         items: [
             { name: 'ส่งคำขอเอกสาร', href: '/documents?tab=request', icon: FileText, permission: 'documents.view' },
             { name: 'เอกสารรอพิจารณา', href: '/approvals', icon: FileSignature, permission: 'documents.view' },
-            { name: 'ตรวจงานสื่อประชาสัมพันธ์', href: '/media-review', icon: Megaphone, permission: ['media.submit', 'media.review'] },
             { name: 'ประวัติคำขอเอกสาร', href: '/documents?tab=pending', icon: Inbox, permission: 'documents.view' },
             { name: 'ทะเบียนเอกสาร', href: '/registry', icon: BookMarked, permission: 'registry.view' },
             { name: 'โครงการประจำปี', href: '/annual-projects', icon: CalendarDays, permission: 'annual_projects.view' },
             { name: 'จัดการโครงการ', href: '/projects', icon: FolderKanban, permission: 'projects.view' },
+        ],
+    },
+    {
+        label: 'กลุ่มงานสื่อและประชาสัมพันธ์',
+        items: [
+            { name: 'ตรวจงานสื่อประชาสัมพันธ์', href: '/media-review', icon: Megaphone, permission: ['media.submit', 'media.review'] },
+            { name: 'ปฏิทินโพสต์', href: '/media-review/calendar', icon: CalendarDays, permission: ['media.submit', 'media.review'] },
         ],
     },
     {
@@ -177,6 +183,11 @@ export function Sidebar({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // The most specific menu item matching the current page (so /media-review/calendar does not also light up /media-review)
+    const activeHref = navGroups.flatMap(g => g.items.map(i => i.href)).filter(h => !h.includes('?'))
+        .filter(h => pathname === h || (h !== '/' && pathname.startsWith(h + '/')))
+        .sort((a, b) => b.length - a.length)[0];
+
     // Filter navigation based on permissions
     const userPermissions = user?.permissions || [];
     const filteredGroups = navGroups.map(group => {
@@ -289,9 +300,9 @@ export function Sidebar({
                             )}>
                                 {group.items.map((item) => {
                                     const fullCurrentPath = pathname + (searchParams.toString() ? ('?' + searchParams.toString()) : '');
-                                    const isActive = item.href.includes('?') 
-                                        ? fullCurrentPath === item.href 
-                                        : pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/');
+                                    const isActive = item.href.includes('?')
+                                        ? fullCurrentPath === item.href
+                                        : item.href === activeHref;
                                     return (
                                         <Link
                                             key={item.href}
