@@ -3,13 +3,13 @@
 // Generic list manager for SiteContent (articles, courses, camps, books, videos, Q&A,
 // recommended links, committee members, partners). Each type passes its own field list.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ExternalLink, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, Loader2, Pencil, Plus, Search, Trash2, BookOpen, Clapperboard, FileText, GraduationCap, Handshake, Lightbulb, MessageCircleQuestion, Sparkles, Tent, UserRound } from "lucide-react";
 import {
     createSiteContent, deleteSiteContent, fetchSiteContent, reorderSiteContent, updateSiteContent,
     type SiteContent, type SiteContentType,
 } from "@/lib/api";
 import { ConfirmDelete, ImagePicker, Modal, PUBLIC_SITE_URL, StatusPill, formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite } from "./_shared";
-import { Field, LinesInput, PdfPicker, RowsEditor, TagsInput, TONES, TonePicker, errMsg, type RowCol } from "./_editors";
+import { Field, LinesInput, PdfPicker, RowsEditor, TagsInput, TonePicker, errMsg, type RowCol } from "./_editors";
 import { CategoryManager, CategoryPicker, useCategories } from "./_categories";
 import { Tags } from "lucide-react";
 
@@ -185,7 +185,12 @@ export function ContentModal({ cfg, item, onClose, onSaved }: { cfg: ContentConf
     );
 }
 
-const toneDot = (tone?: string) => TONES.find(t => t.value === tone)?.cls ?? "bg-slate-300";
+
+/** Picture for an item without a cover image (one colour for every type). */
+const TYPE_ICON: Record<string, React.ElementType> = {
+    article: Lightbulb, course: GraduationCap, camp: Tent, book: BookOpen, video: Clapperboard,
+    qa: MessageCircleQuestion, recommended: Sparkles, committee: UserRound, partner: Handshake,
+};
 
 export function ContentManager({ cfg, onCount, toast }: { cfg: ContentConfig; onCount?: (n: number) => void; toast: (msg: string, type?: "success" | "error") => void }) {
     const canEdit = useCanEditWebsite();
@@ -283,7 +288,7 @@ export function ContentManager({ cfg, onCount, toast }: { cfg: ContentConfig; on
                                     <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         {i.coverUrl ? <img src={i.coverUrl} alt="" className="w-full h-full object-cover" />
-                                            : <span className={`w-full h-full ${toneDot(i.data.tone)} opacity-80 flex items-center justify-center text-white font-black text-lg`}>{i.title.trim().charAt(0)}</span>}
+                                            : <span className="w-full h-full bg-blue-50 text-blue-600 flex items-center justify-center">{(() => { const Icon = TYPE_ICON[cfg.type] ?? FileText; return <Icon className="w-6 h-6" />; })()}</span>}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="font-semibold text-slate-800 truncate">{i.title}</p>

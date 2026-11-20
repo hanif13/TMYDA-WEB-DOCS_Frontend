@@ -1,9 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import {
-    Ban, CheckCircle2, Clock, Loader2, Mail, MailWarning, RotateCcw, Search, Send, Trash2, UserCheck, XCircle,
-} from "lucide-react";
+import { Ban, CheckCircle2, Clock, Loader2, Mail, MailWarning, RotateCcw, Search, Send, Trash2, UserCheck, XCircle, UserRound } from "lucide-react";
 import {
     deleteSiteMember, fetchSiteEmail, fetchSiteEmails, fetchSiteMember, fetchSiteMembers, siteMemberAction, updateSiteMemberNote,
     type SiteEmail, type SiteMemberDetail, type SiteMemberRow, type SiteMemberStatus,
@@ -310,7 +308,7 @@ export default function WebsiteMembersPage() {
                                 {data.items.map(m => (
                                     <li key={m.id}>
                                         <button onClick={() => setOpen(m.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50">
-                                            <span className="h-10 w-10 rounded-full bg-blue-50 text-blue-700 font-bold flex items-center justify-center shrink-0">{m.name.slice(0, 1)}</span>
+                                            <span className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><UserRound className="w-5 h-5" /></span>
                                             <span className="min-w-0 flex-1">
                                                 <span className="block font-semibold text-slate-800 truncate">{m.name}</span>
                                                 <span className="block text-xs text-slate-500 truncate">{m.email}{m.province && ` · ${m.province}`}{age(m.birthdate) !== null && ` · ${age(m.birthdate)} ปี`}</span>

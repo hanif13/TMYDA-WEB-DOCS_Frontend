@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { 
-    KeyRound, Eye, EyeOff, Shield, User, CheckCircle2, 
-    AlertCircle, Lock, Loader2, Mail, Phone, Facebook, 
-    Building2, Edit3, Save, X, Github, ExternalLink 
-} from "lucide-react";
+import { KeyRound, Eye, EyeOff, Shield, User, CheckCircle2, AlertCircle, Lock, Loader2, Mail, Phone, Facebook, Building2, Edit3, Save, X, Github, ExternalLink, UserRound } from "lucide-react";
 import { changePassword, updateMyProfile, fetchDepartments, getMyProfile } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -139,7 +135,7 @@ export default function ProfilePage() {
                     <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-5">
                             <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-indigo-500/30 ring-4 ring-white/10">
-                                {profileData.name.charAt(0) || user?.name?.charAt(0) || "U"}
+                                <UserRound className="w-10 h-10" />
                             </div>
                             <div className="min-w-0">
                                 <h2 className="text-2xl font-black text-white tracking-tight leading-tight mb-1">{profileData.name || user?.name || "ผู้ใช้งาน"}</h2>

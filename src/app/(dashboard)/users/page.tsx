@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import {
-    Users, ShieldCheck, User, Plus, MoreHorizontal,
-    Loader, X, Check, Trash2, Key, Mail, Building2,
-    ShieldAlert, Eye, UserCog, Phone, Facebook,
-    FileUp, Download, AlertCircle, Pencil, UserPlus
-} from "lucide-react";
+import { Users, ShieldCheck, User, Plus, MoreHorizontal, Loader, X, Check, Trash2, Key, Mail, Building2, ShieldAlert, Eye, UserCog, Phone, Facebook, FileUp, Download, AlertCircle, Pencil, UserPlus, UserRound } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -366,7 +361,7 @@ export default function UsersPage() {
                                         <td className="px-8 py-5">
                                             <div className="flex items-center gap-4">
                                                 <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 font-black text-lg shadow-inner group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white transition-all duration-300">
-                                                    {user.name.charAt(0)}
+                                                    <UserRound className="w-6 h-6" />
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-800 text-sm flex items-center gap-2">

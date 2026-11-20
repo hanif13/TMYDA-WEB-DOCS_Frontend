@@ -2,13 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-    LayoutDashboard, FileText, FolderKanban, Settings,
-    BarChart3, Users, ChevronDown, LogOut, BadgePlus,
-    Bell, Star, BookMarked, CalendarDays, Receipt,
-    KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, MessagesSquare, HandHeart, UserCheck, FileSignature, Mail
-} from 'lucide-react';
+import { LayoutDashboard, FileText, FolderKanban, Settings, BarChart3, Users, ChevronDown, LogOut, BadgePlus, Bell, Star, BookMarked, CalendarDays, Receipt, KeyRound, UserCircle, Shield, Wallet, ChevronRight, Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, MessagesSquare, HandHeart, UserCheck, FileSignature, Mail, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
 import { useSession, signOut } from 'next-auth/react';
@@ -345,7 +339,7 @@ export function Sidebar({
                             className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group"
                         >
                             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-lg relative">
-                                {user?.name?.charAt(0) || <Users className="w-4 h-4" />}
+                                <UserRound className="w-5 h-5" />
                                 {isProfileIncomplete && (
                                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 border-2 border-[#0f172a] rounded-full animate-pulse" />
                                 )}
