@@ -61,13 +61,13 @@ const navGroups = [
         label: 'จัดการเว็บไซต์หลัก',
         items: [
             { name: 'หน้าแรก & แบนเนอร์', href: '/website/home', icon: Globe, permission: 'website.view' },
+            { name: 'เกี่ยวกับองค์กร', href: '/website/about', icon: Building2, permission: 'website.view' },
+            { name: 'บริจาค & นโยบาย', href: '/website/pages', icon: HandHeart, permission: 'website.view' },
             { name: 'ประชาสัมพันธ์ & เนื้อหาศาสนา', href: '/website/news', icon: Newspaper, permission: 'website.view' },
             { name: 'คำประกาศ / แถลงการณ์', href: '/website/announcements', icon: Megaphone, permission: 'website.view' },
-            { name: 'เกี่ยวกับองค์กร', href: '/website/about', icon: Building2, permission: 'website.view' },
+            { name: 'เว็บบอร์ด', href: '/website/webboard', icon: MessagesSquare, permission: 'website.view' },
             { name: 'สมาชิกเว็บไซต์', href: '/website/members', icon: UserCheck, permission: 'site_members.view' },
             { name: 'ส่งอีเมลถึงสมาชิก', href: '/website/mailings', icon: Mail, permission: 'site_members.view' },
-            { name: 'เว็บบอร์ด', href: '/website/webboard', icon: MessagesSquare, permission: 'website.view' },
-            { name: 'บริจาค & นโยบาย', href: '/website/pages', icon: HandHeart, permission: 'website.view' },
         ],
     },
     {
