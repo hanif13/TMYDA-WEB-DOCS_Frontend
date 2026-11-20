@@ -10,13 +10,17 @@ import {
 } from "@/lib/api";
 import { ConfirmDelete, ImagePicker, Modal, PUBLIC_SITE_URL, StatusPill, formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite } from "./_shared";
 import { Field, LinesInput, PdfPicker, RowsEditor, TagsInput, TONES, TonePicker, errMsg, type RowCol } from "./_editors";
+import { CategoryManager, CategoryPicker, useCategories } from "./_categories";
+import { Tags } from "lucide-react";
 
 export type Option = { value: string; label: string };
 export type FieldDef = {
     /** title | slug | category | coverUrl | fileUrl | date | data.<key> */
     path: string;
     label: string;
-    kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images";
+    kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images" | "categories";
+    /** kind "categories": which managed list (qa, recommended, book, video, partner) */
+    catType?: string;
     options?: Option[];
     required?: boolean;
     hint?: string;
@@ -36,6 +40,8 @@ export type ContentConfig = {
     defaults?: () => Partial<FormState>;
     sortable?: boolean;                 // show ↑↓ (order matters on the website)
     filter?: { path: string; label: string; options: Option[] };
+    /** managed categories (filter + จัดการหมวดหมู่ button) */
+    categories?: { type: string; label: string };
     emptyHint?: string;
 };
 
@@ -63,7 +69,9 @@ function toForm(item: SiteContent | null, cfg: ContentConfig): FormState {
     }
     return {
         title: item.title, slug: item.slug, category: item.category ?? "", coverUrl: item.coverUrl ?? "", fileUrl: item.fileUrl ?? "",
-        date: item.date ? toDateInput(item.date) : "", isPublished: item.isPublished, data: { ...item.data },
+        date: item.date ? toDateInput(item.date) : "", isPublished: item.isPublished,
+        // older items have one category only → start the multi-select from it
+        data: cfg.categories && !item.data?.categories?.length && item.category ? { ...item.data, categories: [item.category] } : { ...item.data },
     };
 }
 
@@ -100,6 +108,7 @@ function FieldInput({ def, form, setForm }: { def: FieldDef; form: FormState; se
                     </select>
                 </Field>
             );
+        case "categories": return <CategoryPicker type={def.catType ?? ""} label={def.label} value={value ?? []} onChange={set} canManage />;
         case "tags": return <TagsInput label={def.label} value={value ?? []} onChange={set} hint={def.hint} />;
         case "lines": return <LinesInput label={def.label} value={value ?? []} onChange={set} hint={def.hint} placeholder={def.placeholder} />;
         case "image": return <ImagePicker label={def.label} value={value ? [value] : []} onChange={urls => set(urls[0] ?? "")} aspect={def.hint === "square" ? "aspect-square" : "aspect-video"} />;
@@ -186,6 +195,9 @@ export function ContentManager({ cfg, onCount, toast }: { cfg: ContentConfig; on
     const [filter, setFilter] = useState("");
     const [editing, setEditing] = useState<SiteContent | "new" | null>(null);
     const [deleting, setDeleting] = useState<SiteContent | null>(null);
+    const [managing, setManaging] = useState(false);
+    const catList = useCategories(cfg.categories?.type ?? "");
+    const catsOf = (i: SiteContent): string[] => i.data?.categories?.length ? i.data.categories : i.category ? [i.category] : [];
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -201,7 +213,7 @@ export function ContentManager({ cfg, onCount, toast }: { cfg: ContentConfig; on
     useEffect(() => { onCount?.(items.length); }, [items.length, onCount]);
 
     const shown = items.filter(i =>
-        (!filter || getPath(toForm(i, cfg), cfg.filter!.path) === filter) &&
+        (!filter || (cfg.categories ? catsOf(i).includes(filter) : getPath(toForm(i, cfg), cfg.filter!.path) === filter)) &&
         (!search || `${i.title} ${cfg.subtitle(i)}`.toLowerCase().includes(search.toLowerCase())),
     );
     const canReorder = cfg.sortable && canEdit && !search && !filter;
@@ -224,11 +236,21 @@ export function ContentManager({ cfg, onCount, toast }: { cfg: ContentConfig; on
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input aria-label={`ค้นหา${cfg.noun}`} value={search} onChange={e => setSearch(e.target.value)} placeholder={`ค้นหา${cfg.noun}…`} className={`${inputCls} pl-9 bg-slate-50/50`} />
                 </div>
-                {cfg.filter && (
+                {cfg.categories ? (
+                    <select aria-label={cfg.categories.label} value={filter} onChange={e => setFilter(e.target.value)} className={`${inputCls} w-auto bg-slate-50/50`}>
+                        <option value="">{cfg.categories.label}: ทั้งหมด</option>
+                        {(catList ?? []).map(c => <option key={c} value={c}>{c} ({items.filter(i => catsOf(i).includes(c)).length})</option>)}
+                    </select>
+                ) : cfg.filter && (
                     <select aria-label={cfg.filter.label} value={filter} onChange={e => setFilter(e.target.value)} className={`${inputCls} w-auto bg-slate-50/50`}>
                         <option value="">{cfg.filter.label}: ทั้งหมด</option>
                         {cfg.filter.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
+                )}
+                {cfg.categories && canEdit && (
+                    <button onClick={() => setManaging(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        <Tags className="w-4 h-4" />จัดการหมวดหมู่
+                    </button>
                 )}
                 {canEdit && (
                     <button onClick={() => setEditing("new")} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 shadow-md shadow-blue-900/20">
@@ -286,6 +308,7 @@ export function ContentManager({ cfg, onCount, toast }: { cfg: ContentConfig; on
             </div>
             {cfg.sortable && canEdit && <p className="text-[11px] text-slate-400">ลำดับในรายการนี้คือลำดับที่แสดงบนเว็บไซต์ · ใช้ลูกศร ↑↓ เพื่อจัดลำดับ</p>}
 
+            {managing && cfg.categories && <CategoryManager type={cfg.categories.type} title={cfg.categories.label} onClose={() => setManaging(false)} onChanged={load} />}
             {editing && <ContentModal cfg={cfg} item={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={msg => { setEditing(null); toast(msg); load(); }} />}
             {deleting && <ConfirmDelete text={`ลบ "${deleting.title}" ออกจากเว็บไซต์? ไฟล์และรูปที่แนบไว้จะถูกลบด้วย`} onCancel={() => setDeleting(null)}
                 onConfirm={async () => { try { await deleteSiteContent(deleting.id); toast("ลบแล้ว"); load(); } catch { toast("ลบไม่สำเร็จ", "error"); } setDeleting(null); }} />}

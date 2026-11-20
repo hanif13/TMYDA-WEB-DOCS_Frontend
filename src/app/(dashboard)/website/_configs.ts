@@ -6,6 +6,8 @@ import { SITE_DEPARTMENTS } from "./_shared";
 const opts = (values: string[]): Option[] => values.map(v => ({ value: v, label: v }));
 const ACCESS: Option[] = [{ value: "public", label: "เปิดทุกคน" }, { value: "member", label: "เฉพาะสมาชิก" }];
 const accessLabel = (v?: string) => (v === "member" ? "🔒 สมาชิก" : "เปิดทุกคน");
+/** categories of an item (several allowed; older items have one in `category`) */
+const cats = (i: SiteContent) => (i.data?.categories?.length ? i.data.categories : i.category ? [i.category] : []).join(", ");
 const join = (...parts: (string | number | null | undefined)[]) => parts.filter(p => p !== null && p !== undefined && p !== "").join(" · ");
 
 const slug: FieldDef = { path: "slug", label: "ลิงก์", kind: "text" };
@@ -42,6 +44,8 @@ function articleConfig(category: string): ContentConfig {
             { path: "data.readMinutes", label: "เวลาอ่าน (นาที)", kind: "number", half: true },
             { path: "data.views", label: "ยอดเข้าชม", kind: "number", half: true },
             { path: "data.tags", label: "แท็ก", kind: "tags" },
+            { path: "data.images", label: "อัลบั้มภาพ", kind: "images" },
+            { path: "data.videoUrl", label: "ลิงก์วิดีโอ (Facebook หรือ YouTube)", kind: "text", placeholder: "https://…", hint: "แสดงเป็นตัวเล่นวิดีโอแทนรูปปก" },
             cover, tone, slug,
         ],
         defaults: () => ({ data: { tone: category === "academic" ? "amber" : category === "encyclopedia" ? "sky" : category === "biography" ? "violet" : "pink", tags: [], audience: category === "youth-advice" ? "ผู้ปกครอง" : "" } }),
@@ -120,11 +124,11 @@ export const bookConfig: ContentConfig = {
     fields: [
         { path: "title", label: "ชื่อหนังสือ", kind: "text", required: true },
         { path: "data.author", label: "ผู้เขียน", kind: "text", half: true },
-        { path: "category", label: "หมวดหมู่", kind: "text", placeholder: "เช่น เยาวชน, ศาสนา, ครอบครัว", half: true },
         { path: "data.publisher", label: "สำนักพิมพ์", kind: "text", half: true },
         { path: "data.access", label: "สิทธิ์ดาวน์โหลด", kind: "select", options: ACCESS, required: true, half: true },
         { path: "data.year", label: "ปีที่พิมพ์ (พ.ศ.)", kind: "number", half: true },
         { path: "data.pages", label: "จำนวนหน้า", kind: "number", half: true },
+        { path: "data.categories", label: "หมวดหนังสือ", kind: "categories", catType: "book" },
         { path: "data.summary", label: "เรื่องย่อ", kind: "textarea" },
         { path: "data.toc", label: "สารบัญ", kind: "lines" },
         { path: "coverUrl", label: "ภาพปกหนังสือ", kind: "image", half: true, hint: "square" },
@@ -132,7 +136,8 @@ export const bookConfig: ContentConfig = {
         tone, slug,
     ],
     defaults: () => ({ data: { tone: "green", access: "public", toc: [] } }),
-    subtitle: i => join(i.data.author, i.category, accessLabel(i.data.access), i.fileUrl ? "📎 มีไฟล์" : "ยังไม่มีไฟล์"),
+    subtitle: i => join(i.data.author, cats(i), accessLabel(i.data.access), i.fileUrl ? "📎 มีไฟล์" : "ยังไม่มีไฟล์"),
+    categories: { type: "book", label: "หมวดหนังสือ" },
     publicPath: i => `/knowledge/books/${i.slug}`,
     filter: { path: "data.access", label: "สิทธิ์", options: ACCESS },
 };
@@ -144,7 +149,7 @@ export const videoConfig: ContentConfig = {
         { path: "title", label: "ชื่อวิดีโอ", kind: "text", required: true },
         { path: "data.youtubeUrl", label: "ลิงก์ YouTube", kind: "text", placeholder: "https://www.youtube.com/watch?v=…", hint: "วางลิงก์จาก YouTube เพื่อแสดงตัวเล่นวิดีโอบนเว็บ" },
         { path: "data.description", label: "คำอธิบาย", kind: "textarea" },
-        { path: "category", label: "หมวดหมู่", kind: "text", placeholder: "เช่น ค่ายและกิจกรรม, อบรมพิเศษ", half: true },
+        { path: "data.categories", label: "หมวดวิดีโอ", kind: "categories", catType: "video" },
         { path: "data.duration", label: "ความยาว", kind: "text", placeholder: "เช่น 12:30", half: true },
         { path: "data.access", label: "สิทธิ์การดู", kind: "select", options: ACCESS, required: true, half: true },
         { path: "date", label: "วันที่เผยแพร่", kind: "date", half: true },
@@ -152,42 +157,41 @@ export const videoConfig: ContentConfig = {
         tone, slug,
     ],
     defaults: () => ({ data: { tone: "red", access: "public" } }),
-    subtitle: i => join(i.category, i.data.duration, accessLabel(i.data.access), i.data.youtubeUrl ? "▶ มีลิงก์ YouTube" : "ยังไม่มีลิงก์วิดีโอ"),
+    categories: { type: "video", label: "หมวดวิดีโอ" },
+    subtitle: i => join(cats(i), i.data.duration, accessLabel(i.data.access), i.data.youtubeUrl ? "▶ มีลิงก์ YouTube" : "ยังไม่มีลิงก์วิดีโอ"),
     publicPath: i => `/knowledge/videos/${i.slug}`,
     filter: { path: "data.access", label: "สิทธิ์", options: ACCESS },
 };
 
 // ─── Youth Care Q&A ───────────────────────────────────────────
-export const QA_CATEGORIES = ["ครอบครัว", "การเรียน", "สุขภาพใจ", "ความสัมพันธ์", "ศาสนา", "สื่อออนไลน์"];
 export const qaConfig: ContentConfig = {
     type: "qa", noun: "คำถาม-คำตอบ",
     fields: [
         { path: "title", label: "คำถาม", kind: "text", required: true },
         { path: "data.answer", label: "คำตอบของทีม Youth Care", kind: "longtext" },
-        { path: "category", label: "หมวด", kind: "select", options: opts(QA_CATEGORIES), required: true, half: true },
+        { path: "data.categories", label: "หมวดปัญหา", kind: "categories", catType: "qa" },
         { path: "date", label: "วันที่ตอบ", kind: "date", half: true },
     ],
-    defaults: () => ({ category: QA_CATEGORIES[0], data: { answer: "" } }),
-    subtitle: i => join(i.category, (i.data.answer || "").slice(0, 80)),
+    defaults: () => ({ data: { answer: "", categories: [] } }),
+    subtitle: i => join(cats(i), (i.data.answer || "").slice(0, 80)),
+    categories: { type: "qa", label: "หมวดปัญหา" },
     publicPath: () => "/knowledge/qa",
-    filter: { path: "category", label: "หมวด", options: opts(QA_CATEGORIES) },
 };
 
 // ─── Recommended links ────────────────────────────────────────
-export const REC_KINDS = ["พอดแคสต์", "บทความ", "คลิปเสียง", "เว็บไซต์", "แอปพลิเคชัน"];
 export const recommendedConfig: ContentConfig = {
     type: "recommended", noun: "รายการแนะนำ", sortable: true,
     fields: [
         { path: "title", label: "ชื่อรายการ", kind: "text", required: true },
-        { path: "category", label: "ประเภท", kind: "select", options: opts(REC_KINDS), required: true, half: true },
+        { path: "data.categories", label: "ประเภท", kind: "categories", catType: "recommended" },
         { path: "data.source", label: "แหล่งที่มา", kind: "text", half: true },
         { path: "data.description", label: "คำอธิบาย", kind: "textarea" },
         { path: "data.url", label: "ลิงก์", kind: "text", placeholder: "https://…" },
     ],
-    defaults: () => ({ category: REC_KINDS[0], data: {} }),
-    subtitle: i => join(i.category, i.data.source, i.data.url ? "🔗 มีลิงก์" : ""),
+    defaults: () => ({ data: { categories: [] } }),
+    categories: { type: "recommended", label: "ประเภท" },
+    subtitle: i => join(cats(i), i.data.source, i.data.url ? "🔗 มีลิงก์" : ""),
     publicPath: () => "/knowledge/recommended",
-    filter: { path: "category", label: "ประเภท", options: opts(REC_KINDS) },
 };
 
 // ─── Committee & partners ─────────────────────────────────────
@@ -206,18 +210,17 @@ export const committeeConfig: ContentConfig = {
     filter: { path: "category", label: "หน่วยงาน", options: opts(SITE_DEPARTMENTS) },
 };
 
-export const PARTNER_CATEGORIES = ["องค์กรศาสนา", "การศึกษา", "เยาวชน", "สื่อ", "ภาคประชาสังคม"];
 export const partnerConfig: ContentConfig = {
     type: "partner", noun: "พันธมิตร", sortable: true,
     fields: [
         { path: "title", label: "ชื่อองค์กร", kind: "text", required: true },
-        { path: "category", label: "ประเภท", kind: "select", options: opts(PARTNER_CATEGORIES), required: true, half: true },
+        { path: "data.categories", label: "ประเภท", kind: "categories", catType: "partner" },
         { path: "data.url", label: "เว็บไซต์", kind: "text", placeholder: "https://…", half: true },
         { path: "data.description", label: "ความร่วมมือ", kind: "textarea" },
         { path: "coverUrl", label: "โลโก้", kind: "image", half: true, hint: "square" },
     ],
-    defaults: () => ({ category: PARTNER_CATEGORIES[0], data: {} }),
-    subtitle: i => join(i.category, i.data.description),
+    defaults: () => ({ data: { categories: [] } }),
+    categories: { type: "partner", label: "ประเภท" },
+    subtitle: i => join(cats(i), i.data.description),
     publicPath: () => "/partners",
-    filter: { path: "category", label: "ประเภท", options: opts(PARTNER_CATEGORIES) },
 };
