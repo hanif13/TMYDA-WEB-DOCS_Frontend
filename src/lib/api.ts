@@ -757,9 +757,23 @@ export type SiteNews = {
 };
 export type SiteAnnouncement = { id: string; number: string; title: string; date: string; pdfUrl: string | null; isPublished: boolean };
 export type SiteBanner = { id: string; title: string | null; imageUrl: string; linkUrl: string | null; order: number; isActive: boolean };
+type Doc = { updated: string; intro: string; sections: { title: string; body: string }[] };
+type BoardInfo = { name: string; description: string; tags: string[] };
 export type SiteSettings = {
     home: { heroBadge: string; heroTitle: string; heroSubtitle: string; highlight: { enabled: boolean; text: string; href: string } };
-    contact: { address: string; phone: string; email: string; facebook: string; youtube: string; tiktok: string; instagram: string; line: string };
+    contact: { address: string; phone: string; email: string; hours: string; mapUrl: string; facebook: string; youtube: string; tiktok: string; instagram: string; line: string };
+    about: {
+        intro: string; vision: string; missions: string[];
+        values: { title: string; text: string }[]; stats: { label: string; value: string }[];
+        history: { year: string; text: string }[]; units: { name: string; children: string[] }[];
+    };
+    donation: {
+        intro: string; bankName: string; branch: string; accountName: string; accountNo: string;
+        promptPay: string; qrUrl: string; note: string; funds: { title: string; text: string; tone: string }[];
+    };
+    webboard: { rules: string[]; youthCare: BoardInfo; general: BoardInfo };
+    privacy: Doc;
+    terms: Doc;
 };
 
 const jsonBody = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
@@ -784,8 +798,40 @@ export const updateSiteBanner = (id: string, data: Partial<SiteBanner>) => apiFe
 export const reorderSiteBanners = (ids: string[]) => apiFetch("/site/banners/reorder", jsonBody("PUT", { ids }));
 export const deleteSiteBanner = (id: string) => apiFetch(`/site/banners/${id}`, { method: "DELETE" });
 
-export async function uploadSitePdf(file: File) {
+export async function uploadSitePdf(file: File, kind: "ann" | "doc" = "ann") {
     const fd = new FormData();
     fd.append("file", file);
-    return apiFetch<{ url: string }>("/site/upload-pdf", { method: "POST", body: fd });
+    return apiFetch<{ url: string }>(`/site/upload-pdf?kind=${kind}`, { method: "POST", body: fd });
 }
+
+// Knowledge hub, committee, partners … (one table, type-specific fields in data)
+export type SiteContentType = "article" | "course" | "camp" | "book" | "video" | "qa" | "recommended" | "committee" | "partner";
+export type SiteContent = {
+    id: string; type: SiteContentType; slug: string; category: string | null; title: string;
+    coverUrl: string | null; fileUrl: string | null; data: Record<string, any>; date: string | null;
+    order: number; isPublished: boolean; createdAt: string; updatedAt: string;
+};
+export const fetchSiteContent = (type: SiteContentType) => apiFetch<SiteContent[]>(`/site/content?type=${type}`);
+export const createSiteContent = (data: Partial<SiteContent>) => apiFetch<SiteContent>("/site/content", jsonBody("POST", data));
+export const updateSiteContent = (id: string, data: Partial<SiteContent>) => apiFetch<SiteContent>(`/site/content/${id}`, jsonBody("PUT", data));
+export const reorderSiteContent = (ids: string[]) => apiFetch("/site/content/reorder", jsonBody("PUT", { ids }));
+export const deleteSiteContent = (id: string) => apiFetch(`/site/content/${id}`, { method: "DELETE" });
+
+// Webboard moderation
+export type ThreadStatus = "pending" | "published" | "hidden";
+export type SiteComment = { id: string; threadId: string; authorName: string; isStaff: boolean; body: string; likes: number; isHidden: boolean; createdAt: string };
+export type SiteThread = {
+    id: string; board: "youth-care" | "general"; title: string; body: string; tag: string | null; authorName: string;
+    status: ThreadStatus; isPinned: boolean; answered: boolean; views: number; likes: number; createdAt: string; updatedAt: string;
+    _count?: { comments: number }; comments?: SiteComment[];
+};
+export const fetchSiteThreads = () =>
+    apiFetch<{ items: SiteThread[]; counts: { board: string; status: string; n: number }[] }>("/site/threads");
+export const fetchSiteThread = (id: string) => apiFetch<SiteThread>(`/site/threads/${id}`);
+export const createSiteThread = (data: Partial<SiteThread>) => apiFetch<SiteThread>("/site/threads", jsonBody("POST", data));
+export const updateSiteThread = (id: string, data: Partial<SiteThread>) => apiFetch<SiteThread>(`/site/threads/${id}`, jsonBody("PUT", data));
+export const deleteSiteThread = (id: string) => apiFetch(`/site/threads/${id}`, { method: "DELETE" });
+export const replySiteThread = (id: string, body: string, authorName?: string) =>
+    apiFetch<SiteComment>(`/site/threads/${id}/comments`, jsonBody("POST", { body, authorName }));
+export const updateSiteComment = (id: string, data: Partial<SiteComment>) => apiFetch<SiteComment>(`/site/comments/${id}`, jsonBody("PUT", data));
+export const deleteSiteComment = (id: string) => apiFetch(`/site/comments/${id}`, { method: "DELETE" });

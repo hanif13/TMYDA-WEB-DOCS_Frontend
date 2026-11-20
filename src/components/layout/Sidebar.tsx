@@ -7,7 +7,7 @@ import {
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
     KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone
+    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, GraduationCap, MessagesSquare, HandHeart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -55,6 +55,10 @@ const navGroups = [
             { name: 'หน้าแรก & แบนเนอร์', href: '/website/home', icon: Globe, permission: 'website.view' },
             { name: 'ข่าวประชาสัมพันธ์', href: '/website/news', icon: Newspaper, permission: 'website.view' },
             { name: 'คำประกาศ / แถลงการณ์', href: '/website/announcements', icon: Megaphone, permission: 'website.view' },
+            { name: 'เกี่ยวกับองค์กร', href: '/website/about', icon: Building2, permission: 'website.view' },
+            { name: 'ศูนย์เนื้อหาวิชาการ', href: '/website/knowledge', icon: GraduationCap, permission: 'website.view' },
+            { name: 'เว็บบอร์ด', href: '/website/webboard', icon: MessagesSquare, permission: 'website.view' },
+            { name: 'บริจาค & นโยบาย', href: '/website/pages', icon: HandHeart, permission: 'website.view' },
         ],
     },
     {

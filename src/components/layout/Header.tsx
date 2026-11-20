@@ -16,6 +16,10 @@ const breadcrumbMap: Record<string, string> = {
     '/website/home': 'เว็บไซต์หลัก · หน้าแรก & แบนเนอร์',
     '/website/news': 'เว็บไซต์หลัก · ข่าวประชาสัมพันธ์',
     '/website/announcements': 'เว็บไซต์หลัก · คำประกาศ / แถลงการณ์',
+    '/website/about': 'เว็บไซต์หลัก · เกี่ยวกับองค์กร',
+    '/website/knowledge': 'เว็บไซต์หลัก · ศูนย์เนื้อหาวิชาการ',
+    '/website/webboard': 'เว็บไซต์หลัก · เว็บบอร์ด',
+    '/website/pages': 'เว็บไซต์หลัก · บริจาค & นโยบาย',
 };
 
 export function Header({ 

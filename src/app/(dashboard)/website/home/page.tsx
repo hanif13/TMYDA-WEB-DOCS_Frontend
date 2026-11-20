@@ -189,7 +189,7 @@ export default function WebsiteHomePage() {
                 )}
             </Section>
 
-            <Section title="ข้อมูลติดต่อ & โซเชียล" description="แสดงที่ส่วนท้ายของทุกหน้า (Footer)">
+            <Section title="ข้อมูลติดต่อ & โซเชียล" description="แสดงที่หน้าติดต่อประสานงาน และส่วนท้ายของทุกหน้า (Footer)">
                 <form onSubmit={e => { e.preventDefault(); save("contact"); }} className="space-y-4">
                     <fieldset disabled={!canEdit} className="grid sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
@@ -198,6 +198,7 @@ export default function WebsiteHomePage() {
                         </div>
                         {([
                             ["phone", "โทรศัพท์", "tel"], ["email", "อีเมล", "email"],
+                            ["hours", "เวลาทำการ", "text"], ["mapUrl", "ลิงก์ Google Maps", "url"],
                             ["facebook", "Facebook (ลิงก์)", "url"], ["youtube", "YouTube (ลิงก์)", "url"],
                             ["tiktok", "TikTok (ลิงก์)", "url"], ["instagram", "Instagram (ลิงก์)", "url"],
                             ["line", "LINE (ลิงก์หรือไอดี)", "text"],
