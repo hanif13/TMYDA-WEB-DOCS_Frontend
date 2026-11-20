@@ -992,3 +992,25 @@ export const approveMediaPost = (id: string, note?: string, publishAt?: string) 
 export const returnMediaPost = (id: string, note: string) => apiFetch<{ ok: true }>(`/media-posts/${id}/return`, { method: "POST", body: JSON.stringify({ note }) });
 export const markMediaPublished = (id: string, publishedUrl?: string) => apiFetch<{ ok: true }>(`/media-posts/${id}/published`, { method: "POST", body: JSON.stringify({ publishedUrl }) });
 export const deleteMediaPost = (id: string) => apiFetch<{ ok: true }>(`/media-posts/${id}`, { method: "DELETE" });
+
+// ─── อีเมลข่าวสารถึงสมาชิกเว็บไซต์ ─────────────────────────────
+export type MailingAudience = "approved" | "verified";
+export type SiteMailing = {
+    id: string; subject: string; title: string; body: string; buttonLabel: string | null; buttonUrl: string | null;
+    audience: MailingAudience; provinces: string[]; status: "draft" | "sending" | "sent";
+    total: number; sent: number; failed: number; createdBy: string | null; sentBy: string | null; sentAt: string | null; createdAt: string;
+    log?: { id: string; to: string; status: string; error: string | null; createdAt: string }[];
+};
+export type MailingInput = Pick<SiteMailing, "subject" | "title" | "body" | "buttonLabel" | "buttonUrl" | "audience" | "provinces">;
+export const fetchMailings = () => apiFetch<SiteMailing[]>("/site/mailings");
+export const fetchMailing = (id: string) => apiFetch<SiteMailing>(`/site/mailings/${id}`);
+export const fetchMailingMeta = () => apiFetch<{ provinces: { name: string; count: number }[]; optedOut: number }>("/site/mailings/meta");
+export const countMailingAudience = (audience: MailingAudience, provinces: string[]) =>
+    apiFetch<{ count: number }>("/site/mailings/count", jsonBody("POST", { audience, provinces }));
+export const previewMailingHtml = (data: Partial<MailingInput>) =>
+    apiBlob("/site/mailings/preview", { method: "POST", body: JSON.stringify(data) }).then(b => b.text());
+export const createMailing = (data: MailingInput) => apiFetch<SiteMailing>("/site/mailings", jsonBody("POST", data));
+export const updateMailing = (id: string, data: MailingInput) => apiFetch<SiteMailing>(`/site/mailings/${id}`, jsonBody("PUT", data));
+export const deleteMailing = (id: string) => apiFetch(`/site/mailings/${id}`, { method: "DELETE" });
+export const testMailing = (id: string, to: string) => apiFetch<{ ok: true; status: string }>(`/site/mailings/${id}/test`, jsonBody("POST", { to }));
+export const sendMailing = (id: string) => apiFetch<{ ok: true; total: number }>(`/site/mailings/${id}/send`, jsonBody("POST", {}));

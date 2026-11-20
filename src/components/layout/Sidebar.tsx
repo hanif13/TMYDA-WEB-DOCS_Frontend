@@ -7,7 +7,7 @@ import {
     BarChart3, Users, ChevronDown, LogOut, BadgePlus,
     Bell, Star, BookMarked, CalendarDays, Receipt,
     KeyRound, UserCircle, Shield, Wallet, ChevronRight,
-    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, GraduationCap, MessagesSquare, HandHeart, UserCheck, FileSignature
+    Inbox, Languages, UserPlus, Globe, Newspaper, Megaphone, Building2, GraduationCap, MessagesSquare, HandHeart, UserCheck, FileSignature, Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useYear } from '@/context/YearContext';
@@ -60,6 +60,7 @@ const navGroups = [
             { name: 'เกี่ยวกับองค์กร', href: '/website/about', icon: Building2, permission: 'website.view' },
             { name: 'ศูนย์เนื้อหาศาสนา', href: '/website/knowledge', icon: GraduationCap, permission: 'website.view' },
             { name: 'สมาชิกเว็บไซต์', href: '/website/members', icon: UserCheck, permission: 'site_members.view' },
+            { name: 'ส่งอีเมลถึงสมาชิก', href: '/website/mailings', icon: Mail, permission: 'site_members.view' },
             { name: 'เว็บบอร์ด', href: '/website/webboard', icon: MessagesSquare, permission: 'website.view' },
             { name: 'บริจาค & นโยบาย', href: '/website/pages', icon: HandHeart, permission: 'website.view' },
         ],
