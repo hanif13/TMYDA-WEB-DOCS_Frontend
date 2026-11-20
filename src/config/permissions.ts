@@ -57,6 +57,8 @@ export const PERMISSION_CATALOG: PermissionGroup[] = [
         permissions: [
             { key: 'website.view', label: 'เว็บไซต์หลัก — ดู', type: 'view' },
             { key: 'website.edit', label: 'เว็บไซต์หลัก — จัดการ (ข่าว/ประกาศ/แบนเนอร์/หน้าแรก)', type: 'edit' },
+            { key: 'site_members.view', label: 'สมาชิกเว็บไซต์ — ดูใบสมัครและข้อมูลส่วนบุคคล', type: 'view' },
+            { key: 'site_members.edit', label: 'สมาชิกเว็บไซต์ — อนุมัติ/ไม่อนุมัติ/ระงับ', type: 'edit' },
         ],
     },
     {
@@ -90,6 +92,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
         'income_expense.view',
         'members.view', 'members.edit',
         'website.view', 'website.edit',
+        'site_members.view', 'site_members.edit',
     ],
     FINANCE: [
         'dashboard.view',
@@ -141,6 +144,7 @@ export const PERMISSION_TO_ROUTE: Record<string, string> = {
     'income_expense.view': '/income-expense',
     'members.view': '/members',
     'website.view': '/website',
+    'site_members.view': '/website/members',
     'users.view': '/users',
     'settings.view': '/settings',
     'activity_logs.view': '/activity-logs',

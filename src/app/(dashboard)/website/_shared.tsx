@@ -1,6 +1,6 @@
 "use client";
 // Shared UI for the "จัดการเว็บไซต์หลัก" pages
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { AlertCircle, CheckCircle2, ExternalLink, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import { uploadImages } from "@/lib/api";
@@ -48,8 +48,10 @@ export function Toast({ msg, type, onClose }: { msg: string; type: "success" | "
 
 export function useToast() {
     const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
-    const node = toast ? <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} /> : null;
-    return { show: (msg: string, type: "success" | "error" = "success") => setToast({ msg, type }), node };
+    const close = useCallback(() => setToast(null), []);
+    const show = useCallback((msg: string, type: "success" | "error" = "success") => setToast({ msg, type }), []);
+    const node = toast ? <Toast msg={toast.msg} type={toast.type} onClose={close} /> : null;
+    return { show, node };
 }
 
 export function PageHeader({ icon: Icon, title, subtitle, previewPath, children }: {

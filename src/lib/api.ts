@@ -774,6 +774,11 @@ export type SiteSettings = {
     webboard: { rules: string[]; youthCare: BoardInfo; general: BoardInfo };
     privacy: Doc;
     terms: Doc;
+    membership: {
+        intro: string; autoApprove: boolean; minAge: number | null; guardianUnderAge: number | null;
+        requirePhone: boolean; requireProvince: boolean; conditions: string[];
+        questions: { label: string; help: string; required: boolean }[]; approvedMessage: string;
+    };
 };
 
 const jsonBody = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
@@ -835,3 +840,28 @@ export const replySiteThread = (id: string, body: string, authorName?: string) =
     apiFetch<SiteComment>(`/site/threads/${id}/comments`, jsonBody("POST", { body, authorName }));
 export const updateSiteComment = (id: string, data: Partial<SiteComment>) => apiFetch<SiteComment>(`/site/comments/${id}`, jsonBody("PUT", data));
 export const deleteSiteComment = (id: string) => apiFetch(`/site/comments/${id}`, { method: "DELETE" });
+
+
+// ─── สมาชิกเว็บไซต์ (ใบสมัคร/อนุมัติ) ─────────────────────
+export type SiteMemberStatus = "unverified" | "pending" | "approved" | "rejected" | "suspended";
+export type SiteMemberRow = {
+    id: string; email: string; name: string; province: string | null; birthdate: string | null; status: SiteMemberStatus;
+    createdAt: string; submittedAt: string | null; reviewedAt: string | null; reviewedBy: string | null; lastLoginAt: string | null;
+};
+export type SiteMemberDetail = SiteMemberRow & {
+    phone: string | null; guardianName: string | null; guardianPhone: string | null;
+    answers: { question: string; answer: string }[]; accepted: string[]; emailVerifiedAt: string | null;
+    reviewNote: string | null; adminNote: string | null; failedLogins: number; lockedUntil: string | null;
+    emails: { id: string; subject: string; kind: string; status: string; createdAt: string }[]; threads: number; comments: number;
+};
+export type SiteEmail = { id: string; to: string; subject: string; kind: string; status: string; error: string | null; memberId: string | null; createdAt: string; html?: string };
+
+export const fetchSiteMembers = (status: string, q: string) =>
+    apiFetch<{ items: SiteMemberRow[]; counts: Partial<Record<SiteMemberStatus, number>> }>(`/site/members?status=${encodeURIComponent(status)}&q=${encodeURIComponent(q)}`);
+export const fetchSiteMember = (id: string) => apiFetch<SiteMemberDetail>(`/site/members/${id}`);
+export const siteMemberAction = (id: string, action: "approve" | "reject" | "suspend" | "reactivate" | "resend-verification", reason?: string) =>
+    apiFetch<{ status?: string; emailStatus: string }>(`/site/members/${id}/${action}`, jsonBody("POST", { reason }));
+export const updateSiteMemberNote = (id: string, adminNote: string) => apiFetch(`/site/members/${id}/note`, jsonBody("PUT", { adminNote }));
+export const deleteSiteMember = (id: string) => apiFetch(`/site/members/${id}`, { method: "DELETE" });
+export const fetchSiteEmails = (q: string) => apiFetch<SiteEmail[]>(`/site/emails?q=${encodeURIComponent(q)}`);
+export const fetchSiteEmail = (id: string) => apiFetch<SiteEmail>(`/site/emails/${id}`);

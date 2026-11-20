@@ -19,6 +19,7 @@ const breadcrumbMap: Record<string, string> = {
     '/website/about': 'เว็บไซต์หลัก · เกี่ยวกับองค์กร',
     '/website/knowledge': 'เว็บไซต์หลัก · ศูนย์เนื้อหาวิชาการ',
     '/website/webboard': 'เว็บไซต์หลัก · เว็บบอร์ด',
+    '/website/members': 'เว็บไซต์หลัก · สมาชิกเว็บไซต์',
     '/website/pages': 'เว็บไซต์หลัก · บริจาค & นโยบาย',
 };
 
