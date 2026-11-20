@@ -20,6 +20,7 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
     const [note, setNote] = useState("");
     const [busy, setBusy] = useState(false);
     const [slips, setSlips] = useState<string[]>([]);
+    const [restart, setRestart] = useState(false);
     const [uploading, setUploading] = useState(false);
     const isTransfer = item.role === "transfer";
     const isLast = item.step === item.totalSteps;
@@ -52,7 +53,11 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
     const sendBack = async () => {
         if (!note.trim()) { toast.error("กรุณาระบุสิ่งที่ต้องแก้ไข"); return; }
         setBusy(true);
-        try { await returnStep(item.id, note.trim()); toast.success("ส่งกลับให้ผู้ขอแก้ไขแล้ว"); onDone(); }
+        try {
+            await returnStep(item.id, note.trim(), restart);
+            toast.success(restart ? "ส่งกลับแก้ไขแล้ว · เมื่อแก้เสร็จจะเริ่มอนุมัติใหม่ตั้งแต่ขั้นแรก" : "ส่งกลับแก้ไขแล้ว · เมื่อแก้เสร็จจะกลับมาที่คุณ", { duration: 5000 });
+            onDone();
+        }
         catch (e) { toast.error(apiErrorMessage(e, "ส่งกลับไม่สำเร็จ")); }
         finally { setBusy(false); }
     };
@@ -122,6 +127,20 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
                             <label htmlFor="return-note" className="text-xs font-semibold text-slate-600">สิ่งที่ต้องแก้ไข (ผู้ขอจะเห็นข้อความนี้)</label>
                             <textarea id="return-note" rows={4} value={note} onChange={e => setNote(e.target.value)} autoFocus
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 resize-none" />
+                            {item.step > 1 && (
+                                <fieldset className="space-y-1.5">
+                                    <legend className="text-xs font-semibold text-slate-600 mb-1">หลังผู้ขอแก้ไขเสร็จ</legend>
+                                    {[
+                                        { v: false, t: "ส่งกลับมาที่ฉัน", d: "แก้เล็กน้อย เช่น คำผิด ข้อความ — ลายเซ็นขั้นก่อนหน้ายังอยู่" },
+                                        { v: true, t: "เริ่มอนุมัติใหม่ตั้งแต่ขั้นแรก", d: "แก้สาระสำคัญ เช่น งบประมาณ กิจกรรม — ทุกขั้นต้องลงนามใหม่" },
+                                    ].map(o => (
+                                        <label key={String(o.v)} className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer text-sm ${restart === o.v ? "border-rose-300 bg-rose-50" : "border-slate-200"}`}>
+                                            <input type="radio" name="restart" checked={restart === o.v} onChange={() => setRestart(o.v)} className="mt-1 accent-rose-600" />
+                                            <span><span className="font-semibold text-slate-800">{o.t}</span><span className="block text-xs text-slate-500">{o.d}</span></span>
+                                        </label>
+                                    ))}
+                                </fieldset>
+                            )}
                             <div className="flex gap-2">
                                 <button onClick={() => setMode("view")} disabled={busy} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-slate-600">ยกเลิก</button>
                                 <button onClick={sendBack} disabled={busy || !note.trim()} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold disabled:opacity-50">

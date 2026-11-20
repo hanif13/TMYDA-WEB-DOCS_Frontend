@@ -143,11 +143,12 @@ export function Sidebar({
         let alive = true;
         const load = async () => {
             const api = await import('@/lib/api');
-            const [inbox, media] = await Promise.all([
+            const [inbox, media, returned] = await Promise.all([
                 api.fetchInboxCount().then(r => r.count).catch(() => 0),
                 api.fetchMediaReviewCount().then(r => r.count).catch(() => 0),
+                api.fetchReturnedCount().then(r => r.count).catch(() => 0),
             ]);
-            if (alive) setBadges({ '/approvals': inbox, '/media-review': media });
+            if (alive) setBadges({ '/approvals': inbox, '/media-review': media, '/documents?tab=pending': returned });
         };
         load();
         const t = setInterval(load, 60_000);

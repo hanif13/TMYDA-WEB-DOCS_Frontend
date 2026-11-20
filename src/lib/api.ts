@@ -900,7 +900,7 @@ export type ApprovalItem = {
     id: string; step: number; totalSteps: number; role: string; createdAt: string;
     request: { id: string; requestType: string; department: string; requestedBy: string; createdAt: string; status: string; title: string };
 };
-export type RequestStep = { id: string; step: number; role: string; status: string; assigneeId: string | null; assignee: string | null; actorName: string | null; actorPosition: string | null; note: string | null; attachmentUrls: string[]; actedAt: string | null };
+export type RequestStep = { id: string; step: number; role: string; status: string; assigneeId: string | null; assignee: string | null; actorName: string | null; actorPosition: string | null; note: string | null; restart?: boolean; attachmentUrls: string[]; actedAt: string | null };
 
 export const previewRequestPdf = (data: { requestType: string; department: string; fields: unknown; signerId?: string }) =>
     apiBlob("/document-requests/preview", { method: "POST", body: JSON.stringify(data) });
@@ -914,8 +914,9 @@ export const issueRequestDocument = (id: string) => apiFetch<{ docNo: string; fi
 export const fetchApprovalInbox = () => apiFetch<ApprovalItem[]>("/document-requests/inbox");
 export const approveStep = (stepId: string, note?: string, attachmentUrls?: string[]) =>
     apiFetch<{ docNo?: string; filePath?: string; next?: string }>(`/document-requests/steps/${stepId}/approve`, { method: "POST", body: JSON.stringify({ note, attachmentUrls }) });
-export const returnStep = (stepId: string, note: string) =>
-    apiFetch(`/document-requests/steps/${stepId}/return`, { method: "POST", body: JSON.stringify({ note }) });
+export const returnStep = (stepId: string, note: string, restart = false) =>
+    apiFetch(`/document-requests/steps/${stepId}/return`, { method: "POST", body: JSON.stringify({ note, restart }) });
+export const fetchReturnedCount = () => apiFetch<{ count: number }>("/document-requests/returned/count");
 export const fetchSigners = () => apiFetch<Signer[]>("/users/signers");
 export async function uploadMySignature(file: File) {
     const fd = new FormData();

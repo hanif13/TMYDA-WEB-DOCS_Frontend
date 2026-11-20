@@ -1828,6 +1828,7 @@ function DocumentsPageContent() {
                                         {returned?.note && selectedRequest.status === "ส่งกลับแก้ไข" && (
                                             <p className="text-sm text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
                                                 <b>สิ่งที่ต้องแก้ไข:</b> {returned.note}{isMine && <> — กด &quot;แก้ไข&quot; แล้วส่งใหม่ได้เลย</>}
+                                                <span className="block mt-1 text-xs text-rose-600">{returned.restart ? "เมื่อส่งใหม่ จะเริ่มอนุมัติใหม่ตั้งแต่ขั้นแรก (ทุกขั้นลงนามใหม่)" : `เมื่อส่งใหม่ จะกลับไปที่ ${returned.actorName ?? "ผู้ส่งกลับ"} โดยตรง`}</span>
                                             </p>
                                         )}
                                     </div>
