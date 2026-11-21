@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import { ConfirmDelete, ImagePicker, Modal, PUBLIC_SITE_URL, StatusPill, formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite } from "./_shared";
 import { Field, LinesInput, PdfPicker, RowsEditor, TagsInput, TonePicker, errMsg, type RowCol } from "./_editors";
-import { CategoryManager, CategoryPicker, useCategories } from "./_categories";
+import { CategoryManager, CategoryPicker, TagPicker, useCategories } from "./_categories";
 import { Tags } from "lucide-react";
 
 export type Option = { value: string; label: string };
@@ -21,6 +21,8 @@ export type FieldDef = {
     kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images" | "categories";
     /** kind "categories": which managed list (qa, recommended, book, video, partner) */
     catType?: string;
+    /** kind "tags": suggest tags already used by this content type */
+    tagType?: string;
     options?: Option[];
     required?: boolean;
     hint?: string;
@@ -109,7 +111,9 @@ function FieldInput({ def, form, setForm }: { def: FieldDef; form: FormState; se
                 </Field>
             );
         case "categories": return <CategoryPicker type={def.catType ?? ""} label={def.label} value={value ?? []} onChange={set} canManage />;
-        case "tags": return <TagsInput label={def.label} value={value ?? []} onChange={set} hint={def.hint} />;
+        case "tags": return def.tagType
+            ? <TagPicker type={def.tagType} label={def.label} value={value ?? []} onChange={set} />
+            : <TagsInput label={def.label} value={value ?? []} onChange={set} hint={def.hint} />;
         case "lines": return <LinesInput label={def.label} value={value ?? []} onChange={set} hint={def.hint} placeholder={def.placeholder} />;
         case "image": return <ImagePicker label={def.label} value={value ? [value] : []} onChange={urls => set(urls[0] ?? "")} aspect={def.hint === "square" ? "aspect-square" : "aspect-video"} />;
         case "images": return <ImagePicker label={def.label} multiple value={value ?? []} onChange={set} aspect="aspect-square" />;

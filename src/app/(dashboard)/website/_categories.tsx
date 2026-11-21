@@ -3,7 +3,7 @@
 // Categories are created first (จัดการหมวดหมู่), then each item ticks one or more of them.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Check, Loader2, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
-import { deleteSiteCategory, fetchSiteCategories, putSiteCategories, renameSiteCategory } from "@/lib/api";
+import { deleteSiteCategory, fetchSiteCategories, fetchSiteContent, putSiteCategories, renameSiteCategory, type SiteContentType } from "@/lib/api";
 import { Modal, inputCls, labelCls } from "./_shared";
 import { errMsg } from "./_editors";
 
@@ -141,3 +141,57 @@ export function CategoryManager({ type, title, onClose, onChanged }: { type: str
 }
 
 export const reloadCategories = () => load(true);
+
+// ─── Tags (optional, free, several per item) ───────────────────
+// Suggestions = tags already used in the same section, so the same tag is reused (e.g. "ซูเราะฮฺอัลบะเกาะเราะฮฺ").
+const tagCache = new Map<string, Promise<string[]>>();
+function usedTags(type: string) {
+    if (!tagCache.has(type)) {
+        tagCache.set(type, fetchSiteContent(type as SiteContentType)
+            .then(items => {
+                const count = new Map<string, number>();
+                for (const i of items) for (const t of (Array.isArray(i.data?.tags) ? i.data.tags : [])) count.set(t, (count.get(t) ?? 0) + 1);
+                return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+            })
+            .catch(() => []));
+    }
+    return tagCache.get(type)!;
+}
+
+export function TagPicker({ type, label, value, onChange }: { type: string; label: string; value: string[]; onChange: (v: string[]) => void }) {
+    const [text, setText] = useState("");
+    const [known, setKnown] = useState<string[]>([]);
+    useEffect(() => { usedTags(type).then(setKnown); }, [type]);
+    const add = (raw: string) => {
+        const t = raw.trim().replace(/^#/, "").slice(0, 40);
+        if (t && !value.includes(t)) onChange([...value, t]);
+        setText("");
+    };
+    const q = text.trim().toLowerCase();
+    const suggestions = known.filter(t => !value.includes(t) && (!q || t.toLowerCase().includes(q))).slice(0, 12);
+    return (
+        <div>
+            <p className={labelCls}>{label} <span className="font-normal text-slate-400">· ไม่บังคับ ใส่ได้หลายแท็ก</span></p>
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 focus-within:border-blue-400">
+                {value.map(t => (
+                    <span key={t} className="flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-xs font-semibold">
+                        #{t}
+                        <button type="button" onClick={() => onChange(value.filter(x => x !== t))} aria-label={`เอาแท็ก ${t} ออก`} className="text-blue-400 hover:text-blue-700"><X className="w-3 h-3" /></button>
+                    </span>
+                ))}
+                <input value={text} onChange={e => { const v = e.target.value; if (/[,，]$/.test(v)) add(v.slice(0, -1)); else setText(v); }}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(text); } else if (e.key === "Backspace" && !text && value.length) onChange(value.slice(0, -1)); }}
+                    onBlur={() => text.trim() && add(text)}
+                    placeholder={value.length ? "" : "พิมพ์แท็กแล้วกด Enter เช่น ซูเราะฮฺอัลฟาติหะฮฺ"} className="flex-1 min-w-[160px] py-1 text-sm outline-none bg-transparent" aria-label={label} />
+            </div>
+            {!!suggestions.length && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                    <span className="text-[11px] text-slate-400 mr-1 self-center">แท็กที่เคยใช้:</span>
+                    {suggestions.map(t => (
+                        <button key={t} type="button" onMouseDown={e => e.preventDefault()} onClick={() => add(t)} className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-700">#{t}</button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
