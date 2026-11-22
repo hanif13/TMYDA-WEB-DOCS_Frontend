@@ -196,6 +196,9 @@ export async function fetchAnnualYears() {
     return apiFetch<any[]>("/projects/plans/years");
 }
 
+/** Bring units / people from another year into an existing year. */
+export const copyIntoYear = (planId: string, data: { copyFromYear: number; departmentIds: string[]; userIds: string[] }) =>
+    apiFetch<{ ok: true; copied: { departments: number; people: number } }>(`/projects/plans/${planId}/copy`, { method: "POST", body: JSON.stringify(data) });
 export async function createAnnualPlan(data: { year: number; thaiYear: number; label: string; copyFromYear?: number | null; departmentIds?: string[]; userIds?: string[] }) {
     return apiFetch<any>("/projects/plans", {
         method: "POST",
@@ -956,6 +959,12 @@ export const submitRequest = (id: string, signerId?: string) =>
 export const fetchInboxCount = () => apiFetch<{ count: number }>("/document-requests/inbox/count");
 export const issueRequestDocument = (id: string) => apiFetch<{ docNo: string; filePath: string }>(`/document-requests/${id}/issue`, { method: "POST" });
 export const fetchApprovalInbox = () => apiFetch<ApprovalItem[]>("/document-requests/inbox");
+/** Documents I signed / approved / sent back in the working year (with the issued PDF when done). */
+export type MyDecision = {
+    id: string; step: number; totalSteps: number; role: string; status: "approved" | "returned"; note: string | null; actedAt: string;
+    request: { id: string; requestType: string; department: string; requestedBy: string; status: string; docNo: string | null; filePath: string | null; title: string };
+};
+export const fetchMyDecisions = () => apiFetch<MyDecision[]>("/document-requests/inbox/done");
 export const approveStep = (stepId: string, note?: string, attachmentUrls?: string[]) =>
     apiFetch<{ docNo?: string; filePath?: string; next?: string }>(`/document-requests/steps/${stepId}/approve`, { method: "POST", body: JSON.stringify({ note, attachmentUrls }) });
 export const returnStep = (stepId: string, note: string, restart = false) =>

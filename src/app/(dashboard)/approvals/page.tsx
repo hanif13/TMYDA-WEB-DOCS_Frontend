@@ -3,9 +3,9 @@
 // Each item opens a popup with the PDF to read before approving or sending it back.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, FileSignature, ImagePlus, Inbox, Loader2, RotateCcw, Trash2, X } from "lucide-react";
+import { CheckCircle2, FileDown, FileSignature, ImagePlus, Inbox, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { apiErrorMessage, approveStep, fetchApprovalInbox, fetchRequestPdf, returnStep, uploadImages, type ApprovalItem } from "@/lib/api";
+import { apiErrorMessage, approveStep, fetchApprovalInbox, fetchMyDecisions, fetchRequestPdf, getMediaUrl, returnStep, uploadImages, type ApprovalItem, type MyDecision } from "@/lib/api";
 
 const ROLE_LABEL: Record<string, string> = {
     signer: "ลงนาม", unit_head: "หัวหน้าหน่วย", secretary: "เลขาสำนักอำนวยการ", finance: "การเงินสำนักอำนวยการ",
@@ -155,7 +155,51 @@ function ReviewModal({ item, onClose, onDone }: { item: ApprovalItem; onClose: (
     );
 }
 
+/** What I already decided: signed / approved / sent back, with the final PDF once the document is issued. */
+function DoneList() {
+    const [items, setItems] = useState<MyDecision[] | null>(null);
+    const [opening, setOpening] = useState<string | null>(null);
+    useEffect(() => { fetchMyDecisions().then(setItems).catch(e => { toast.error(apiErrorMessage(e, "โหลดไม่สำเร็จ")); setItems([]); }); }, []);
+    const openDraft = async (requestId: string) => {
+        setOpening(requestId);
+        const w = window.open("", "_blank");
+        try { const b = await fetchRequestPdf(requestId); if (w) w.location.href = URL.createObjectURL(b); }
+        catch (e) { w?.close(); toast.error(apiErrorMessage(e, "เปิดเอกสารไม่สำเร็จ")); }
+        finally { setOpening(null); }
+    };
+    if (!items) return <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto" /></div>;
+    if (!items.length) return <div className="py-16 text-center"><Inbox className="w-10 h-10 text-slate-200 mx-auto mb-3" /><p className="text-sm font-semibold text-slate-400">ยังไม่มีเอกสารที่คุณพิจารณาในปีนี้</p></div>;
+    return (
+        <ul className="divide-y divide-slate-100">
+            {items.map(it => {
+                const done = it.request.status === "เสร็จสิ้น" && it.request.filePath;
+                return (
+                    <li key={it.id} className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                        {it.status === "returned" ? <RotateCcw className="w-5 h-5 text-rose-500 shrink-0" /> : <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+                        <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-bold text-blue-600">{it.request.requestType}{it.request.docNo ? ` · ${it.request.docNo}` : ""}</span>
+                            <span className="block font-semibold text-slate-800 truncate">{it.request.title}</span>
+                            <span className="block text-xs text-slate-500">
+                                {it.status === "returned" ? "ส่งกลับแก้ไข" : ROLE_LABEL[it.role] ?? it.role} เมื่อ {when(it.actedAt)} · {it.request.requestedBy} · {it.request.department}
+                            </span>
+                        </span>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold border ${done ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>{it.request.status}</span>
+                        {done ? (
+                            <a href={getMediaUrl(it.request.filePath!)} target="_blank" rel="noreferrer" className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 text-xs font-bold hover:bg-rose-100"><FileDown className="w-4 h-4" />เอกสาร</a>
+                        ) : (
+                            <button onClick={() => openDraft(it.request.id)} disabled={opening === it.request.id} className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-xs font-bold hover:bg-slate-100">
+                                {opening === it.request.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSignature className="w-4 h-4" />}ฉบับร่าง
+                            </button>
+                        )}
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}
+
 export default function ApprovalsPage() {
+    const [tab, setTab] = useState<"inbox" | "done">("inbox");
     const [items, setItems] = useState<ApprovalItem[] | null>(null);
     const [open, setOpen] = useState<ApprovalItem | null>(null);
     const load = useCallback(() => {
@@ -172,8 +216,13 @@ export default function ApprovalsPage() {
                     <p className="text-xs text-slate-500">เอกสารที่รอคุณลงนามหรืออนุมัติ · เปิดอ่านก่อนตัดสินใจ</p>
                 </div>
             </div>
+            <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+                {([["inbox", `รอพิจารณา${items ? ` (${items.length})` : ""}`], ["done", "ที่ฉันพิจารณาแล้ว"]] as const).map(([k, label]) => (
+                    <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === k ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
+                ))}
+            </div>
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {!items ? <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto" /></div>
+                {tab === "done" ? <DoneList /> : !items ? <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300 mx-auto" /></div>
                     : !items.length ? (
                         <div className="py-16 text-center">
                             <Inbox className="w-10 h-10 text-slate-200 mx-auto mb-3" />

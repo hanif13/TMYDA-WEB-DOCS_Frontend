@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { createAnnualPlan, deleteAnnualPlan } from "@/lib/api";
+import { copyIntoYear, createAnnualPlan, deleteAnnualPlan } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
 import { CopyFromYear, type CopySelection } from "@/components/years/CopyFromYear";
@@ -27,6 +27,24 @@ export default function YearsPage() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [copy, setCopy] = useState<CopySelection>({ copyFromYear: null, departmentIds: [], userIds: [] });
+    // a new year starts from the latest year (units and people all ticked) — leaving it empty is a choice, not the default
+    const latestYear = plans.length ? Math.max(...plans.map(p => p.thaiYear)) : null;
+    const openAdd = () => { setCopy({ copyFromYear: latestYear, departmentIds: [], userIds: [] }); setIsAdding(true); };
+    // bring units / people into a year that already exists
+    const [importInto, setImportInto] = useState<{ id: string; thaiYear: number } | null>(null);
+    const [importCopy, setImportCopy] = useState<CopySelection>({ copyFromYear: null, departmentIds: [], userIds: [] });
+    const [importing, setImporting] = useState(false);
+    const runImport = async () => {
+        if (!importInto || !importCopy.copyFromYear) return;
+        setImporting(true);
+        try {
+            const r = await copyIntoYear(importInto.id, { copyFromYear: importCopy.copyFromYear, departmentIds: importCopy.departmentIds, userIds: importCopy.userIds });
+            toast.success(`นำเข้าปี ${importInto.thaiYear} แล้ว · ${r.copied.departments} หน่วยงาน ${r.copied.people} คน`);
+            setImportInto(null);
+            await refreshYears();
+        } catch (e) { toast.error(e instanceof Error && e.message.includes("403") ? "ไม่มีสิทธิ์ในปีต้นทางหรือปลายทาง" : "นำเข้าไม่สำเร็จ"); }
+        finally { setImporting(false); }
+    };
 
     if (session && !canManageSettings) {
         return (
@@ -85,7 +103,7 @@ export default function YearsPage() {
                     <p className="text-sm text-slate-500 mt-1 font-medium">เพิ่มหรือลบปีงบประมาณและโครงการประจำปี สำหรับ Super Admin</p>
                 </div>
                 <button 
-                    onClick={() => setIsAdding(true)}
+                    onClick={openAdd}
                     className="flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-bold px-6 py-3.5 rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all active:scale-95"
                 >
                     <Plus className="w-5 h-5" /> เพิ่มปีการทำงานใหม่
@@ -104,6 +122,13 @@ export default function YearsPage() {
                                 <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                                     <CalendarDays className="w-5 h-5 text-blue-600" />
                                 </div>
+                                <button
+                                    onClick={() => { const others = plans.filter(p => p.thaiYear !== plan.thaiYear).map(p => p.thaiYear); setImportCopy({ copyFromYear: others.length ? Math.max(...others) : null, departmentIds: [], userIds: [] }); setImportInto({ id: plan.id, thaiYear: plan.thaiYear }); }}
+                                    className="ml-auto mr-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+                                    title="นำหน่วยงานและผู้ใช้จากปีอื่นเข้าปีนี้"
+                                >
+                                    นำเข้าหน่วยงาน/ผู้ใช้
+                                </button>
                                 <button 
                                     onClick={() => handleDelete(plan.id, plan.thaiYear)}
                                     className="p-2 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
@@ -185,6 +210,28 @@ export default function YearsPage() {
                                 >
                                     {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                                     ยืนยันการเพิ่มปี
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {importInto && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[92vh] shadow-2xl overflow-hidden flex flex-col">
+                        <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between">
+                            <h3 className="text-lg font-black">นำหน่วยงานและผู้ใช้เข้าปี {importInto.thaiYear}</h3>
+                            <button onClick={() => setImportInto(null)} aria-label="ปิด" className="text-white/60 hover:text-white"><X className="w-6 h-6" /></button>
+                        </div>
+                        <div className="p-8 space-y-5 overflow-y-auto">
+                            <p className="text-sm text-slate-500">ใช้เมื่อเปิดปีไว้แล้วแต่ยังไม่มีหน่วยงาน หรือมีคนกลับมาทำงานเพิ่ม · ที่มีอยู่แล้วในปี {importInto.thaiYear} จะไม่ถูกเขียนทับ</p>
+                            <CopyFromYear years={plans.filter(p => p.thaiYear !== importInto.thaiYear).map(p => p.thaiYear)} value={importCopy} onChange={setImportCopy} />
+                            <div className="flex gap-3 pt-2">
+                                <button onClick={() => setImportInto(null)} className="flex-1 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-2xl">ยกเลิก</button>
+                                <button disabled={importing || !importCopy.copyFromYear || (!importCopy.departmentIds.length && !importCopy.userIds.length)} onClick={runImport}
+                                    className="flex-[2] bg-blue-600 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50">
+                                    {importing ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}นำเข้า
                                 </button>
                             </div>
                         </div>

@@ -847,6 +847,7 @@ function DocumentsPageContent() {
     const [signerId, setSignerId] = useState("");
     const [signers, setSigners] = useState<Signer[]>([]);
     const [previewing, setPreviewing] = useState(false);
+    const [historyFilter, setHistoryFilter] = useState<"active" | "done" | "all" | null>(null);
     const [requestSteps, setRequestSteps] = useState<RequestStep[]>([]);
     const [issuing, setIssuing] = useState(false);
     useEffect(() => {
@@ -1008,9 +1009,11 @@ function DocumentsPageContent() {
         ? requests 
         : requests.filter(r => r.requestedById === currentUserId);
 
-    const listRequests = isManager 
-        ? displayRequests.filter(r => r.status !== "เสร็จสิ้น") 
-        : displayRequests;
+    // Finished requests stay in the history (with their PDF); staff start on the ones still in progress
+    const doneCount = displayRequests.filter(r => r.status === "เสร็จสิ้น").length;
+    const filterNow = historyFilter ?? (isManager ? "active" : "all");
+    const listRequests = displayRequests.filter(r =>
+        filterNow === "all" ? true : filterNow === "done" ? r.status === "เสร็จสิ้น" : r.status !== "เสร็จสิ้น");
 
     const tabLabels = isManager 
         ? { request: "สร้างเอกสารใหม่", pending: "จัดการคำขอเอกสาร" }
@@ -1647,6 +1650,14 @@ function DocumentsPageContent() {
                 {/* ─── TAB: PENDING REQUESTS ─── */}
                 {tab === "pending" && (
                     <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2" role="tablist" aria-label="สถานะคำขอ">
+                            {([["active", "กำลังดำเนินการ", displayRequests.length - doneCount], ["done", "เสร็จสิ้นแล้ว", doneCount], ["all", "ทั้งหมด", displayRequests.length]] as const).map(([k, label, n]) => (
+                                <button key={k} role="tab" aria-selected={filterNow === k} onClick={() => setHistoryFilter(k)}
+                                    className={cn("px-3.5 py-1.5 rounded-full text-xs font-bold border", filterNow === k ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300")}>
+                                    {label} <span className="opacity-60">{n}</span>
+                                </button>
+                            ))}
+                        </div>
                         {listRequests.length === 0 && (
                             <div className="text-center py-12 bg-white rounded-2xl border border-slate-100 border-dashed">
                                 <Inbox className="w-12 h-12 text-slate-200 mx-auto mb-3" />
@@ -1678,9 +1689,10 @@ function DocumentsPageContent() {
                                     <div className="flex items-center justify-between md:justify-end gap-4 flex-shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-50">
                                         <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border", statusCls, statusCls.replace('bg-', 'border-'))}>{req.status}</span>
                                         <div className="flex gap-1.5 font-bold">
-                                            {req.resultDoc?.filePath && (
+                                            {/* the issued PDF: from the registry entry, or the request itself if that entry was removed */}
+                                            {(req.resultDoc?.filePath || (req.status === "เสร็จสิ้น" && req.pdfPath)) && (
                                                 <a 
-                                                    href={getMediaUrl(req.resultDoc.filePath)}
+                                                    href={getMediaUrl(req.resultDoc?.filePath || req.pdfPath || "")}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 p-2 px-3 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors border border-rose-100"
@@ -1790,7 +1802,7 @@ function DocumentsPageContent() {
                                             <p className="flex-1 font-bold text-slate-800">เอกสาร PDF</p>
                                             <button type="button" onClick={() => openPdfInNewTab(() => fetchRequestPdf(selectedRequest.id))}
                                                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                                                <Eye className="w-4 h-4" />{selectedRequest.resultDocId ? "เปิดเอกสารฉบับจริง" : "เปิดฉบับร่าง"}
+                                                <Eye className="w-4 h-4" />{selectedRequest.resultDocId || (selectedRequest.status === "เสร็จสิ้น" && selectedRequest.pdfPath) ? "เปิดเอกสารฉบับจริง" : "เปิดฉบับร่าง"}
                                             </button>
                                             {!isSignerType && requestSteps.length === 0 && isManager && !selectedRequest.resultDocId && (
                                                 <button type="button" disabled={issuing}
