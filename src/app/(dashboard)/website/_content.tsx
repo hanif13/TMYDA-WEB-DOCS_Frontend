@@ -112,7 +112,8 @@ function FieldInput({ def, form, setForm }: { def: FieldDef; form: FormState; se
                     </select>
                 </Field>
             );
-        case "categories": return <CategoryPicker type={def.catType ?? ""} label={def.label} value={value ?? []} onChange={set} canManage />;
+        // article topics follow the subcategory picked in the form (article:<category>)
+        case "categories": return <CategoryPicker type={def.catType?.startsWith("article:") ? `article:${form.category}` : def.catType ?? ""} label={def.label} value={value ?? []} onChange={set} canManage />;
         case "tags": return def.tagType
             ? <TagPicker type={def.tagType} label={def.label} value={value ?? []} onChange={set} />
             : <TagsInput label={def.label} value={value ?? []} onChange={set} hint={def.hint} />;
@@ -159,8 +160,8 @@ export function ContentModal({ cfg, item, onClose, onSaved }: { cfg: ContentConf
             <form onSubmit={submit} className="p-6 space-y-4">
                 {cfg.categoryChoices && (
                     <div>
-                        <label htmlFor="f-category" className={labelCls}>หมวดหมู่ย่อย</label>
-                        <select id="f-category" value={form.category} onChange={e => setForm(s => ({ ...s, category: e.target.value }))} className={inputCls}>
+                        <label htmlFor="f-category" className={labelCls}>อยู่ในหมวด</label>
+                        <select id="f-category" value={form.category} onChange={e => setForm(s => ({ ...s, category: e.target.value, data: { ...s.data, topics: [] } }))} className={inputCls}>
                             {cfg.categoryChoices.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                         {item && form.category !== (item.category ?? "") && <p className="text-[11px] text-amber-600 mt-1">บันทึกแล้วโพสต์จะย้ายไปหมวดนี้ · ลิงก์บนเว็บจะเปลี่ยนตามหมวดใหม่</p>}

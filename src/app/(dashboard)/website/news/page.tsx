@@ -3,12 +3,13 @@
 // (ประชาสัมพันธ์ / เนื้อหาศาสนา) and then the subcategory (unit for news; ข้อมูลวิชาการ, Q&A … for religious content).
 // Posts already on the wrong page can be moved (images, video and source link go along).
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, BookOpen, ExternalLink, Loader2, Newspaper, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowRightLeft, BookOpen, ExternalLink, Loader2, Newspaper, Pencil, Pin, Plus, Search, Tags, Trash2 } from "lucide-react";
 import {
     createSiteNews, deleteSiteContent, deleteSiteNews, fetchSiteContent, fetchSiteNews, moveArticleToNews, moveNewsToKnowledge,
     updateSiteNews, type SiteContent, type SiteNews,
 } from "@/lib/api";
 import { ContentManager, ContentModal } from "../_content";
+import { CategoryManager, useCategories } from "../_categories";
 import { ARTICLE_CATEGORIES, articleConfigs, bookConfig, campConfig, qaConfig, recommendedConfig, videoConfig } from "../_configs";
 import type { ContentConfig } from "../_content";
 import {
@@ -290,6 +291,9 @@ export default function WebsiteContentPage() {
     const [moving, setMoving] = useState<Post | null>(null);
     const [deleting, setDeleting] = useState<Post | null>(null);
     const [listKey, setListKey] = useState(0);
+    const [topic, setTopic] = useState("");               // หมวดหมู่ inside an article subcategory
+    const [managingTopics, setManagingTopics] = useState(false);
+    const topicsOf = (p: Post): string[] => (p.kind === "article" && Array.isArray(p.raw.data?.topics) ? p.raw.data.topics : []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -302,10 +306,14 @@ export default function WebsiteContentPage() {
 
     const news = posts.filter(p => p.kind === "news");
     const sub: Sub | null = view.section === "rel" ? REL_SUBS.find(x => x.key === view.sub) ?? REL_SUBS[0] : view.sub === "camps" ? PR_CAMPS : null;
+    const topicKey = sub?.kind === "article" ? `article:${sub.key}` : "";
+    const topicList = useCategories(topicKey);
+    useEffect(() => { setTopic(""); }, [view]);
     const listed = useMemo(() => posts.filter(p =>
         (view.section === "pr" ? p.kind === "news" && (!view.sub || p.dept === view.sub) : p.dest === view.sub) &&
+        (!topic || topicsOf(p).includes(topic)) &&
         (!search || p.title.toLowerCase().includes(search.toLowerCase()))
-    ), [posts, view, search]);
+    ), [posts, view, search, topic]);
     const done = (msg: string) => { setEditNews(null); setEditContent(null); setMoving(null); show(msg); load(); setListKey(k => k + 1); };
     const startNew = (section: Section, key: string) => {
         setChoosing(false);
@@ -359,11 +367,22 @@ export default function WebsiteContentPage() {
             {sub && sub.kind === "content" ? (
                 <ContentManager key={`${sub.key}-${listKey}`} cfg={sub.cfg!} toast={show} />
             ) : (<>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                    <div className="relative">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-wrap gap-2">
+                    <div className="relative flex-1 min-w-[200px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input aria-label="ค้นหา" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาหัวข้อ…" className={`${inputCls} pl-9 bg-slate-50/50`} />
                     </div>
+                    {topicKey && (
+                        <select aria-label="หมวดหมู่" value={topic} onChange={e => setTopic(e.target.value)} className={`${inputCls} w-auto bg-slate-50/50`}>
+                            <option value="">หมวดหมู่: ทั้งหมด</option>
+                            {(topicList ?? []).map(t => <option key={t} value={t}>{t} ({posts.filter(p => p.dest === view.sub && topicsOf(p).includes(t)).length})</option>)}
+                        </select>
+                    )}
+                    {topicKey && canEdit && (
+                        <button onClick={() => setManagingTopics(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                            <Tags className="w-4 h-4" />จัดการหมวดหมู่
+                        </button>
+                    )}
                 </div>
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     {loading ? (
@@ -390,6 +409,7 @@ export default function WebsiteContentPage() {
                                             </div>
                                             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                                 <span className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${d.cls}`}>{d.label}</span>
+                                                {topicsOf(p).map(t => <span key={t} className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold">{t}</span>)}
                                                 {p.dept && <span>{p.dept}</span>}<span>{formatThaiDate(p.date)}</span>
                                             </p>
                                         </div>
@@ -415,6 +435,7 @@ export default function WebsiteContentPage() {
             {choosing && <ChooseKind onClose={() => setChoosing(false)} onPick={startNew} />}
             {editNews && <NewsModal item={editNews.item} department={editNews.department} onClose={() => setEditNews(null)} onSaved={done} />}
             {editContent && <ContentModal cfg={editContent.cfg} item={editContent.item} onClose={() => setEditContent(null)} onSaved={done} />}
+            {managingTopics && sub && <CategoryManager type={topicKey} title={`หมวดหมู่ใน${sub.label}`} onClose={() => setManagingTopics(false)} onChanged={load} />}
             {moving && <MovePost post={moving} onClose={() => setMoving(null)} onMoved={done} />}
             {deleting && <ConfirmDelete text={`ลบ "${deleting.title}" และรูปทั้งหมดของโพสต์นี้?`} onCancel={() => setDeleting(null)}
                 onConfirm={async () => {

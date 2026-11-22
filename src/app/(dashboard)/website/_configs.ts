@@ -43,6 +43,7 @@ function articleConfig(category: string): ContentConfig {
             { path: "date", label: "วันที่เผยแพร่", kind: "date", half: true },
             ...extra,
             { path: "data.readMinutes", label: "เวลาอ่าน (นาที)", kind: "number", half: true },
+            { path: "data.topics", label: "หมวดหมู่ (ไม่บังคับ)", kind: "categories", catType: `article:${category}` },
             { path: "data.tags", label: "แท็ก", kind: "tags", tagType: "article" },
             { path: "data.images", label: "อัลบั้มภาพ", kind: "images" },
             { path: "data.videoUrl", label: "ลิงก์วิดีโอ (Facebook หรือ YouTube)", kind: "text", placeholder: "https://…", hint: "แสดงเป็นตัวเล่นวิดีโอแทนรูปปก" },

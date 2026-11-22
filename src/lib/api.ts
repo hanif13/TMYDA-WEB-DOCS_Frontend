@@ -862,9 +862,9 @@ export const reorderSiteContent = (ids: string[]) => apiFetch("/site/content/reo
 export const deleteSiteContent = (id: string) => apiFetch(`/site/content/${id}`, { method: "DELETE" });
 /** Managed category lists per content type (qa, recommended, book, video, partner). */
 export const fetchSiteCategories = () => apiFetch<Record<string, string[]>>("/site/categories");
-export const putSiteCategories = (type: string, items: string[]) => apiFetch<string[]>(`/site/categories/${type}`, jsonBody("PUT", { items }));
-export const renameSiteCategory = (type: string, from: string, to: string) => apiFetch<string[]>(`/site/categories/${type}/rename`, jsonBody("POST", { from, to }));
-export const deleteSiteCategory = (type: string, name: string) => apiFetch<string[]>(`/site/categories/${type}/delete`, jsonBody("POST", { name }));
+export const putSiteCategories = (type: string, items: string[]) => apiFetch<string[]>(`/site/categories/${encodeURIComponent(type)}`, jsonBody("PUT", { items }));
+export const renameSiteCategory = (type: string, from: string, to: string) => apiFetch<string[]>(`/site/categories/${encodeURIComponent(type)}/rename`, jsonBody("POST", { from, to }));
+export const deleteSiteCategory = (type: string, name: string) => apiFetch<string[]>(`/site/categories/${encodeURIComponent(type)}/delete`, jsonBody("POST", { name }));
 /** Move a post between the news page and the knowledge pages (web 1). */
 export const moveNewsToKnowledge = (id: string, category: string) =>
     apiFetch<{ ok: true; id: string; slug: string }>(`/site/news/${id}/move`, jsonBody("POST", { category }));
