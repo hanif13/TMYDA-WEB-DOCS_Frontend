@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRightLeft, BookOpen, ExternalLink, Loader2, Newspaper, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
 import {
     createSiteNews, deleteSiteContent, deleteSiteNews, fetchSiteContent, fetchSiteNews, moveArticleToNews, moveNewsToKnowledge,
-    updateSiteContent, updateSiteNews, type SiteContent, type SiteNews,
+    updateSiteNews, type SiteContent, type SiteNews,
 } from "@/lib/api";
 import { ContentManager, ContentModal } from "../_content";
 import { ARTICLE_CATEGORIES, articleConfigs, bookConfig, campConfig, qaConfig, recommendedConfig, videoConfig } from "../_configs";
@@ -151,54 +151,61 @@ const fromArticle = (a: SiteContent): Post => ({
     date: a.date, published: a.isPublished, pinned: false, cover: a.coverUrl, href: `/knowledge/${a.category}/${a.slug}`, raw: a,
 });
 
-/** Move an existing post to another page. */
+/** Default subcategory for a post moved into เนื้อหาศาสนา — re-categorise it there afterwards. */
+const MOVE_DEFAULT_CATEGORY: Dest = "encyclopedia";
+
+/**
+ * Move a post between the two content types: ประชาสัมพันธ์ ↔ เนื้อหาศาสนา. Only the type is picked here;
+ * the subcategory (unit for news, category for religious content) is set afterwards on that page.
+ */
 function MovePost({ post, onClose, onMoved }: { post: Post; onClose: () => void; onMoved: (msg: string) => void }) {
-    const [to, setTo] = useState<Dest | null>(null);
-    const [dept, setDept] = useState(SITE_DEPARTMENTS.includes(post.dept) ? post.dept : SITE_DEPARTMENTS[0]);
+    const toReligious = post.kind === "news";
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const types = [
+        { key: "pr", label: "ประชาสัมพันธ์", hint: "ข่าวกิจกรรมของแต่ละหน่วยงาน ประกาศรับสมัคร ค่ายและกิจกรรม", icon: Newspaper, current: toReligious },
+        { key: "rel", label: "เนื้อหาศาสนา", hint: "บทความ นาซีฮัต ชีวประวัติ ข้อมูลวิชาการ", icon: BookOpen, current: !toReligious },
+    ];
+    const target = toReligious ? "เนื้อหาศาสนา" : "ประชาสัมพันธ์";
     const go = async () => {
-        if (!to) return;
         setBusy(true); setError("");
         try {
-            if (post.kind === "news") await moveNewsToKnowledge(post.id, to);
-            else if (to === "news") await moveArticleToNews(post.id, dept);
-            else await updateSiteContentCategory(post.raw, to);
-            onMoved(`ย้าย "${post.title}" ไป${destOf(to).label}แล้ว`);
+            if (toReligious) await moveNewsToKnowledge(post.id, MOVE_DEFAULT_CATEGORY);
+            else await moveArticleToNews(post.id, SITE_DEPARTMENTS.includes(post.dept) ? post.dept : SITE_DEPARTMENTS[0]);
+            onMoved(`ย้าย "${post.title}" ไป${target}แล้ว — จัดหมวดหมู่ต่อได้ในหน้า${target}`);
         } catch (e) { setError(e instanceof Error && e.message.includes("400") ? "ข้อมูลไม่ครบ" : "ย้ายไม่สำเร็จ"); }
         finally { setBusy(false); }
     };
     return (
         <Modal title="ย้ายโพสต์ไปหน้าอื่น" onClose={onClose}>
             <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-600">“{post.title}” <span className="text-slate-400">อยู่ที่ {destOf(post.dest).label}</span></p>
-                <div className="space-y-1.5">
-                    {DESTS.filter(d => d.key !== post.dest).map(d => (
-                        <label key={d.key} className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer text-sm ${to === d.key ? "border-blue-300 bg-blue-50" : "border-slate-200"}`}>
-                            <input type="radio" name="dest" checked={to === d.key} onChange={() => setTo(d.key)} className="accent-blue-600" />
-                            <span className="font-semibold text-slate-800">{d.label}</span><span className="text-xs text-slate-400">· {d.page}</span>
-                        </label>
+                <p className="text-sm text-slate-600">“{post.title}”</p>
+                <div className="grid sm:grid-cols-2 gap-2">
+                    {types.map(t => (
+                        <div key={t.key} className={`flex flex-col gap-1.5 p-4 rounded-xl border ${t.current ? "border-slate-200 bg-slate-50 opacity-70" : "border-blue-300 bg-blue-50"}`}>
+                            <span className="flex items-center gap-2 font-semibold text-slate-800"><t.icon className={`w-5 h-5 ${t.current ? "text-slate-400" : "text-blue-600"}`} />{t.label}</span>
+                            <span className="text-xs text-slate-500">{t.hint}</span>
+                            <span className={`mt-1 self-start rounded-full px-2 py-0.5 text-[11px] font-semibold ${t.current ? "bg-slate-200 text-slate-600" : "bg-blue-600 text-white"}`}>{t.current ? "อยู่ที่นี่ตอนนี้" : "ย้ายไปที่นี่"}</span>
+                        </div>
                     ))}
                 </div>
-                {to === "news" && post.kind === "article" && (
-                    <div>
-                        <label htmlFor="mv-dept" className={labelCls}>หน่วยงานของข่าว</label>
-                        <select id="mv-dept" value={dept} onChange={e => setDept(e.target.value)} className={inputCls}>{SITE_DEPARTMENTS.map(d => <option key={d}>{d}</option>)}</select>
-                    </div>
-                )}
+                <p className="text-xs text-slate-500 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    {toReligious
+                        ? <>โพสต์จะอยู่ในหมวด “{destOf(MOVE_DEFAULT_CATEGORY).label}” ก่อน — กดแก้ไขในหน้าเนื้อหาศาสนาเพื่อเลือกหมวดหมู่ที่ต้องการ</>
+                        : <>โพสต์จะใช้หน่วยงาน “{SITE_DEPARTMENTS.includes(post.dept) ? post.dept : SITE_DEPARTMENTS[0]}” ก่อน — กดแก้ไขในหน้าประชาสัมพันธ์เพื่อเปลี่ยนหน่วยงาน</>}
+                </p>
                 <p className="text-[11px] text-slate-400">ภาพปก อัลบั้มภาพ วิดีโอ และเนื้อหาย้ายไปด้วยทั้งหมด · ลิงก์บนเว็บจะเปลี่ยนตามหน้าใหม่</p>
                 {error && <p role="alert" className="text-sm text-rose-600 bg-rose-50 rounded-xl px-3 py-2">{error}</p>}
                 <div className="flex gap-2">
                     <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-slate-600 hover:bg-slate-50">ยกเลิก</button>
-                    <button onClick={go} disabled={!to || busy} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                        {busy && <Loader2 className="w-4 h-4 animate-spin" />}ย้ายโพสต์
+                    <button onClick={go} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                        {busy && <Loader2 className="w-4 h-4 animate-spin" />}ย้ายไป{target}
                     </button>
                 </div>
             </div>
         </Modal>
     );
 }
-const updateSiteContentCategory = (a: SiteContent, category: string) => updateSiteContent(a.id, { ...a, category });
 
 
 // ═══ One page for all website content ══════════════════════════
@@ -392,7 +399,7 @@ export default function WebsiteContentPage() {
                                                 <a href={`${PUBLIC_SITE_URL}${p.href}`} target="_blank" rel="noreferrer" aria-label={`เปิด ${p.title} บนเว็บ`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"><ExternalLink className="w-4 h-4" /></a>
                                             )}
                                             {canEdit && <>
-                                                <button onClick={() => setMoving(p)} aria-label={`ย้าย ${p.title} ไปหมวดอื่น`} title="ย้ายไปหมวดอื่น (ประชาสัมพันธ์ ↔ เนื้อหาศาสนา)" className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"><ArrowRightLeft className="w-4 h-4" /></button>
+                                                <button onClick={() => setMoving(p)} aria-label={`ย้าย ${p.title} ไปอีกประเภท`} title="ย้ายระหว่างประชาสัมพันธ์ ↔ เนื้อหาศาสนา" className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"><ArrowRightLeft className="w-4 h-4" /></button>
                                                 <button onClick={() => p.kind === "news" ? setEditNews({ item: p.raw }) : setEditContent({ cfg: articleConfigs[p.dest], item: p.raw })} aria-label={`แก้ไข ${p.title}`} className="p-2 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600"><Pencil className="w-4 h-4" /></button>
                                                 <button onClick={() => setDeleting(p)} aria-label={`ลบ ${p.title}`} className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
                                             </>}
