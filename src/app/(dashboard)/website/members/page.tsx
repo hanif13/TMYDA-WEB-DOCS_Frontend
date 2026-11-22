@@ -6,8 +6,8 @@ import {
     deleteSiteMember, fetchSiteEmail, fetchSiteEmails, fetchSiteMember, fetchSiteMembers, siteMemberAction, updateSiteMemberNote,
     type SiteEmail, type SiteMemberDetail, type SiteMemberRow, type SiteMemberStatus,
 } from "@/lib/api";
-import { ConfirmDelete, Modal, PageHeader, inputCls, labelCls, useCanEditWebsite, useToast } from "../_shared";
-import { Field, LinesInput, RowsEditor, SaveBar, SectionTitle, Tabs, errMsg, sectionCls, useHashTab, useSiteSetting } from "../_editors";
+import { ConfirmDelete, ImagePicker, Modal, PageHeader, inputCls, labelCls, useCanEditWebsite, useToast } from "../_shared";
+import { Field, LinesInput, SaveBar, SectionTitle, Tabs, errMsg, sectionCls, useHashTab, useSiteSetting } from "../_editors";
 
 type Toast = (m: string, t?: "success" | "error") => void;
 const STATUS: Record<SiteMemberStatus, { label: string; cls: string }> = {
@@ -181,27 +181,24 @@ function ConditionsEditor({ toast }: { toast: Toast }) {
                     <Field label="ข้อความเพิ่มเติมในอีเมลแจ้งอนุมัติ"><textarea rows={2} value={r.approvedMessage} onChange={e => set({ approvedMessage: e.target.value })} className={`${inputCls} resize-y`} /></Field>
                 </section>
                 <section className={sectionCls}>
-                    <SectionTitle title="คุณสมบัติผู้สมัคร" hint="ระบบตรวจให้อัตโนมัติขณะสมัคร" />
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <Field label="อายุขั้นต่ำ (ปี)" hint="เว้นว่าง = ไม่จำกัดอายุ"><input type="number" min={0} max={99} value={r.minAge ?? ""} onChange={e => set({ minAge: num(e.target.value) })} className={inputCls} /></Field>
-                        <Field label="ต้องมีข้อมูลผู้ปกครอง เมื่ออายุต่ำกว่า (ปี)" hint="เว้นว่าง = ไม่ต้องใช้"><input type="number" min={0} max={99} value={r.guardianUnderAge ?? ""} onChange={e => set({ guardianUnderAge: num(e.target.value) })} className={inputCls} /></Field>
-                    </div>
-                    {check("requirePhone", "บังคับกรอกเบอร์โทรศัพท์", "")}
-                    {check("requireProvince", "บังคับเลือกจังหวัด", "")}
+                    <SectionTitle title="คุณสมบัติผู้สมัคร" hint="ใบสมัครบังคับกรอกข้อมูลครบทุกหมวดตามแบบฟอร์มสมาชิกอยู่แล้ว" />
+                    <Field label="อายุขั้นต่ำ (ปี)" hint="เว้นว่าง = ไม่จำกัดอายุ"><input type="number" min={0} max={99} value={r.minAge ?? ""} onChange={e => set({ minAge: num(e.target.value) })} className={`${inputCls} max-w-40`} /></Field>
                 </section>
                 <section className={sectionCls}>
-                    <SectionTitle title="เงื่อนไขที่ต้องยอมรับ" hint="ผู้สมัครต้องติ๊กยอมรับทุกข้อ และระบบเก็บข้อความที่ยอมรับไว้กับใบสมัคร" />
+                    <SectionTitle title="เงื่อนไขที่ต้องยอมรับเพิ่มเติม" hint="นอกจากข้อบังคับองค์กร ผู้สมัครต้องติ๊กยอมรับทุกข้อ" />
                     <LinesInput label="เงื่อนไข" value={r.conditions} onChange={conditions => set({ conditions })} rows={5} />
                 </section>
                 <section className={sectionCls}>
-                    <SectionTitle title="คำถามในใบสมัคร" hint="ช่วยให้ทีมงานพิจารณาได้ง่ายขึ้น" />
-                    <RowsEditor label="คำถาม" rows={r.questions as unknown as Record<string, string>[]} onChange={q => set({ questions: q.map(x => ({ label: String(x.label ?? ""), help: String(x.help ?? ""), required: String(x.required) === "true" })) })}
-                        addLabel="เพิ่มคำถาม" blank={() => ({ label: "", help: "", required: "false" })}
-                        columns={[
-                            { key: "label", label: "คำถาม", width: "sm:col-span-5" },
-                            { key: "help", label: "คำอธิบาย/ตัวอย่าง", width: "sm:col-span-4" },
-                            { key: "required", label: "บังคับตอบ", kind: "select", width: "sm:col-span-3", options: [{ value: "true", label: "บังคับตอบ" }, { value: "false", label: "ไม่บังคับ" }] },
-                        ]} />
+                    <SectionTitle title="บัญชีรับค่าบำรุงสมาชิก" hint="แสดงในหน้าโปรไฟล์เมื่อสมาชิกกดชำระค่าบำรุง · เว้นว่าง = ใช้บัญชีเดียวกับหน้าบริจาค" />
+                    <div className="grid sm:grid-cols-3 gap-4">
+                        <Field label="ธนาคาร"><input value={r.feeBankName ?? ""} onChange={e => set({ feeBankName: e.target.value })} className={inputCls} /></Field>
+                        <Field label="ชื่อบัญชี"><input value={r.feeAccountName ?? ""} onChange={e => set({ feeAccountName: e.target.value })} className={inputCls} /></Field>
+                        <Field label="เลขที่บัญชี"><input value={r.feeAccountNo ?? ""} onChange={e => set({ feeAccountNo: e.target.value })} className={inputCls} /></Field>
+                    </div>
+                    <div className="grid sm:grid-cols-[200px_minmax(0,1fr)] gap-4">
+                        <ImagePicker label="QR สำหรับโอน" value={r.feeQrUrl ? [r.feeQrUrl] : []} onChange={urls => set({ feeQrUrl: urls[0] ?? "" })} aspect="aspect-square" />
+                        <Field label="ข้อความเพิ่มเติม"><textarea rows={3} value={r.feeNote ?? ""} onChange={e => set({ feeNote: e.target.value })} className={`${inputCls} resize-y`} placeholder="เช่น โอนแล้วแนบสลิปในหน้าโปรไฟล์ ทีมสมาชิกจะยืนยันภายใน 3 วัน" /></Field>
+                    </div>
                 </section>
             </fieldset>
             <SaveBar dirty={dirty} saving={saving} onSave={save} canEdit={canEdit} />

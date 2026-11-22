@@ -5,7 +5,7 @@ import {
     UserPlus, Search, Filter, ChevronLeft, ChevronRight, 
     Eye, CheckCircle2, XCircle, Trash2, X, Clock, Users,
     Phone, Mail, MapPin, Briefcase, CalendarDays, Hash,
-    AlertCircle, TrendingUp, Loader, GraduationCap, Heart, Activity
+    AlertCircle, TrendingUp, Loader, GraduationCap, Heart, Activity, FileImage
 } from 'lucide-react';
 import { fetchMembers, fetchMemberStats, updateMemberStatus, deleteMember } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -65,7 +65,7 @@ export default function MembersPage() {
         try {
             setLoading(true);
             const [membersData, statsData] = await Promise.all([
-                fetchMembers({ search: search || undefined, status: statusFilter || undefined, page, limit }),
+                fetchMembers({ search: search || undefined, status: statusFilter && statusFilter !== 'slips' ? statusFilter : undefined, slips: statusFilter === 'slips' ? 'pending' : undefined, page, limit }),
                 fetchMemberStats()
             ]);
             setMembers(membersData.members);
@@ -183,7 +183,7 @@ export default function MembersPage() {
 
             {/* Stats Cards */}
             {stats && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                     <StatCard 
                         title="ทั้งหมด" 
                         value={stats.total} 
@@ -212,6 +212,15 @@ export default function MembersPage() {
                         color="text-red-600" 
                         bgColor="bg-red-50 border border-red-100" 
                     />
+                    <button type="button" onClick={() => { setStatusFilter('slips'); setPage(1); }} className="text-left" title="ดูสมาชิกที่ส่งสลิปค่าบำรุงรอตรวจ">
+                        <StatCard 
+                            title="สลิปค่าบำรุงรอตรวจ" 
+                            value={stats.pendingSlips ?? 0} 
+                            icon={FileImage} 
+                            color="text-orange-600" 
+                            bgColor="bg-orange-50 border border-orange-100" 
+                        />
+                    </button>
                 </div>
             )}
 
@@ -237,6 +246,7 @@ export default function MembersPage() {
                         <option value="รอตรวจสอบ">รอตรวจสอบ</option>
                         <option value="อนุมัติ">อนุมัติ</option>
                         <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+                        <option value="slips">มีสลิปค่าบำรุงรอตรวจ</option>
                     </select>
                 </div>
             </div>
@@ -286,6 +296,9 @@ export default function MembersPage() {
                                                     <p className="font-bold text-slate-900">{member.fullName}</p>
                                                     {member.nickname && (
                                                         <p className="text-xs text-slate-400 mt-0.5">({member.nickname})</p>
+                                                    )}
+                                                    {member._count?.payments > 0 && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-bold text-orange-700"><FileImage className="w-3 h-3" />สลิปรอตรวจ {member._count.payments}</span>
                                                     )}
                                                 </div>
                                             </td>

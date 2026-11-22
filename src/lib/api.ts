@@ -686,13 +686,14 @@ export async function deleteEvent(id: string) {
 // MEMBERS (สมาชิก) API
 // ==========================================
 
-export async function fetchMembers(params?: { search?: string; status?: string; province?: string; page?: number; limit?: number }) {
+export async function fetchMembers(params?: { search?: string; status?: string; province?: string; page?: number; limit?: number; slips?: string }) {
     const query = new URLSearchParams();
     if (params?.search) query.append('search', params.search);
     if (params?.status) query.append('status', params.status);
     if (params?.province) query.append('province', params.province);
     if (params?.page) query.append('page', params.page.toString());
     if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.slips) query.append('slips', params.slips);
     const qs = query.toString() ? `?${query.toString()}` : '';
     return apiFetch<any>(`/members${qs}`);
 }
@@ -719,7 +720,10 @@ export async function deleteMember(id: string) {
 }
 
 // ค่าบำรุงสมาชิก + ประวัติการจ่าย + บัญชีเข้าเว็บ 1 (กลุ่มงานสมาชิก)
-export type MemberPaymentRow = { id: string; amount: number; months: number; periodStart: string | null; paidAt: string; method: string | null; note: string | null; recordedBy: string | null };
+export type MemberPaymentRow = {
+    id: string; amount: number; months: number; periodStart: string | null; paidAt: string; method: string | null; note: string | null; recordedBy: string | null;
+    status: "pending" | "confirmed" | "rejected"; slipPath: string | null; reviewedBy: string | null; reviewedAt: string | null; rejectReason: string | null;
+};
 export type MemberAccount = { id: string; email: string; status: string; lastLoginAt: string | null; mustChangePassword: boolean; emailVerifiedAt: string | null } | null;
 export const updateMemberFee = (id: string, memberType: string, monthlyFee: number | string) =>
     apiFetch<any>(`/members/${id}/fee`, { method: 'PUT', body: JSON.stringify({ memberType, monthlyFee }) });
@@ -727,6 +731,9 @@ export const addMemberPayment = (id: string, data: { amount: number | string; mo
     apiFetch<MemberPaymentRow>(`/members/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
 export const deleteMemberPayment = (id: string, paymentId: string) =>
     apiFetch<any>(`/members/${id}/payments/${paymentId}`, { method: 'DELETE' });
+export const fetchMemberSlipUrl = (id: string, paymentId: string) => apiFetch<{ url: string }>(`/members/${id}/payments/${paymentId}/slip`);
+export const reviewMemberPayment = (id: string, paymentId: string, action: "confirm" | "reject", extra: { reason?: string; amount?: number | string } = {}) =>
+    apiFetch<MemberPaymentRow>(`/members/${id}/payments/${paymentId}/review`, { method: 'POST', body: JSON.stringify({ action, ...extra }) });
 export const createMemberAccount = (id: string) =>
     apiFetch<MemberAccount>(`/members/${id}/account`, { method: 'POST' });
 
@@ -829,6 +836,7 @@ export type SiteSettings = {
         intro: string; autoApprove: boolean; minAge: number | null; guardianUnderAge: number | null;
         requirePhone: boolean; requireProvince: boolean; conditions: string[];
         questions: { label: string; help: string; required: boolean }[]; approvedMessage: string;
+        feeBankName: string; feeAccountName: string; feeAccountNo: string; feeQrUrl: string; feeNote: string;
     };
 };
 
