@@ -34,6 +34,7 @@ function articleConfig(category: string): ContentConfig {
         ] : [];
     return {
         type: "article", noun: "บทความ", category,
+        categoryChoices: ARTICLE_CATEGORIES.map(c => ({ value: c.key, label: c.label })),
         fields: [
             { path: "title", label: "ชื่อบทความ", kind: "text", required: true },
             { path: "data.excerpt", label: "คำโปรย / บทคัดย่อ", kind: "textarea" },

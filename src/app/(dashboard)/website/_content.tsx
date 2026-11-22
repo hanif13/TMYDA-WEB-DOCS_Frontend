@@ -36,6 +36,8 @@ export type ContentConfig = {
     type: SiteContentType;
     noun: string;                       // "บทความ", "หลักสูตร" …
     category?: string;                  // fixed category for this list (articles)
+    /** the category can be changed in the form (articles: move between the religious subcategories) */
+    categoryChoices?: Option[];
     fields: FieldDef[];
     subtitle: (item: SiteContent) => string;
     publicPath?: (item: SiteContent) => string | null;
@@ -139,7 +141,7 @@ export function ContentModal({ cfg, item, onClose, onSaved }: { cfg: ContentConf
         if (!form.title.trim()) { setError("กรุณากรอกชื่อ/หัวข้อ"); return; }
         setSaving(true); setError("");
         const payload: Partial<SiteContent> & { slug?: string } = {
-            type: cfg.type, title: form.title, slug: form.slug, category: cfg.category ?? (form.category || null),
+            type: cfg.type, title: form.title, slug: form.slug, category: cfg.categoryChoices ? (form.category || cfg.category || null) : cfg.category ?? (form.category || null),
             coverUrl: form.coverUrl || null, fileUrl: form.fileUrl || null, isPublished: form.isPublished, data: form.data,
             date: form.date ? new Date(`${form.date}T09:00:00`).toISOString() : null,
         };
@@ -155,6 +157,15 @@ export function ContentModal({ cfg, item, onClose, onSaved }: { cfg: ContentConf
     return (
         <Modal title={item ? `แก้ไข${cfg.noun}` : `เพิ่ม${cfg.noun}`} onClose={onClose} wide>
             <form onSubmit={submit} className="p-6 space-y-4">
+                {cfg.categoryChoices && (
+                    <div>
+                        <label htmlFor="f-category" className={labelCls}>หมวดหมู่ย่อย</label>
+                        <select id="f-category" value={form.category} onChange={e => setForm(s => ({ ...s, category: e.target.value }))} className={inputCls}>
+                            {cfg.categoryChoices.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        {item && form.category !== (item.category ?? "") && <p className="text-[11px] text-amber-600 mt-1">บันทึกแล้วโพสต์จะย้ายไปหมวดนี้ · ลิงก์บนเว็บจะเปลี่ยนตามหมวดใหม่</p>}
+                    </div>
+                )}
                 <div className="grid sm:grid-cols-2 gap-4">
                     {cfg.fields.filter(f => f.path !== "slug").map(def => (
                         <div key={def.path} className={def.half ? "" : "sm:col-span-2"}>
