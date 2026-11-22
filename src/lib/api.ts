@@ -718,6 +718,18 @@ export async function deleteMember(id: string) {
     });
 }
 
+// ค่าบำรุงสมาชิก + ประวัติการจ่าย + บัญชีเข้าเว็บ 1 (กลุ่มงานสมาชิก)
+export type MemberPaymentRow = { id: string; amount: number; months: number; periodStart: string | null; paidAt: string; method: string | null; note: string | null; recordedBy: string | null };
+export type MemberAccount = { id: string; email: string; status: string; lastLoginAt: string | null; mustChangePassword: boolean; emailVerifiedAt: string | null } | null;
+export const updateMemberFee = (id: string, memberType: string, monthlyFee: number | string) =>
+    apiFetch<any>(`/members/${id}/fee`, { method: 'PUT', body: JSON.stringify({ memberType, monthlyFee }) });
+export const addMemberPayment = (id: string, data: { amount: number | string; months: number | string; periodStart?: string; paidAt?: string; method?: string; note?: string }) =>
+    apiFetch<MemberPaymentRow>(`/members/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
+export const deleteMemberPayment = (id: string, paymentId: string) =>
+    apiFetch<any>(`/members/${id}/payments/${paymentId}`, { method: 'DELETE' });
+export const createMemberAccount = (id: string) =>
+    apiFetch<MemberAccount>(`/members/${id}/account`, { method: 'POST' });
+
 // Public API (No Auth) — สำหรับหน้า /register
 export async function registerMember(data: {
     fullName: string;

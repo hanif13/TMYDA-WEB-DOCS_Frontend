@@ -11,6 +11,7 @@ import { fetchMembers, fetchMemberStats, updateMemberStatus, deleteMember } from
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { useSession } from 'next-auth/react';
+import { MemberFeePanel, MEMBER_TYPE_LABEL } from './_fees';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any }> = {
     'รอตรวจสอบ': { label: 'รอตรวจสอบ', color: 'text-amber-600', bgColor: 'bg-amber-50 border-amber-200', icon: Clock },
@@ -250,6 +251,8 @@ export default function MembersPage() {
                                 <th className="text-left py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden md:table-cell">เบอร์โทร</th>
                                 <th className="text-left py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden lg:table-cell">จังหวัด</th>
                                 <th className="text-left py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden lg:table-cell">วันที่สมัคร</th>
+                                <th className="text-left py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden md:table-cell">ค่าบำรุง</th>
+                                <th className="text-center py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden md:table-cell" title="บัญชีเข้าเว็บไซต์หลัก">บัญชีเว็บ</th>
                                 <th className="text-center py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider">สถานะ</th>
                                 <th className="text-center py-3.5 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider">จัดการ</th>
                             </tr>
@@ -257,7 +260,7 @@ export default function MembersPage() {
                         <tbody>
                             {members.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-16">
+                                    <td colSpan={8} className="text-center py-16">
                                         <div className="flex flex-col items-center gap-3">
                                             <Users className="w-12 h-12 text-slate-200" />
                                             <p className="text-slate-400 font-medium">ยังไม่มีข้อมูลสมาชิก</p>
@@ -289,6 +292,16 @@ export default function MembersPage() {
                                             <td className="py-3.5 px-4 text-slate-600 hidden md:table-cell">{member.phoneNumber}</td>
                                             <td className="py-3.5 px-4 text-slate-600 hidden lg:table-cell">{member.workProvince || '-'}</td>
                                             <td className="py-3.5 px-4 text-slate-500 text-xs hidden lg:table-cell">{formatDateTime(member.createdAt)}</td>
+                                            <td className="py-3.5 px-4 hidden md:table-cell">
+                                                {member.monthlyFee ? (
+                                                    <div><p className="font-semibold text-slate-800">{member.monthlyFee.toLocaleString('th-TH')} บาท/ด.</p><p className="text-[11px] text-slate-400">{MEMBER_TYPE_LABEL[member.memberType] ?? ''}</p></div>
+                                                ) : <span className="text-xs text-slate-300">ยังไม่ระบุ</span>}
+                                            </td>
+                                            <td className="py-3.5 px-4 text-center hidden md:table-cell">
+                                                {member.account
+                                                    ? <span title={member.account.mustChangePassword ? 'มีบัญชี · ยังใช้รหัสเริ่มต้น' : 'มีบัญชีเข้าเว็บไซต์'} className={cn("inline-block w-2.5 h-2.5 rounded-full", member.account.mustChangePassword ? "bg-amber-400" : "bg-emerald-500")} />
+                                                    : <span title="ยังไม่มีบัญชี" className="inline-block w-2.5 h-2.5 rounded-full bg-slate-200" />}
+                                            </td>
                                             <td className="py-3.5 px-4 text-center">
                                                 <span className={cn(
                                                     "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border",
@@ -504,7 +517,7 @@ export default function MembersPage() {
                                             ) : (
                                                 Object.entries(selectedMember.activities).map(([key, val]: [string, any]) => {
                                                     const labels: Record<string, string> = {
-                                                        fityatulhak: "พิตยะตุลฮัก", robbani: "ร็อบบานีย์", 
+                                                        fityatulhak: "ฟิตยะตุลฮัก", fityatulhaq: "ฟิตยะตุลฮัก", robbani: "ร็อบบานีย์", robbanee: "ร็อบบานีย์", 
                                                         camp: "ค่ายดอกไม้แห่งอิสลาม", standup: "Stand Up",
                                                         pobpa: "พบปะ", halaqah: "หัลเกาะฮฺ", seminar: "สัมมนา",
                                                         other: "อื่นๆ"
@@ -535,6 +548,9 @@ export default function MembersPage() {
                                     <InfoRow label="ความสนใจพิเศษ" value={selectedMember.interests} />
                                 </div>
                             </div>
+
+                            <div className="h-px bg-slate-100" />
+                            <MemberFeePanel memberId={selectedMember.id} canManage={canManage} onChanged={loadData} />
 
                             {/* Admin Note */}
                             {selectedMember.note && (

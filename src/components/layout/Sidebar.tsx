@@ -49,6 +49,8 @@ const navGroups = [
         label: 'กลุ่มงานสมาชิก',
         items: [
             { name: 'ข้อมูลสมาชิก', href: '/members', icon: UserPlus, permission: 'members.view' },
+            { name: 'บัญชีเว็บ & เงื่อนไขการสมัคร', href: '/website/members', icon: UserCheck, permission: 'site_members.view' },
+            { name: 'ส่งอีเมลถึงสมาชิก', href: '/website/mailings', icon: Mail, permission: 'site_members.view' },
         ],
     },
     {
@@ -60,8 +62,6 @@ const navGroups = [
             { name: 'ประชาสัมพันธ์ & เนื้อหาศาสนา', href: '/website/news', icon: Newspaper, permission: 'website.view' },
             { name: 'คำประกาศ / แถลงการณ์', href: '/website/announcements', icon: Megaphone, permission: 'website.view' },
             { name: 'เว็บบอร์ด', href: '/website/webboard', icon: MessagesSquare, permission: 'website.view' },
-            { name: 'สมาชิกเว็บไซต์', href: '/website/members', icon: UserCheck, permission: 'site_members.view' },
-            { name: 'ส่งอีเมลถึงสมาชิก', href: '/website/mailings', icon: Mail, permission: 'site_members.view' },
         ],
     },
     {

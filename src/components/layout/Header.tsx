@@ -17,13 +17,13 @@ const breadcrumbMap: Record<string, string> = {
     '/media-review/calendar': 'ปฏิทินโพสต์',
     '/media-review': 'ตรวจงานสื่อประชาสัมพันธ์',
     '/website/home': 'เว็บไซต์หลัก · หน้าแรก & แบนเนอร์',
-    '/website/mailings': 'เว็บไซต์หลัก · ส่งอีเมลถึงสมาชิก',
+    '/website/mailings': 'กลุ่มงานสมาชิก · ส่งอีเมลถึงสมาชิก',
     '/website/news': 'เว็บไซต์หลัก · ประชาสัมพันธ์ & เนื้อหาศาสนา',
     '/website/announcements': 'เว็บไซต์หลัก · คำประกาศ / แถลงการณ์',
     '/website/about': 'เว็บไซต์หลัก · เกี่ยวกับองค์กร',
     '/website/knowledge': 'เว็บไซต์หลัก · ศูนย์เนื้อหาศาสนา',
     '/website/webboard': 'เว็บไซต์หลัก · เว็บบอร์ด',
-    '/website/members': 'เว็บไซต์หลัก · สมาชิกเว็บไซต์',
+    '/website/members': 'กลุ่มงานสมาชิก · บัญชีเว็บ & เงื่อนไขการสมัคร',
     '/website/pages': 'เว็บไซต์หลัก · บริจาค & นโยบาย',
 };
 
