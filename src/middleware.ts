@@ -11,7 +11,9 @@ export default withAuth(
     pages: {
       signIn: "/login",
     },
-    secret: process.env.NEXTAUTH_SECRET,
+    // same fallback as the auth route — a session signed with AUTH_SECRET must be readable here too,
+    // otherwise every page bounces back to /login right after a successful sign-in
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   }
 );
 
