@@ -33,13 +33,6 @@ const navGroups = [
         ],
     },
     {
-        label: 'กลุ่มงานสื่อและประชาสัมพันธ์',
-        items: [
-            { name: 'ตรวจงานสื่อประชาสัมพันธ์', href: '/media-review', icon: Megaphone, permission: ['media.submit', 'media.review'] },
-            { name: 'ปฏิทินโพสต์', href: '/media-review/calendar', icon: CalendarDays, permission: ['media.submit', 'media.review'] },
-        ],
-    },
-    {
         label: 'กลุ่มงานการเงินและบัญชี',
         items: [
             { name: 'รายรับ-รายจ่าย', href: '/income-expense', icon: Receipt, permission: 'income_expense.view' },
@@ -51,6 +44,13 @@ const navGroups = [
             { name: 'ข้อมูลสมาชิก', href: '/members', icon: UserPlus, permission: 'members.view' },
             { name: 'บัญชีเว็บ & เงื่อนไขการสมัคร', href: '/website/members', icon: UserCheck, permission: 'site_members.view' },
             { name: 'ส่งอีเมลถึงสมาชิก', href: '/website/mailings', icon: Mail, permission: 'site_members.view' },
+        ],
+    },
+    {
+        label: 'กลุ่มงานสื่อและประชาสัมพันธ์',
+        items: [
+            { name: 'ตรวจงานสื่อประชาสัมพันธ์', href: '/media-review', icon: Megaphone, permission: ['media.submit', 'media.review'] },
+            { name: 'ปฏิทินโพสต์', href: '/media-review/calendar', icon: CalendarDays, permission: ['media.submit', 'media.review'] },
         ],
     },
     {
