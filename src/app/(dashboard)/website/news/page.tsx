@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import { ContentManager, ContentModal } from "../_content";
 import { CategoryManager, useCategories } from "../_categories";
-import { ARTICLE_CATEGORIES, articleConfigs, bookConfig, campConfig, qaConfig, recommendedConfig, videoConfig } from "../_configs";
+import { ARTICLE_CATEGORIES, HIDDEN_SECTIONS, VISIBLE_ARTICLE_CATEGORIES, articleConfigs, bookConfig, campConfig, qaConfig, videoConfig } from "../_configs";
 import type { ContentConfig } from "../_content";
 import {
     ConfirmDelete, ImagePicker, Modal, PageHeader, PUBLIC_SITE_URL, SITE_DEPARTMENTS, StatusPill,
@@ -133,14 +133,15 @@ function NewsModal({ item, onClose, onSaved, department }: { item: SiteNews | nu
 
 // ─── Destinations ─────────────────────────────────────────────
 type Dest = "news" | (typeof ARTICLE_CATEGORIES)[number]["key"];
-const DESTS: { key: Dest; label: string; page: string; hint: string; cls: string }[] = [
+const ALL_DESTS: { key: Dest; label: string; page: string; hint: string; cls: string }[] = [
     { key: "news", label: "ข่าวประชาสัมพันธ์", page: "หน้าข่าว/ประชาสัมพันธ์", hint: "ข่าวกิจกรรม ประกาศรับสมัคร เชิญชวน ประมวลภาพ", cls: "bg-blue-50 text-blue-700 border-blue-200" },
     { key: "academic", label: "ข้อมูลวิชาการ", page: "ศูนย์เนื้อหาศาสนา", hint: "บทความวิชาการ งานวิจัย (แนบ PDF ฉบับเต็มได้)", cls: "bg-amber-50 text-amber-700 border-amber-200" },
     { key: "encyclopedia", label: "สาระน่ารู้ / บทความ", page: "ศูนย์เนื้อหาศาสนา", hint: "ข้อคิด นาซีฮัต เกร็ดความรู้ทั่วไป", cls: "bg-sky-50 text-sky-700 border-sky-200" },
     { key: "biography", label: "ชีวประวัติบุคคลสำคัญ", page: "ศูนย์เนื้อหาศาสนา", hint: "เรื่องราวบุคคลต้นแบบ อุละมาอ์", cls: "bg-violet-50 text-violet-700 border-violet-200" },
     { key: "youth-advice", label: "คำแนะนำแด่เยาวชน / นาศีหัต", page: "ศูนย์เนื้อหาศาสนา", hint: "คำแนะนำสำหรับผู้ปกครอง เยาวชน ครู", cls: "bg-pink-50 text-pink-700 border-pink-200" },
 ];
-const destOf = (k: Dest) => DESTS.find(d => d.key === k)!;
+const DESTS = ALL_DESTS.filter(d => !HIDDEN_SECTIONS.includes(d.key));
+const destOf = (k: Dest) => ALL_DESTS.find(d => d.key === k)!;
 
 type Post =
     | { kind: "news"; dest: Dest; id: string; title: string; dept: string; date: string | null; published: boolean; pinned: boolean; cover: string | null; href: string; raw: SiteNews }
@@ -211,16 +212,15 @@ function MovePost({ post, onClose, onMoved }: { post: Post; onClose: () => void;
 
 // ═══ One page for all website content ══════════════════════════
 // ประชาสัมพันธ์ → by unit (news) + ค่ายและกิจกรรม
-// เนื้อหาศาสนา → ข้อมูลวิชาการ · สาระน่ารู้ · ชีวประวัติ · คำแนะนำแด่เยาวชน · Q&A · หนังสือ · วิดีโอ · รายการแนะนำ
+// เนื้อหาศาสนา → สาระน่ารู้ · คำแนะนำแด่เยาวชน · Q&A · หนังสือ · วิดีโอ (ข้อมูลวิชาการ, ชีวประวัติ, รายการแนะนำ: ปิดไว้ก่อน — HIDDEN_SECTIONS)
 type Section = "pr" | "rel";
 type Sub = { key: string; label: string; hint?: string; kind: "news" | "article" | "content"; cfg?: ContentConfig; path: string };
 const PR_CAMPS: Sub = { key: "camps", label: "ค่ายและกิจกรรม", hint: "ค่ายที่ผ่านมาและที่กำลังจะจัด", kind: "content", cfg: campConfig, path: "/news/camps" };
 const REL_SUBS: Sub[] = [
-    ...ARTICLE_CATEGORIES.map(c => ({ key: c.key, label: c.label, hint: DESTS.find(d => d.key === c.key)?.hint, kind: "article" as const, path: `/knowledge/${c.key}` })),
+    ...VISIBLE_ARTICLE_CATEGORIES.map(c => ({ key: c.key, label: c.label, hint: DESTS.find(d => d.key === c.key)?.hint, kind: "article" as const, path: `/knowledge/${c.key}` })),
     { key: "qa", label: "Youth Care Q&A", hint: "คำถามที่ทีม Youth Care ตอบแล้ว", kind: "content", cfg: qaConfig, path: "/knowledge/qa" },
-    { key: "books", label: "หนังสือแนะนำ", hint: "หนังสือและไฟล์ให้ดาวน์โหลด", kind: "content", cfg: bookConfig, path: "/knowledge/books" },
-    { key: "videos", label: "วิดีโอแนะนำ", hint: "คลิปความรู้จาก YouTube", kind: "content", cfg: videoConfig, path: "/knowledge/videos" },
-    { key: "recommended", label: "รายการแนะนำ", hint: "พอดแคสต์ บทความ เว็บไซต์ที่คัดสรร", kind: "content", cfg: recommendedConfig, path: "/knowledge/recommended" },
+    { key: "books", label: "หนังสือ", hint: "หนังสือและไฟล์ให้ดาวน์โหลด", kind: "content", cfg: bookConfig, path: "/knowledge/books" },
+    { key: "videos", label: "วิดีโอ", hint: "คลิปความรู้จาก YouTube", kind: "content", cfg: videoConfig, path: "/knowledge/videos" },
 ];
 const SECTION: Record<Section, { label: string; hint: string; icon: typeof Newspaper }> = {
     pr: { label: "ประชาสัมพันธ์", hint: "ข่าวกิจกรรมของแต่ละหน่วยงาน ประกาศรับสมัคร ค่ายและกิจกรรม", icon: Newspaper },
@@ -299,7 +299,7 @@ export default function WebsiteContentPage() {
         setLoading(true);
         try {
             const [news, articles] = await Promise.all([fetchSiteNews(), fetchSiteContent("article")]);
-            setPosts([...news.map(fromNews), ...articles.map(fromArticle)].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")));
+            setPosts([...news.map(fromNews), ...articles.filter(a => !HIDDEN_SECTIONS.includes(a.category ?? "")).map(fromArticle)].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")));
         } catch { show("โหลดเนื้อหาไม่สำเร็จ", "error"); } finally { setLoading(false); }
     }, [show]);
     useEffect(() => { load(); }, [load]);

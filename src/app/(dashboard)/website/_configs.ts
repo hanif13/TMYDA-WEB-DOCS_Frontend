@@ -15,6 +15,12 @@ const tone: FieldDef = { path: "data.tone", label: "สีปก (ใช้เ�
 const cover: FieldDef = { path: "coverUrl", label: "รูปปก", kind: "image", half: true };
 
 // ─── Articles (4 categories) ──────────────────────────────────
+/**
+ * ปิดไว้ก่อน (เนื้อหายังน้อย, 2026-11-23): ข้อมูลวิชาการ, ชีวประวัติบุคคลสำคัญ และรายการแนะนำ — same list as web 1
+ * (fityatulhak-public/src/lib/content.ts). The editors stay in the code; remove a key here to show it again.
+ */
+export const HIDDEN_SECTIONS: string[] = ["academic", "biography", "recommended"];
+
 export const ARTICLE_CATEGORIES = [
     { key: "academic", label: "ข้อมูลวิชาการ" },
     { key: "encyclopedia", label: "สาระน่ารู้ / บทความ" },
@@ -32,7 +38,7 @@ function articleConfig(category: string): ContentConfig {
         ] : [];
     return {
         type: "article", noun: "บทความ", category,
-        categoryChoices: ARTICLE_CATEGORIES.map(c => ({ value: c.key, label: c.label })),
+        categoryChoices: ARTICLE_CATEGORIES.filter(c => !HIDDEN_SECTIONS.includes(c.key)).map(c => ({ value: c.key, label: c.label })),
         fields: [
             { path: "title", label: "ชื่อบทความ", kind: "text", required: true },
             { path: "data.excerpt", label: "คำโปรย / บทคัดย่อ", kind: "textarea" },
@@ -52,6 +58,9 @@ function articleConfig(category: string): ContentConfig {
         publicPath: i => `/knowledge/${category}/${i.slug}`,
     };
 }
+/** Article categories shown in web 2 (create, move, subcategory picker). */
+export const VISIBLE_ARTICLE_CATEGORIES = ARTICLE_CATEGORIES.filter(c => !HIDDEN_SECTIONS.includes(c.key));
+
 export const articleConfigs = Object.fromEntries(ARTICLE_CATEGORIES.map(c => [c.key, articleConfig(c.key)])) as Record<string, ContentConfig>;
 
 // ─── Courses ──────────────────────────────────────────────────
