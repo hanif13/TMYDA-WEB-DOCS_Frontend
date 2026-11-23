@@ -11,6 +11,7 @@ import {
 import { ConfirmDelete, ImagePicker, Modal, PUBLIC_SITE_URL, StatusPill, formatThaiDate, inputCls, labelCls, toDateInput, useCanEditWebsite } from "./_shared";
 import { Field, LinesInput, PdfPicker, RowsEditor, TagsInput, TonePicker, errMsg, type RowCol } from "./_editors";
 import { CategoryManager, CategoryPicker, TagPicker, useCategories } from "./_categories";
+import { ARTICLE_ICONS } from "./_icons";
 import { Tags } from "lucide-react";
 
 export type Option = { value: string; label: string };
@@ -18,7 +19,7 @@ export type FieldDef = {
     /** title | slug | category | coverUrl | fileUrl | date | data.<key> */
     path: string;
     label: string;
-    kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images" | "categories";
+    kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images" | "categories" | "icon";
     /** kind "categories": which managed list (qa, recommended, book, video, partner) */
     catType?: string;
     /** kind "tags": suggest tags already used by this content type */
@@ -122,6 +123,19 @@ function FieldInput({ def, form, setForm }: { def: FieldDef; form: FormState; se
         case "images": return <ImagePicker label={def.label} multiple value={value ?? []} onChange={set} aspect="aspect-square" />;
         case "pdf": return <PdfPicker label={def.label} value={value ?? ""} onChange={set} />;
         case "tone": return <TonePicker value={value ?? "blue"} onChange={set} label={def.label} />;
+        case "icon": return (
+            <Field label={def.label} hint="ไม่เลือก = ใช้ไอคอนประจำหมวด">
+                <div role="radiogroup" aria-label={def.label} className="grid grid-cols-8 gap-1.5">
+                    {ARTICLE_ICONS.map(({ key, label, Icon }) => (
+                        <button key={key} type="button" role="radio" aria-checked={value === key} aria-label={label} title={label}
+                            onClick={() => set(value === key ? "" : key)}
+                            className={`flex aspect-square items-center justify-center rounded-xl border transition ${value === key ? "border-[#0c121b] bg-[#0c121b] text-white" : "border-slate-200 bg-white text-slate-500 hover:border-slate-400"}`}>
+                            <Icon className="h-4 w-4" />
+                        </button>
+                    ))}
+                </div>
+            </Field>
+        );
         case "rows": return <RowsEditor label={def.label} rows={value ?? []} onChange={set} columns={def.columns ?? []} blank={def.blank ?? (() => ({}))} />;
         default:
             return (
