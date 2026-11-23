@@ -70,13 +70,107 @@ export const courseConfig: ContentConfig = {
     type: "course", noun: "หลักสูตร", sortable: true,
     fields: [
         { path: "title", label: "ชื่อหลักสูตร", kind: "text", required: true },
-        { path: "data.summary", label: "สรุปหลักสูตร", kind: "textarea" },
-        { path: "data.level", label: "ระดับ", kind: "select", options: opts(["เบื้องต้น", "กลาง", "ขั้นสูง"]), required: true, half: true },
+        { path: "data.tagline", label: "ชื่อรอง/คำขวัญ", kind: "text", placeholder: "เช่น จุดประกายการเปลี่ยนแปลง", half: true },
+        { path: "data.access", label: "ใครเข้าดูรายละเอียดได้", kind: "select", options: ACCESS, required: true, half: true, hint: "เฉพาะสมาชิก: คนทั่วไปเห็นแค่ชื่อและสรุปสั้น ๆ" },
+        { path: "data.summary", label: "นิยาม/สรุปหลักสูตร", kind: "textarea", hint: "แสดงให้ทุกคนเห็น" },
+        { path: "data.audience", label: "กลุ่มเป้าหมาย", kind: "text", placeholder: "เช่น ม.3–ม.5 อายุ 15–17 ปี", half: true },
         { path: "data.duration", label: "ระยะเวลา", kind: "text", placeholder: "เช่น 3 วัน 2 คืน", half: true },
-        { path: "data.audience", label: "กลุ่มเป้าหมาย", kind: "text", placeholder: "เช่น อายุ 16–22 ปี", half: true },
-        { path: "data.seats", label: "จำนวนที่รับ", kind: "text", placeholder: "เช่น รับ 60 คน", half: true },
-        { path: "data.modules", label: "เนื้อหาหลักสูตร (โมดูล)", kind: "lines", half: true },
-        { path: "data.instructors", label: "วิทยากร", kind: "lines", half: true },
+        { path: "data.organizer", label: "ผู้จัด", kind: "text", half: true },
+        { path: "data.seats", label: "จำนวนที่รับ / ความถี่", kind: "text", placeholder: "เช่น ปีละ 1 ครั้ง", half: true },
+
+        { path: "_h_intro", label: "ที่มาและเป้าหมาย", kind: "heading", hint: "ส่วนนี้ลงไปแสดงเฉพาะผู้มีสิทธิ์ดู" },
+        { path: "data.background", label: "ความเป็นมา", kind: "longtext" },
+        { path: "data.objectives", label: "วัตถุประสงค์", kind: "lines" },
+        {
+            path: "data.outcomes", label: "ผลลัพธ์ที่คาดหวัง (แยกระดับ)", kind: "rows",
+            columns: [
+                { key: "level", label: "ระดับ", width: "sm:col-span-3", placeholder: "เช่น ระดับเยี่ยม" },
+                { key: "items", label: "ผลลัพธ์", kind: "lines", width: "sm:col-span-9" },
+            ],
+            blank: () => ({ level: "", items: [] }),
+        },
+
+        { path: "_h_stages", label: "หลักสูตร (ขั้น/ส่วนของหลักสูตร)", kind: "heading" },
+        {
+            path: "data.stages", label: "ขั้นของหลักสูตร", kind: "rows",
+            columns: [
+                { key: "title", label: "ชื่อขั้น", width: "sm:col-span-8" },
+                { key: "arabic", label: "ชื่อภาษาอาหรับ", width: "sm:col-span-4" },
+                { key: "description", label: "คำอธิบาย", kind: "textarea" },
+                { key: "outcome", label: "ผลลัพธ์", width: "sm:col-span-12" },
+            ],
+            blank: () => ({ title: "", arabic: "", description: "", outcome: "" }),
+        },
+        {
+            path: "data.outline", label: "เค้าโครงกิจกรรม (ก่อน/ช่วง/หลังค่าย)", kind: "rows",
+            columns: [
+                { key: "phase", label: "ช่วง", width: "sm:col-span-3", placeholder: "เช่น ก่อนค่าย" },
+                { key: "items", label: "กิจกรรม", kind: "lines", width: "sm:col-span-9" },
+            ],
+            blank: () => ({ phase: "", items: [] }),
+        },
+        {
+            path: "data.schedule", label: "ตารางกิจกรรม", kind: "rows",
+            columns: [
+                { key: "day", label: "วัน", width: "sm:col-span-3", placeholder: "วันที่ 1" },
+                { key: "title", label: "ชุดกิจกรรม", width: "sm:col-span-5" },
+                { key: "stage", label: "ขั้นของหลักสูตร", width: "sm:col-span-4" },
+                { key: "items", label: "ช่วงเวลา: รายการ (บรรทัดละช่วง เช่น หลังอัสรี: นะศีหะฮฺ …)", kind: "lines" },
+                { key: "outcome", label: "ผลลัพธ์ของวัน", width: "sm:col-span-12" },
+            ],
+            blank: () => ({ day: "", title: "", stage: "", items: [], outcome: "" }),
+        },
+
+        { path: "_h_nasihat", label: "นะศีหะฮฺและกิจกรรม", kind: "heading" },
+        {
+            path: "data.nasihat", label: "นะศีหะฮฺ", kind: "rows",
+            columns: [
+                { key: "day", label: "วัน", width: "sm:col-span-3" },
+                { key: "time", label: "ช่วงเวลา", width: "sm:col-span-3" },
+                { key: "title", label: "หัวข้อ", width: "sm:col-span-6" },
+                { key: "body", label: "รายละเอียด", kind: "longtext" },
+            ],
+            blank: () => ({ day: "", time: "", title: "", body: "" }),
+        },
+        {
+            path: "data.activities", label: "กิจกรรม", kind: "rows",
+            columns: [
+                { key: "day", label: "วัน", width: "sm:col-span-3" },
+                { key: "time", label: "ช่วงเวลา", width: "sm:col-span-3" },
+                { key: "title", label: "ชื่อกิจกรรม", width: "sm:col-span-6" },
+                { key: "body", label: "รายละเอียด", kind: "longtext" },
+            ],
+            blank: () => ({ day: "", time: "", title: "", body: "" }),
+        },
+        {
+            path: "data.halaqah", label: "หะละเกาะฮฺ", kind: "rows",
+            columns: [
+                { key: "title", label: "หัวข้อ", width: "sm:col-span-6" },
+                { key: "reading", label: "เนื้อหาที่ศึกษา", width: "sm:col-span-6", placeholder: "เช่น สูเราะฮฺ อัลบะเกาะเราะฮฺ 28–39" },
+                { key: "body", label: "รายละเอียด", kind: "longtext" },
+            ],
+            blank: () => ({ title: "", reading: "", body: "" }),
+        },
+
+        { path: "_h_identity", label: "สโลแกน พันธกิจ และอนาชีด", kind: "heading" },
+        { path: "data.sloganArabic", label: "สโลแกน (ภาษาอาหรับ)", kind: "textarea", half: true },
+        { path: "data.sloganMeaning", label: "ความหมายสโลแกน", kind: "textarea", half: true },
+        { path: "data.sloganSource", label: "ที่มา", kind: "text", placeholder: "เช่น สูเราะฮฺ อาลิอิมรอน : 110", half: true },
+        { path: "data.mission", label: "พันธกิจ", kind: "text", half: true },
+        { path: "data.anthemArabic", label: "อนาชีด (ภาษาอาหรับ)", kind: "longtext", half: true },
+        { path: "data.anthemMeaning", label: "ความหมายอนาชีด", kind: "longtext", half: true },
+
+        { path: "_h_more", label: "เนื้อหาอื่น ๆ", kind: "heading" },
+        {
+            path: "data.sections", label: "หัวข้อเพิ่มเติม (เนื้อหาเสริม แนวทางการใช้หลักสูตร ฯลฯ)", kind: "rows",
+            columns: [
+                { key: "title", label: "หัวข้อ" },
+                { key: "body", label: "เนื้อหา", kind: "longtext" },
+            ],
+            blank: () => ({ title: "", body: "" }),
+        },
+        { path: "data.instructors", label: "วิทยากร/ผู้รับผิดชอบ", kind: "lines", half: true },
+        { path: "data.level", label: "ระดับ (ถ้ามี)", kind: "text", half: true },
         {
             path: "data.documents", label: "เอกสารประกอบ", kind: "rows",
             columns: [
@@ -84,14 +178,14 @@ export const courseConfig: ContentConfig = {
                 { key: "access", label: "สิทธิ์", kind: "select", options: ACCESS, width: "sm:col-span-3" },
                 { key: "url", label: "ลิงก์ไฟล์ (ถ้ามี)", width: "sm:col-span-4" },
             ],
-            blank: () => ({ name: "", access: "public", url: "" }),
+            blank: () => ({ name: "", access: "member", url: "" }),
         },
         { path: "data.applyUrl", label: "ลิงก์สมัคร (ถ้ามี)", kind: "text", placeholder: "https://…" },
         { path: "data.tags", label: "แท็ก", kind: "tags", tagType: "course" },
         cover, tone, slug,
     ],
-    defaults: () => ({ data: { tone: "blue", level: "เบื้องต้น", modules: [], instructors: [], documents: [] } }),
-    subtitle: i => join(i.data.level, i.data.duration, i.data.audience),
+    defaults: () => ({ data: { tone: "blue", access: "member", modules: [], instructors: [], documents: [] } }),
+    subtitle: i => join(i.data.access === "member" ? "เฉพาะสมาชิก" : "", i.data.duration, i.data.audience),
     publicPath: i => `/about/courses/${i.slug}`,
 };
 

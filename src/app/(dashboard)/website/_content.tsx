@@ -19,7 +19,7 @@ export type FieldDef = {
     /** title | slug | category | coverUrl | fileUrl | date | data.<key> */
     path: string;
     label: string;
-    kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images" | "categories" | "icon";
+    kind: "text" | "textarea" | "longtext" | "number" | "date" | "select" | "tags" | "lines" | "image" | "pdf" | "tone" | "rows" | "images" | "categories" | "icon" | "heading";
     /** kind "categories": which managed list (qa, recommended, book, video, partner) */
     catType?: string;
     /** kind "tags": suggest tags already used by this content type */
@@ -85,6 +85,13 @@ function FieldInput({ def, form, setForm }: { def: FieldDef; form: FormState; se
     const set = (v: any) => setForm(s => setPath(s, def.path, v));
     const id = `f-${def.path.replace(".", "-")}`;
     switch (def.kind) {
+        // a divider that groups the fields after it (path is only a unique key)
+        case "heading": return (
+            <div className="pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-800">{def.label}</h3>
+                {def.hint && <p className="text-xs text-slate-500 mt-0.5">{def.hint}</p>}
+            </div>
+        );
         case "textarea":
         case "longtext":
             return (

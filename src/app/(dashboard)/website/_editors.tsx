@@ -110,7 +110,7 @@ export function TagsInput({ label, value, onChange, hint }: { label: string; val
 
 // ─── Editable list of objects (history, values, funds, schedule …) ──
 export type RowCol<R> = {
-    key: keyof R & string; label: string; kind?: "text" | "textarea" | "lines" | "select" | "tone";
+    key: keyof R & string; label: string; kind?: "text" | "textarea" | "longtext" | "lines" | "select" | "tone";
     options?: { value: string; label: string }[]; width?: string; placeholder?: string;
 };
 
@@ -137,8 +137,8 @@ export function RowsEditor<R extends Record<string, any>>({ label, rows, onChang
                         {columns.map(c => (
                             <div key={c.key} className={c.width ?? "sm:col-span-12"}>
                                 <span className="sr-only">{c.label}</span>
-                                {c.kind === "textarea" ? (
-                                    <textarea aria-label={`${c.label} รายการที่ ${i + 1}`} rows={2} value={r[c.key] ?? ""} placeholder={c.placeholder ?? c.label} onChange={e => update(i, c.key, e.target.value)} className={`${inputCls} resize-y`} />
+                                {c.kind === "textarea" || c.kind === "longtext" ? (
+                                    <textarea aria-label={`${c.label} รายการที่ ${i + 1}`} rows={c.kind === "longtext" ? 6 : 2} value={r[c.key] ?? ""} placeholder={c.placeholder ?? c.label} onChange={e => update(i, c.key, e.target.value)} className={`${inputCls} resize-y`} />
                                 ) : c.kind === "lines" ? (
                                     <textarea aria-label={`${c.label} รายการที่ ${i + 1}`} rows={3} value={((r[c.key] as string[] | undefined) ?? []).join("\n")} placeholder={c.placeholder ?? `${c.label} (บรรทัดละ 1 รายการ)`}
                                         onChange={e => update(i, c.key, e.target.value.split("\n"))} onBlur={e => update(i, c.key, e.target.value.split("\n").map(l => l.trim()).filter(Boolean))} className={`${inputCls} resize-y`} />
