@@ -29,8 +29,6 @@ function articleConfig(category: string): ContentConfig {
             { path: "data.filePages", label: "จำนวนหน้าของไฟล์", kind: "number", half: true },
         ] : category === "biography" ? [
             { path: "data.era", label: "ช่วงชีวิต", kind: "text", placeholder: "เช่น ค.ศ. 980–1037", half: true },
-        ] : category === "youth-advice" ? [
-            { path: "data.audience", label: "กลุ่มผู้อ่าน", kind: "select", options: opts(["ผู้ปกครอง", "เยาวชน", "ครู"]), required: true, half: true },
         ] : [];
     return {
         type: "article", noun: "บทความ", category,
@@ -49,10 +47,9 @@ function articleConfig(category: string): ContentConfig {
             { path: "data.videoUrl", label: "ลิงก์วิดีโอ (Facebook หรือ YouTube)", kind: "text", placeholder: "https://…", hint: "แสดงเป็นตัวเล่นวิดีโอแทนรูปปก" },
             cover, tone, slug,
         ],
-        defaults: () => ({ data: { tone: category === "academic" ? "amber" : category === "encyclopedia" ? "sky" : category === "biography" ? "violet" : "pink", tags: [], audience: category === "youth-advice" ? "ผู้ปกครอง" : "" } }),
-        subtitle: i => join(`👁 ${(i.data.views ?? 0).toLocaleString("th-TH")}`, i.data.audience, i.data.era, i.data.author, i.data.tags?.join(", "), i.fileUrl ? "📎 มีไฟล์ฉบับเต็ม" : ""),
+        defaults: () => ({ data: { tone: category === "academic" ? "amber" : category === "encyclopedia" ? "sky" : category === "biography" ? "violet" : "pink", tags: [] } }),
+        subtitle: i => join(`👁 ${(i.data.views ?? 0).toLocaleString("th-TH")}`, i.data.era, i.data.author, i.data.tags?.join(", "), i.fileUrl ? "📎 มีไฟล์ฉบับเต็ม" : ""),
         publicPath: i => `/knowledge/${category}/${i.slug}`,
-        filter: category === "youth-advice" ? { path: "data.audience", label: "กลุ่มผู้อ่าน", options: opts(["ผู้ปกครอง", "เยาวชน", "ครู"]) } : undefined,
     };
 }
 export const articleConfigs = Object.fromEntries(ARTICLE_CATEGORIES.map(c => [c.key, articleConfig(c.key)])) as Record<string, ContentConfig>;
