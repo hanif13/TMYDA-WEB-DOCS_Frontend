@@ -159,6 +159,14 @@ export const courseConfig: ContentConfig = {
         { path: "data.mission", label: "พันธกิจ", kind: "text", half: true },
         { path: "data.anthemArabic", label: "อนาชีด (ภาษาอาหรับ)", kind: "longtext", half: true },
         { path: "data.anthemMeaning", label: "ความหมายอนาชีด", kind: "longtext", half: true },
+        {
+            path: "data.anasheed", label: "อนาชีดอื่น ๆ (เนื้อร้องพร้อมความหมาย)", kind: "rows",
+            columns: [
+                { key: "title", label: "ชื่ออนาชีด" },
+                { key: "lyrics", label: "เนื้อร้อง/ความหมาย (ขึ้นบรรทัดใหม่ตามท่อน)", kind: "longtext" },
+            ],
+            blank: () => ({ title: "", lyrics: "" }),
+        },
 
         { path: "_h_more", label: "เนื้อหาอื่น ๆ", kind: "heading" },
         {
